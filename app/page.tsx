@@ -6,7 +6,13 @@ import WaitlistForm from '@/components/WaitlistForm';
 
 type WindowState = 'before' | 'open' | 'after';
 
+/**
+ * Root page IS the checkout page. No separate landing page.
+ * Minimal, single-screen, spontaneous vibe.
+ */
 export default function HomePage() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>();
   const [logoError, setLogoError] = useState(false);
   const [windowState, setWindowState] = useState<WindowState>('before');
   const [windowOpen, setWindowOpen] = useState<Date | null>(null);
@@ -36,12 +42,43 @@ export default function HomePage() {
   const handleWindowOpened = useCallback(() => setWindowState('open'), []);
   const handleWindowClosed = useCallback(() => setWindowState('after'), []);
 
+  const handleCheckout = async () => {
+    setIsLoading(true);
+    setError(undefined);
+
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const email = params.get('email') || undefined;
+
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerEmail: email }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        setError(data.error);
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      setError('Something went wrong. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
   const faqs = [
     { q: "What if I'm brand new?", a: "Works for any sub count. The review is tailored to where you actually are." },
     { q: "What if I'm already at 50K?", a: "Same answer. The system covers both." },
-    { q: "Is this auto-renewing?", a: "No. You pay $999 for three months. That's it." },
-    { q: "Can I cancel?", a: "30-day refund window. No conditions, no questions." },
-    { q: "What about the high-ticket program?", a: "The Boundless Creator Accelerator is 1-on-1, $6K+. This is the same systems, less hand-holding. Depth, not access." },
+    { q: "Is this auto-renewing?", a: "No. $999 for three months. That's it." },
+    { q: "Can I cancel?", a: "30-day refund. No conditions, no questions." },
+    { q: "What's the high-ticket program?", a: "The Boundless Creator Accelerator is 1-on-1, $6K+. Same systems, more hand-holding." },
   ];
 
   return (
@@ -79,9 +116,9 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* The card */}
-        <div className="bg-slate-900 border border-green-500/30 rounded-xl shadow-[0_0_30px_rgba(34,197,94,0.15)] overflow-hidden mb-6">
-          {/* What you get — compact */}
+        {/* Card */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden mb-6">
+          {/* Features */}
           <div className="p-6 text-left">
             <ul className="space-y-2.5">
               {[
@@ -104,12 +141,36 @@ export default function HomePage() {
           {/* CTA */}
           <div className="px-6 pb-6">
             {windowState === 'open' ? (
-              <a
-                href="/checkout"
-                className="block w-full text-center bg-green-600 hover:bg-green-500 text-white font-semibold text-lg py-4 rounded-lg transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-green-500/20 hover:shadow-green-500/40"
-              >
-                Join — $999
-              </a>
+              <>
+                {error && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-3">
+                    <p className="text-red-400 text-sm">{error}</p>
+                  </div>
+                )}
+                <button
+                  onClick={handleCheckout}
+                  disabled={isLoading}
+                  className="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold text-lg py-4 rounded-lg transition-all duration-200 hover:scale-[1.02] shadow-lg shadow-green-500/20 hover:shadow-green-500/40 disabled:hover:scale-100 disabled:cursor-not-allowed disabled:shadow-none"
+                >
+                  {isLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      Redirecting to Stripe...
+                    </span>
+                  ) : (
+                    'Join — $999'
+                  )}
+                </button>
+                <div className="mt-3 flex items-center justify-center gap-1.5 text-slate-500 text-xs">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Secure payment via Stripe
+                </div>
+              </>
             ) : windowState === 'before' ? (
               <div className="text-slate-400 text-sm py-3">
                 Payment opens when the timer hits zero.
@@ -125,7 +186,7 @@ export default function HomePage() {
           30-day money-back guarantee. No questions, no conditions.
         </p>
         <a
-          href="https://docs.google.com/document/d/PLACEHOLDER/edit"
+          href="https://docs.google.com/document/d/1s6-4kCsW94o9FM-nNoFPxJkGMwgjpqCPLmcxWEtNxTs"
           target="_blank"
           rel="noopener noreferrer"
           className="text-slate-500 hover:text-slate-400 text-xs underline"
