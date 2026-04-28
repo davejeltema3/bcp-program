@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 /**
  * Invite / Direct Join page — bypasses the purchase window.
  * Dave can send this URL directly to people he wants to let in outside the normal window.
  * URL: bcp.boundlesscreator.com/join
+ * Supports ?mode= query param override for preview linking.
  */
 
 type PaymentMode = 'one-time' | 'subscription';
@@ -18,14 +19,24 @@ function getCheckoutMode(): CheckoutMode {
   return 'one-time';
 }
 
-const CHECKOUT_MODE = getCheckoutMode();
-const SUBSCRIPTION_ENABLED = CHECKOUT_MODE === 'both' || CHECKOUT_MODE === 'subscription';
+const DEFAULT_CHECKOUT_MODE = getCheckoutMode();
 
 export default function JoinPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [logoError, setLogoError] = useState(false);
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>(CHECKOUT_MODE === 'subscription' ? 'subscription' : 'one-time');
+  const [checkoutMode, setCheckoutModeState] = useState<CheckoutMode>(DEFAULT_CHECKOUT_MODE);
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>(DEFAULT_CHECKOUT_MODE === 'subscription' ? 'subscription' : 'one-time');
+
+  // Allow ?mode= query param to override checkout mode (for preview linking)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const modeParam = params.get('mode');
+    if (modeParam === 'one-time' || modeParam === 'subscription' || modeParam === 'both') {
+      setCheckoutModeState(modeParam);
+      setPaymentMode(modeParam === 'subscription' ? 'subscription' : 'one-time');
+    }
+  }, []);
 
   const handleCheckout = async () => {
     setIsLoading(true);
@@ -39,7 +50,7 @@ export default function JoinPage() {
         body: JSON.stringify({
           customerEmail: email,
           bypassWindow: true,
-          paymentMode: CHECKOUT_MODE === 'both' ? paymentMode : CHECKOUT_MODE === 'subscription' ? 'subscription' : undefined,
+          paymentMode: checkoutMode === 'both' ? paymentMode : checkoutMode === 'subscription' ? 'subscription' : undefined,
         }),
       });
       const data = await response.json();
@@ -110,7 +121,7 @@ export default function JoinPage() {
               Payment
             </h2>
             <div className="space-y-3">
-              {CHECKOUT_MODE !== 'subscription' && (
+              {checkoutMode !== 'subscription' && (
                 <button
                   onClick={() => setPaymentMode('one-time')}
                   className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
@@ -129,7 +140,7 @@ export default function JoinPage() {
                 </button>
               )}
 
-              {CHECKOUT_MODE !== 'one-time' && (
+              {checkoutMode !== 'one-time' && (
                 <button
                   onClick={() => setPaymentMode('subscription')}
                   className={`w-full p-4 rounded-lg border-2 text-left transition-all ${

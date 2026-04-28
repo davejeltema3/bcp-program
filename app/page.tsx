@@ -17,8 +17,7 @@ function getCheckoutMode(): CheckoutMode {
   return 'one-time';
 }
 
-const CHECKOUT_MODE = getCheckoutMode();
-const SUBSCRIPTION_ENABLED = CHECKOUT_MODE === 'both' || CHECKOUT_MODE === 'subscription';
+const DEFAULT_CHECKOUT_MODE = getCheckoutMode();
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -28,7 +27,18 @@ export default function HomePage() {
   const [windowOpen, setWindowOpen] = useState<Date | null>(null);
   const [windowClose, setWindowClose] = useState<Date | null>(null);
   const [showFaq, setShowFaq] = useState(false);
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>(CHECKOUT_MODE === 'subscription' ? 'subscription' : 'one-time');
+  const [checkoutMode, setCheckoutModeState] = useState<CheckoutMode>(DEFAULT_CHECKOUT_MODE);
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>(DEFAULT_CHECKOUT_MODE === 'subscription' ? 'subscription' : 'one-time');
+
+  // Allow ?mode= query param to override checkout mode (for preview linking)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const modeParam = params.get('mode');
+    if (modeParam === 'one-time' || modeParam === 'subscription' || modeParam === 'both') {
+      setCheckoutModeState(modeParam);
+      setPaymentMode(modeParam === 'subscription' ? 'subscription' : 'one-time');
+    }
+  }, []);
 
   useEffect(() => {
     const openStr = process.env.NEXT_PUBLIC_WINDOW_OPEN;
@@ -58,7 +68,7 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerEmail: email,
-          paymentMode: CHECKOUT_MODE === 'both' ? paymentMode : CHECKOUT_MODE === 'subscription' ? 'subscription' : undefined,
+          paymentMode: checkoutMode === 'both' ? paymentMode : checkoutMode === 'subscription' ? 'subscription' : undefined,
         }),
       });
       const data = await response.json();
@@ -73,9 +83,9 @@ export default function HomePage() {
   const faqs = [
     { q: "What if I'm brand new?", a: "Works for any sub count. The review is tailored to where you actually are." },
     { q: "What if I'm already at 50K?", a: "Same answer. The system covers both." },
-    ...(CHECKOUT_MODE === 'subscription'
+    ...(checkoutMode === 'subscription'
       ? [{ q: "How does the subscription work?", a: "$999 every 3 months, auto-renews. Cancel anytime from your Stripe billing portal. No commitments." }]
-      : CHECKOUT_MODE === 'both'
+      : checkoutMode === 'both'
       ? [{ q: "How does the subscription work?", a: "$999 every 3 months, auto-renews. Cancel anytime from your Stripe billing portal. No commitments." }]
       : [{ q: "Is this auto-renewing?", a: "No. $999 for three months. That's it." }]
     ),
@@ -157,7 +167,7 @@ export default function HomePage() {
             </h2>
             <div className="space-y-3">
               {/* One-time option (shown for 'one-time' and 'both' modes) */}
-              {CHECKOUT_MODE !== 'subscription' && (
+              {checkoutMode !== 'subscription' && (
                 <button
                   onClick={() => setPaymentMode('one-time')}
                   className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
@@ -177,7 +187,7 @@ export default function HomePage() {
               )}
 
               {/* Subscription option (shown for 'subscription' and 'both' modes) */}
-              {CHECKOUT_MODE !== 'one-time' && (
+              {checkoutMode !== 'one-time' && (
                 <button
                   onClick={() => setPaymentMode('subscription')}
                   className={`w-full p-4 rounded-lg border-2 text-left transition-all ${

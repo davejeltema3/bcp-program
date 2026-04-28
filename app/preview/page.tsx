@@ -342,12 +342,15 @@ export default function PreviewPage() {
   const renderCheckoutPreview = (mode: CheckoutMode, state: 'before' | 'open' | 'closed') => {
     const stateLabel = state === 'before' ? 'Window Not Yet Open' : state === 'open' ? 'Window Open' : 'Window Closed';
     const modeLabel = checkoutModeLabel(mode);
-    const headerLabel = `/ — ${stateLabel} (${modeLabel})`;
+    const pagePath = `/?mode=${mode}`;
 
     return (
       <div key={`${mode}-${state}`} className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-          {headerLabel}
+        <div className="bg-slate-800 px-4 py-2 text-sm font-mono flex items-center justify-between">
+          <span className="text-slate-400">
+            <a href={pagePath} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">{pagePath}</a>
+            {' — '}{stateLabel} ({modeLabel})
+          </span>
         </div>
         <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: state === 'closed' ? 600 : 700 }}>
           <div className="w-full max-w-2xl">
@@ -389,12 +392,15 @@ export default function PreviewPage() {
   /* ─── Invite Page Preview for a single mode ─── */
   const renderInvitePreview = (mode: CheckoutMode) => {
     const modeLabel = checkoutModeLabel(mode);
-    const modeSlug = mode === 'one-time' ? 'One-Time Only' : mode === 'subscription' ? 'Subscription Only' : 'Both Options';
+    const pagePath = `/join?mode=${mode}`;
 
     return (
       <div key={`invite-${mode}`} className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-          /join — Invite Page ({modeSlug})
+        <div className="bg-slate-800 px-4 py-2 text-sm font-mono flex items-center justify-between">
+          <span className="text-slate-400">
+            <a href={pagePath} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">{pagePath}</a>
+            {' — '}Invite Page ({modeLabel})
+          </span>
         </div>
         <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 700 }}>
           <div className="w-full max-w-2xl">
