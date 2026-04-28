@@ -5,11 +5,13 @@ import { NextRequest, NextResponse } from 'next/server';
  * Updates NEXT_PUBLIC_WINDOW_OPEN and NEXT_PUBLIC_WINDOW_CLOSE env vars
  * via the Vercel API, then triggers a redeploy.
  *
+ * Optionally notifies waitlist subscribers by tagging them in Kit.
+ *
  * Requires: ADMIN_SECRET, VERCEL_TOKEN, VERCEL_PROJECT_ID in env vars.
  */
 export async function POST(request: NextRequest) {
   try {
-    const { secret, openDate, closeDate, timezone } = await request.json();
+    const { secret, openDate, closeDate, timezone, notifyWaitlist } = await request.json();
 
     // Auth check
     if (!process.env.ADMIN_SECRET || secret !== process.env.ADMIN_SECRET) {
@@ -105,23 +107,163 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    let deployWarning: string | undefined;
     if (!deployRes.ok) {
       const err = await deployRes.text();
       console.error('Redeploy failed:', err);
-      // Env vars were still updated — they'll take effect on next deploy
-      return NextResponse.json({
-        success: true,
-        openUTC,
-        closeUTC,
-        warning: 'Env vars updated but auto-redeploy failed. Push a commit or manually redeploy in Vercel dashboard.',
-      });
+      deployWarning = 'Env vars updated but auto-redeploy failed. Push a commit or manually redeploy in Vercel dashboard.';
     }
 
-    return NextResponse.json({ success: true, openUTC, closeUTC });
+    // Optionally notify waitlist
+    let waitlistNotified = false;
+    let waitlistCount = 0;
+
+    if (notifyWaitlist) {
+      const result = await notifyWaitlistSubscribers();
+      waitlistNotified = true;
+      waitlistCount = result.tagged;
+
+      // Discord notification with waitlist info
+      if (process.env.DISCORD_WEBHOOK_URL) {
+        try {
+          await fetch(process.env.DISCORD_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              embeds: [{
+                title: '📢 Window opened & waitlist notified',
+                color: 0x22c55e,
+                description: `${result.tagged} subscribers will receive the email sequence.`,
+                fields: [
+                  { name: 'Window Opens', value: openUTC, inline: true },
+                  { name: 'Window Closes', value: closeUTC, inline: true },
+                  { name: 'Waitlist Tagged', value: `${result.tagged}`, inline: true },
+                ],
+                timestamp: new Date().toISOString(),
+              }],
+            }),
+          });
+        } catch (err) {
+          console.error('Discord notification failed:', err);
+        }
+      }
+    } else {
+      // Discord notification without waitlist
+      if (process.env.DISCORD_WEBHOOK_URL) {
+        try {
+          await fetch(process.env.DISCORD_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              embeds: [{
+                title: '🪟 Window updated',
+                color: 0x3b82f6,
+                fields: [
+                  { name: 'Opens', value: openUTC, inline: true },
+                  { name: 'Closes', value: closeUTC, inline: true },
+                ],
+                timestamp: new Date().toISOString(),
+              }],
+            }),
+          });
+        } catch (err) {
+          console.error('Discord notification failed:', err);
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      openUTC,
+      closeUTC,
+      waitlistNotified,
+      waitlistCount,
+      ...(deployWarning ? { warning: deployWarning } : {}),
+    });
   } catch (error: any) {
     console.error('Admin window update error:', error);
     return NextResponse.json({ error: error.message || 'Failed to update' }, { status: 500 });
   }
+}
+
+/**
+ * Tag all BCP Waitlist Member subscribers with the notification tag.
+ * Reuses the logic from notify-waitlist endpoint but inline.
+ */
+async function notifyWaitlistSubscribers(): Promise<{ tagged: number; failed: number; total: number }> {
+  const apiKey = process.env.KIT_API_KEY;
+  if (!apiKey) {
+    console.error('KIT_API_KEY not configured');
+    return { tagged: 0, failed: 0, total: 0 };
+  }
+
+  const waitlistTagId = process.env.KIT_TAG_BCP_WAITLIST || '8231366';
+  const notifyTagId = process.env.KIT_TAG_WINDOW_OPEN_NOTIFICATION || '19208524';
+
+  // Fetch all subscribers with the BCP Waitlist tag
+  let allSubscribers: { id: number; email_address: string }[] = [];
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await fetch(
+      `https://api.kit.com/v4/tags/${waitlistTagId}/subscribers?per_page=100&page=${page}`,
+      {
+        headers: { 'X-Kit-Api-Key': apiKey },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Failed to fetch waitlist subscribers:', await response.text());
+      break;
+    }
+
+    const data = await response.json();
+    const subscribers = data.subscribers || [];
+    allSubscribers = [...allSubscribers, ...subscribers];
+
+    if (subscribers.length < 100) {
+      hasMore = false;
+    } else {
+      page++;
+    }
+  }
+
+  if (allSubscribers.length === 0) {
+    return { tagged: 0, failed: 0, total: 0 };
+  }
+
+  // Tag each subscriber
+  let tagged = 0;
+  let failed = 0;
+
+  for (const subscriber of allSubscribers) {
+    try {
+      const tagResponse = await fetch(
+        `https://api.kit.com/v4/tags/${notifyTagId}/subscribers`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Kit-Api-Key': apiKey,
+          },
+          body: JSON.stringify({ email_address: subscriber.email_address }),
+        }
+      );
+
+      if (tagResponse.ok) {
+        tagged++;
+      } else {
+        failed++;
+        console.error(`Failed to tag ${subscriber.email_address}:`, await tagResponse.text());
+      }
+    } catch (err) {
+      failed++;
+      console.error(`Error tagging ${subscriber.email_address}:`, err);
+    }
+  }
+
+  return { tagged, failed, total: allSubscribers.length };
 }
 
 function localToUTC(localDatetime: string, timezone: string): string | null {

@@ -7,12 +7,16 @@ import { questionnaire, sections } from '@/lib/questionnaire';
 
 type Section = 'checkout' | 'post-payment' | 'questionnaire' | 'insight' | 'admin';
 type WindowState = 'before' | 'open' | 'after' | 'none';
+type CheckoutMode = 'one-time' | 'subscription' | 'both';
 
 export default function PreviewPage() {
   const [activeSection, setActiveSection] = useState<Section>('checkout');
   const [windowState, setWindowState] = useState<WindowState>('none');
   const [windowOpen, setWindowOpen] = useState<Date | null>(null);
   const [windowClose, setWindowClose] = useState<Date | null>(null);
+
+  // Checkout mode for preview (not persisted)
+  const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>('one-time');
 
   // Admin state
   const [adminOpen, setAdminOpen] = useState('');
@@ -21,8 +25,7 @@ export default function PreviewPage() {
   const [adminSecret, setAdminSecret] = useState('');
   const [adminResult, setAdminResult] = useState<string>();
   const [adminLoading, setAdminLoading] = useState(false);
-  const [notifyResult, setNotifyResult] = useState<string>();
-  const [notifyLoading, setNotifyLoading] = useState(false);
+  const [autoNotify, setAutoNotify] = useState(false);
 
   useEffect(() => {
     const openStr = process.env.NEXT_PUBLIC_WINDOW_OPEN;
@@ -41,25 +44,6 @@ export default function PreviewPage() {
   const handleWindowOpened = useCallback(() => setWindowState('open'), []);
   const handleWindowClosed = useCallback(() => setWindowState('after'), []);
 
-  const handleNotifyWaitlist = async () => {
-    if (!adminSecret) { setNotifyResult('❌ Enter admin secret first.'); return; }
-    if (!confirm('This will email ALL waitlist subscribers that the window is open. Continue?')) return;
-    setNotifyLoading(true);
-    setNotifyResult(undefined);
-    try {
-      const response = await fetch('/api/admin/notify-waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret: adminSecret }),
-      });
-      const data = await response.json();
-      setNotifyResult(data.success
-        ? `✅ ${data.message}`
-        : `❌ ${data.error || 'Failed'}`);
-    } catch { setNotifyResult('❌ Failed to connect.'); }
-    finally { setNotifyLoading(false); }
-  };
-
   const handleAdminUpdate = async () => {
     if (!adminOpen || !adminClose || !adminSecret) return;
     setAdminLoading(true);
@@ -68,12 +52,27 @@ export default function PreviewPage() {
       const response = await fetch('/api/admin/window', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret: adminSecret, openDate: adminOpen, closeDate: adminClose, timezone: adminTz }),
+        body: JSON.stringify({
+          secret: adminSecret,
+          openDate: adminOpen,
+          closeDate: adminClose,
+          timezone: adminTz,
+          notifyWaitlist: autoNotify,
+        }),
       });
       const data = await response.json();
-      setAdminResult(data.success
-        ? `✅ Window updated! Open: ${data.openUTC} → Close: ${data.closeUTC}. Redeploying (~30s).`
-        : `❌ ${data.error || 'Failed'}`);
+      if (data.success) {
+        let msg = `✅ Window updated! Open: ${data.openUTC} → Close: ${data.closeUTC}. Redeploying (~30s).`;
+        if (data.waitlistNotified) {
+          msg += `\n✅ Waitlist notified (${data.waitlistCount} subscribers tagged).`;
+        } else {
+          msg += `\n⏭️ Waitlist notification: disabled.`;
+        }
+        if (data.warning) msg += `\n⚠️ ${data.warning}`;
+        setAdminResult(msg);
+      } else {
+        setAdminResult(`❌ ${data.error || 'Failed'}`);
+      }
     } catch { setAdminResult('❌ Failed to connect.'); }
     finally { setAdminLoading(false); }
   };
@@ -91,232 +90,207 @@ export default function PreviewPage() {
     { id: 'admin', label: 'Admin' },
   ];
 
-  /* ─── Checkout Tab ─── */
-  const renderCheckout = () => (
-    <div className="space-y-8">
-      {/* Window BEFORE state */}
-      <div className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-          / — Window Not Yet Open (waitlist + countdown)
-        </div>
-        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 700 }}>
-          <div className="w-full max-w-2xl">
-            {/* Logo placeholder */}
-            <div className="mb-8 flex justify-center">
-              <div className="text-3xl font-bold text-blue-400 italic">Boundless Creator</div>
-            </div>
+  const checkoutModeLabel = (mode: CheckoutMode): string => {
+    switch (mode) {
+      case 'one-time': return 'One-Time Only';
+      case 'subscription': return 'Subscription Only';
+      case 'both': return 'Both Options';
+    }
+  };
 
-            {/* Timer */}
-            <div className="text-center mb-6">
-              <div className="text-sm text-slate-400 mb-3">Opens in</div>
-              <div className="flex items-center justify-center gap-3">
-                {[{v:'03',l:'days'},{v:'10',l:'hours'},{v:'18',l:'min'},{v:'42',l:'sec'}].map((u, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="bg-slate-800 border border-slate-700 rounded-lg w-16 h-16 flex items-center justify-center">
-                        <span className="text-2xl font-bold text-white font-mono">{u.v}</span>
-                      </div>
-                      <span className="text-xs text-slate-500 mt-1">{u.l}</span>
-                    </div>
-                    {i < 3 && <span className="text-slate-600 text-xl font-bold mb-4">:</span>}
-                  </div>
-                ))}
+  /* ─── Shared Components ─── */
+
+  const renderLogo = () => (
+    <div className="mb-8 flex justify-center">
+      <div className="text-3xl font-bold text-blue-400 italic">Boundless Creator</div>
+    </div>
+  );
+
+  const renderFeatures = () => (
+    <div className="p-6 border-b border-slate-800">
+      <h2 className="text-lg font-semibold text-white mb-4">What&apos;s Included</h2>
+      <ul className="space-y-3">
+        {['Personal channel review in your first week','Weekly live session (Wednesdays 2 PM EST)','Full BCP resource library','Direct access to Dave in Discord','Founder\'s rate locked in for as long as you stay'].map((f, i) => (
+          <li key={i} className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            <span className="text-slate-300">{f}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
+  const renderCardHeader = () => (
+    <div className="bg-gradient-to-r from-blue-600/20 to-blue-500/10 border-b border-slate-800 p-6">
+      <div className="text-blue-400 text-sm font-medium mb-1">Founders Edition — 3 months</div>
+      <h1 className="text-2xl font-bold text-white mb-2">Boundless Creator Program</h1>
+      <p className="text-slate-300">Personal channel reviews, weekly live sessions, and direct access to Dave.</p>
+    </div>
+  );
+
+  const renderGuarantee = () => (
+    <div className="mt-6 bg-slate-900/50 border border-slate-800 rounded-lg p-6 text-center">
+      <p className="text-slate-400 text-sm"><span className="text-white font-medium">30-Day Guarantee:</span> If you join and it&apos;s not for you, I refund you within 30 days. No questions, no conditions.</p>
+    </div>
+  );
+
+  const renderPaymentSection = (mode: CheckoutMode) => {
+    if (mode === 'one-time') {
+      return (
+        <div className="p-6 border-b border-slate-800">
+          <h2 className="text-lg font-semibold text-white mb-4">Payment</h2>
+          <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-500/10">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-semibold text-white">Pay in Full</div>
+                <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
               </div>
+              <div className="text-2xl font-bold text-white">$999</div>
             </div>
+          </div>
+        </div>
+      );
+    }
+    if (mode === 'subscription') {
+      return (
+        <div className="p-6 border-b border-slate-800">
+          <h2 className="text-lg font-semibold text-white mb-4">Payment</h2>
+          <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-500/10">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-semibold text-white">Quarterly Auto-Renew</div>
+                <div className="text-sm text-slate-400 mt-0.5">$999 every 3 months — cancel anytime</div>
+              </div>
+              <div className="text-2xl font-bold text-white">$999/qtr</div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    // both
+    return (
+      <div className="p-6 border-b border-slate-800">
+        <h2 className="text-lg font-semibold text-white mb-4">Payment</h2>
+        <div className="space-y-3">
+          <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-500/10 cursor-pointer">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded-full border-2 border-blue-500 bg-blue-500 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                </div>
+                <div>
+                  <div className="font-semibold text-white">Pay in Full</div>
+                  <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-white">$999</div>
+            </div>
+          </div>
+          <div className="p-4 rounded-lg border-2 border-slate-700 bg-slate-800/50 cursor-pointer">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 rounded-full border-2 border-slate-600" />
+                <div>
+                  <div className="font-semibold text-white">Quarterly Auto-Renew</div>
+                  <div className="text-sm text-slate-400 mt-0.5">$999 every 3 months — cancel anytime</div>
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-white">$999/qtr</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPayButton = (mode: CheckoutMode) => {
+    const label = mode === 'subscription' ? 'Subscribe — $999/quarter' : 'Pay $999';
+    return (
+      <>
+        <button className="w-full bg-blue-600 text-white font-semibold text-lg px-8 py-4 rounded-lg opacity-75 cursor-default">
+          {label}
+        </button>
+        <div className="mt-4 flex items-center justify-center gap-2 text-slate-500 text-sm">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+          Secure payment powered by Stripe
+        </div>
+      </>
+    );
+  };
+
+  const renderCountdownTimer = (timerLabel: string, timerValues: {v: string; l: string}[]) => (
+    <div className="text-center mb-6">
+      <div className="text-sm text-slate-400 mb-3">{timerLabel}</div>
+      <div className="flex items-center justify-center gap-3">
+        {timerValues.map((u, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <div className="flex flex-col items-center">
+              <div className="bg-slate-800 border border-slate-700 rounded-lg w-16 h-16 flex items-center justify-center">
+                <span className="text-2xl font-bold text-white font-mono">{u.v}</span>
+              </div>
+              <span className="text-xs text-slate-500 mt-1">{u.l}</span>
+            </div>
+            {i < 3 && <span className="text-slate-600 text-xl font-bold mb-4">:</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  /* ─── Checkout Preview for a single mode+state ─── */
+  const renderCheckoutPreview = (mode: CheckoutMode, state: 'before' | 'open' | 'closed') => {
+    const stateLabel = state === 'before' ? 'Window Not Yet Open' : state === 'open' ? 'Window Open' : 'Window Closed';
+    const modeLabel = checkoutModeLabel(mode);
+    const headerLabel = `/ — ${stateLabel} (${modeLabel})`;
+
+    return (
+      <div key={`${mode}-${state}`} className="border border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
+          {headerLabel}
+        </div>
+        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: state === 'closed' ? 600 : 700 }}>
+          <div className="w-full max-w-2xl">
+            {renderLogo()}
+
+            {/* Timer for before/open states */}
+            {state === 'before' && renderCountdownTimer('Opens in', [
+              {v:'03',l:'days'},{v:'10',l:'hours'},{v:'18',l:'min'},{v:'42',l:'sec'}
+            ])}
+            {state === 'open' && renderCountdownTimer('Window closes in', [
+              {v:'02',l:'days'},{v:'14',l:'hours'},{v:'37',l:'min'},{v:'09',l:'sec'}
+            ])}
 
             {/* Card */}
             <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-xl">
-              <div className="bg-gradient-to-r from-blue-600/20 to-blue-500/10 border-b border-slate-800 p-6">
-                <div className="text-blue-400 text-sm font-medium mb-1">Founders Edition — 3 months</div>
-                <h1 className="text-2xl font-bold text-white mb-2">Boundless Creator Program</h1>
-                <p className="text-slate-300">Personal channel reviews, weekly live sessions, and direct access to Dave.</p>
-              </div>
-              <div className="p-6 border-b border-slate-800">
-                <h2 className="text-lg font-semibold text-white mb-4">What&apos;s Included</h2>
-                <ul className="space-y-3">
-                  {['Personal channel review in your first week','Weekly live session (Wednesdays 2 PM EST)','Full BCP resource library','Direct access to Dave in Discord','Founder\'s rate locked in for as long as you stay'].map((f, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                      <span className="text-slate-300">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="p-6 border-b border-slate-800">
-                <h2 className="text-lg font-semibold text-white mb-4">Payment</h2>
-                <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-500/10">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-white">Pay in Full</div>
-                      <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
-                    </div>
-                    <div className="text-2xl font-bold text-white">$999</div>
-                  </div>
-                </div>
-              </div>
+              {renderCardHeader()}
+              {renderFeatures()}
+              {renderPaymentSection(mode)}
               <div className="p-6">
-                <WaitlistForm context="before" />
+                {state === 'open' ? (
+                  renderPayButton(mode)
+                ) : (
+                  <WaitlistForm context={state === 'before' ? 'before' : 'after'} />
+                )}
               </div>
             </div>
 
-            <div className="mt-6 bg-slate-900/50 border border-slate-800 rounded-lg p-6 text-center">
-              <p className="text-slate-400 text-sm"><span className="text-white font-medium">30-Day Guarantee:</span> If you join and it&apos;s not for you, I refund you within 30 days. No questions, no conditions.</p>
-            </div>
-            <div className="mt-4 text-center">
-              <span className="text-slate-500 text-xs underline">Full details about the program →</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Window OPEN state */}
-      <div className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-          / — Window Open (checkout active)
-        </div>
-        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 700 }}>
-          <div className="w-full max-w-2xl">
-            <div className="mb-8 flex justify-center">
-              <div className="text-3xl font-bold text-blue-400 italic">Boundless Creator</div>
-            </div>
-            <div className="text-center mb-6">
-              <div className="text-sm text-slate-400 mb-3">Window closes in</div>
-              <div className="flex items-center justify-center gap-3">
-                {[{v:'02',l:'days'},{v:'14',l:'hours'},{v:'37',l:'min'},{v:'09',l:'sec'}].map((u, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="bg-slate-800 border border-slate-700 rounded-lg w-16 h-16 flex items-center justify-center">
-                        <span className="text-2xl font-bold text-white font-mono">{u.v}</span>
-                      </div>
-                      <span className="text-xs text-slate-500 mt-1">{u.l}</span>
-                    </div>
-                    {i < 3 && <span className="text-slate-600 text-xl font-bold mb-4">:</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-xl">
-              <div className="bg-gradient-to-r from-blue-600/20 to-blue-500/10 border-b border-slate-800 p-6">
-                <div className="text-blue-400 text-sm font-medium mb-1">Founders Edition — 3 months</div>
-                <h1 className="text-2xl font-bold text-white mb-2">Boundless Creator Program</h1>
-                <p className="text-slate-300">Personal channel reviews, weekly live sessions, and direct access to Dave.</p>
-              </div>
-              <div className="p-6 border-b border-slate-800">
-                <h2 className="text-lg font-semibold text-white mb-4">What&apos;s Included</h2>
-                <ul className="space-y-3">
-                  {['Personal channel review in your first week','Weekly live session (Wednesdays 2 PM EST)','Full BCP resource library','Direct access to Dave in Discord','Founder\'s rate locked in for as long as you stay'].map((f, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                      <span className="text-slate-300">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="p-6 border-b border-slate-800">
-                <h2 className="text-lg font-semibold text-white mb-4">Payment</h2>
-                <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-500/10">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-white">Pay in Full</div>
-                      <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
-                    </div>
-                    <div className="text-2xl font-bold text-white">$999</div>
-                  </div>
-                </div>
-              </div>
-              <div className="p-6">
-                <button className="w-full bg-blue-600 text-white font-semibold text-lg px-8 py-4 rounded-lg opacity-75 cursor-default">
-                  Pay $999
-                </button>
-                <div className="mt-4 flex items-center justify-center gap-2 text-slate-500 text-sm">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                  Secure payment powered by Stripe
-                </div>
-              </div>
-            </div>
-            <div className="mt-6 bg-slate-900/50 border border-slate-800 rounded-lg p-6 text-center">
-              <p className="text-slate-400 text-sm"><span className="text-white font-medium">30-Day Guarantee:</span> If you join and it&apos;s not for you, I refund you within 30 days. No questions, no conditions.</p>
-            </div>
+            {renderGuarantee()}
             <div className="mt-4 text-center space-y-3">
               <span className="text-slate-500 text-xs underline block">Full details about the program →</span>
-              <span className="text-slate-500 text-xs underline">FAQ</span>
+              {state === 'open' && <span className="text-slate-500 text-xs underline">FAQ</span>}
             </div>
           </div>
         </div>
       </div>
+    );
+  };
 
-      {/* Quick Links */}
-      <div className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Page Links</div>
-        <div className="bg-slate-950 p-6">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <a href="/" target="_blank" className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-4 py-3 text-sm text-blue-400 hover:text-blue-300 transition-colors">
-              Main Checkout <span className="text-slate-600">→</span>
-            </a>
-            <a href="/join" target="_blank" className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-4 py-3 text-sm text-blue-400 hover:text-blue-300 transition-colors">
-              Invite Page (no window) <span className="text-slate-600">→</span>
-            </a>
-            <a href="/welcome?test=true" target="_blank" className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-4 py-3 text-sm text-blue-400 hover:text-blue-300 transition-colors">
-              Post-Payment Test <span className="text-slate-600">→</span>
-            </a>
-          </div>
-          <div className="mt-4 bg-slate-900 border border-slate-800 rounded-lg p-4">
-            <h4 className="text-white text-sm font-medium mb-2">Subscription Mode</h4>
-            <p className="text-slate-400 text-xs">
-              {process.env.NEXT_PUBLIC_ENABLE_SUBSCRIPTION === 'true'
-                ? '🟢 Quarterly auto-renew option is ENABLED — both one-time and subscription options shown.'
-                : '⚪ Quarterly auto-renew is OFF. Set NEXT_PUBLIC_ENABLE_SUBSCRIPTION=true in Vercel to enable.'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Window CLOSED state */}
-      <div className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-          / — Window Closed (waitlist mode)
-        </div>
-        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 600 }}>
-          <div className="w-full max-w-2xl">
-            <div className="mb-8 flex justify-center">
-              <div className="text-3xl font-bold text-blue-400 italic">Boundless Creator</div>
-            </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-xl">
-              <div className="bg-gradient-to-r from-blue-600/20 to-blue-500/10 border-b border-slate-800 p-6">
-                <div className="text-blue-400 text-sm font-medium mb-1">Founders Edition — 3 months</div>
-                <h1 className="text-2xl font-bold text-white mb-2">Boundless Creator Program</h1>
-                <p className="text-slate-300">Personal channel reviews, weekly live sessions, and direct access to Dave.</p>
-              </div>
-              <div className="p-6 border-b border-slate-800">
-                <h2 className="text-lg font-semibold text-white mb-4">What&apos;s Included</h2>
-                <ul className="space-y-3">
-                  {['Personal channel review in your first week','Weekly live session (Wednesdays 2 PM EST)','Full BCP resource library','Direct access to Dave in Discord','Founder\'s rate locked in for as long as you stay'].map((f, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                      <span className="text-slate-300">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="p-6 border-b border-slate-800">
-                <h2 className="text-lg font-semibold text-white mb-4">Payment</h2>
-                <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-500/10">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-white">Pay in Full</div>
-                      <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
-                    </div>
-                    <div className="text-2xl font-bold text-white">$999</div>
-                  </div>
-                </div>
-              </div>
-              <div className="p-6">
-                <WaitlistForm context="after" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+  /* ─── Checkout Tab ─── */
+  const renderCheckout = () => (
+    <div className="space-y-8">
+      {renderCheckoutPreview(checkoutMode, 'before')}
+      {renderCheckoutPreview(checkoutMode, 'open')}
+      {renderCheckoutPreview(checkoutMode, 'closed')}
     </div>
   );
 
@@ -502,6 +476,23 @@ export default function PreviewPage() {
   /* ─── Admin Tab ─── */
   const renderAdmin = () => (
     <div className="space-y-8">
+      {/* 1. Checkout Mode toggle */}
+      <div className="border border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Checkout Mode (Preview)</div>
+        <div className="bg-slate-950 p-6">
+          <p className="text-slate-400 text-sm mb-4">Controls which checkout variation is shown in the Checkout tab. Preview only — does not change env vars.</p>
+          <div className="flex gap-2">
+            {(['one-time', 'subscription', 'both'] as CheckoutMode[]).map((mode) => (
+              <button key={mode} onClick={() => setCheckoutMode(mode)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${checkoutMode === mode ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700'}`}>
+                {checkoutModeLabel(mode)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Current Window Status */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Current Window Status</div>
         <div className="bg-slate-950 p-6">
@@ -532,6 +523,7 @@ export default function PreviewPage() {
         </div>
       </div>
 
+      {/* 3. Update Window */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Update Window</div>
         <div className="bg-slate-950 p-6 space-y-4">
@@ -560,13 +552,27 @@ export default function PreviewPage() {
               <input type="datetime-local" value={adminClose} onChange={(e) => setAdminClose(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500" />
             </div>
           </div>
-          {adminResult && <p className="text-sm">{adminResult}</p>}
+
+          {/* Auto-notify toggle */}
+          <div className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-lg px-4 py-3">
+            <div>
+              <div className="text-white text-sm font-medium">Auto-notify waitlist when window opens</div>
+              <div className="text-slate-500 text-xs mt-0.5">Tags all &quot;BCP Waitlist Member&quot; subscribers, triggering your Kit email sequence</div>
+            </div>
+            <button onClick={() => setAutoNotify(!autoNotify)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${autoNotify ? 'bg-blue-600' : 'bg-slate-600'}`}>
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoNotify ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
+
+          {adminResult && <p className="text-sm whitespace-pre-line">{adminResult}</p>}
           <button onClick={handleAdminUpdate} disabled={adminLoading || !adminOpen || !adminClose || !adminSecret} className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 disabled:cursor-not-allowed">
             {adminLoading ? 'Updating...' : 'Update Window & Redeploy'}
           </button>
         </div>
       </div>
 
+      {/* 4. Quick Links */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Quick Links</div>
         <div className="bg-slate-950 p-6">
@@ -586,24 +592,7 @@ export default function PreviewPage() {
         </div>
       </div>
 
-      {/* Notify Waitlist */}
-      <div className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Notify Waitlist</div>
-        <div className="bg-slate-950 p-6 space-y-4">
-          <p className="text-slate-400 text-sm">
-            Tags all &quot;BCP Waitlist Member&quot; subscribers with &quot;BCP Window Open Notification&quot; — which triggers the Kit email automation you set up.
-          </p>
-          <p className="text-slate-500 text-xs">
-            ⚠️ Requires admin secret above. Uses Kit automation (tag ID: 19208524) — set up the email sequence in Kit first.
-          </p>
-          {notifyResult && <p className="text-sm">{notifyResult}</p>}
-          <button onClick={handleNotifyWaitlist} disabled={notifyLoading || !adminSecret} className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 disabled:cursor-not-allowed">
-            {notifyLoading ? 'Notifying...' : '📢 Notify Waitlist — Window is Open'}
-          </button>
-        </div>
-      </div>
-
-      {/* Kit Tags */}
+      {/* 5. Kit Tags */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Kit Tags</div>
         <div className="bg-slate-950 p-6">
@@ -613,7 +602,7 @@ export default function PreviewPage() {
                 ['BCP Member', '8240961', 'Applied on payment (webhook)'],
                 ['BCP Waitlist Member', '8231366', 'Waitlist signup'],
                 ['BCP Questionnaire Submitted', '19206526', 'Stops reminder emails'],
-                ['BCP Window Open Notification', '19208524', 'Triggers "window open" email'],
+                ['BCP Window Open Notification', '19208524', 'Applied automatically when window is opened with auto-notify enabled'],
                 ['Boundless Insight', '—', 'Kit Form #9377397 handles tagging'],
               ].map(([name, id, desc]) => (
                 <tr key={name}>
@@ -627,7 +616,7 @@ export default function PreviewPage() {
         </div>
       </div>
 
-      {/* System Map */}
+      {/* 6. System Map */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">System Map</div>
         <div className="bg-slate-950 p-6">
