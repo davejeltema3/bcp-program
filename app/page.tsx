@@ -174,12 +174,8 @@ export default function HomePage() {
                   Secure payment powered by Stripe
                 </div>
               </>
-            ) : windowState === 'before' ? (
-              <div className="text-center text-slate-400 text-sm py-3">
-                Payment opens when the timer hits zero.
-              </div>
             ) : (
-              <WaitlistForm context="after" />
+              <WaitlistForm context={windowState} />
             )}
           </div>
         </div>
