@@ -70,89 +70,200 @@ export default function PreviewPage() {
     { id: 'admin', label: 'Admin' },
   ];
 
+  /* ─── Checkout Tab ─── */
   const renderCheckout = () => (
     <div className="space-y-8">
-      {/* Window open state */}
+      {/* Window BEFORE state */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-          / — Window Open (checkout active)
+          / — Window Not Yet Open (waitlist + countdown)
         </div>
-        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 500 }}>
-          <div className="w-full max-w-lg text-center">
-            <h1 className="text-3xl font-bold text-white mb-2">Boundless Creator Program</h1>
-            <p className="text-green-400 text-sm font-medium mb-6">Founders Edition — $999 for 3 months</p>
-            <div className="mb-6">
-              <div className="text-sm text-slate-400 mb-3">Window closes in</div>
+        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 700 }}>
+          <div className="w-full max-w-2xl">
+            {/* Logo placeholder */}
+            <div className="mb-8 flex justify-center">
+              <div className="text-3xl font-bold text-blue-400 italic">Boundless Creator</div>
+            </div>
+
+            {/* Timer */}
+            <div className="text-center mb-6">
+              <div className="text-sm text-slate-400 mb-3">Opens in</div>
               <div className="flex items-center justify-center gap-3">
-                {['02','14','37','09'].map((v, i) => (
+                {[{v:'03',l:'days'},{v:'10',l:'hours'},{v:'18',l:'min'},{v:'42',l:'sec'}].map((u, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <div className="bg-slate-800 border border-slate-700 rounded-lg w-16 h-16 flex items-center justify-center">
-                      <span className="text-2xl font-bold text-white font-mono">{v}</span>
+                    <div className="flex flex-col items-center">
+                      <div className="bg-slate-800 border border-slate-700 rounded-lg w-16 h-16 flex items-center justify-center">
+                        <span className="text-2xl font-bold text-white font-mono">{u.v}</span>
+                      </div>
+                      <span className="text-xs text-slate-500 mt-1">{u.l}</span>
                     </div>
                     {i < 3 && <span className="text-slate-600 text-xl font-bold mb-4">:</span>}
                   </div>
                 ))}
               </div>
-              <div className="flex justify-center gap-[4.75rem] mt-1">
-                {['days','hours','min','sec'].map(l => (
-                  <span key={l} className="text-xs text-slate-500">{l}</span>
-                ))}
-              </div>
             </div>
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="p-6 text-left">
-                <ul className="space-y-2.5">
-                  {['Personal channel review in your first week','Weekly live session — Wednesdays 2 PM EST','Full BCP resource library','Direct access to Dave in Discord','Founder\'s rate locked in for as long as you stay'].map((item, i) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="text-slate-300 text-sm">{item}</span>
+
+            {/* Card */}
+            <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-xl">
+              <div className="bg-gradient-to-r from-blue-600/20 to-blue-500/10 border-b border-slate-800 p-6">
+                <div className="text-blue-400 text-sm font-medium mb-1">Founders Edition — 3 months</div>
+                <h1 className="text-2xl font-bold text-white mb-2">Boundless Creator Program</h1>
+                <p className="text-slate-300">Personal channel reviews, weekly live sessions, and direct access to Dave.</p>
+              </div>
+              <div className="p-6 border-b border-slate-800">
+                <h2 className="text-lg font-semibold text-white mb-4">What&apos;s Included</h2>
+                <ul className="space-y-3">
+                  {['Personal channel review in your first week','Weekly live session (Wednesdays 2 PM EST)','Full BCP resource library','Direct access to Dave in Discord','Founder\'s rate locked in for as long as you stay'].map((f, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                      <span className="text-slate-300">{f}</span>
                     </li>
                   ))}
                 </ul>
               </div>
-              <div className="px-6 pb-6">
-                <button className="w-full bg-green-600 text-white font-semibold text-lg py-4 rounded-lg opacity-75 cursor-default">
-                  Join — $999
-                </button>
-                <div className="mt-3 flex items-center justify-center gap-1.5 text-slate-500 text-xs">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  Secure payment via Stripe
+              <div className="p-6 border-b border-slate-800">
+                <h2 className="text-lg font-semibold text-white mb-4">Payment</h2>
+                <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-500/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-white">Pay in Full</div>
+                      <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
+                    </div>
+                    <div className="text-2xl font-bold text-white">$999</div>
+                  </div>
                 </div>
               </div>
+              <div className="p-6">
+                <WaitlistForm context="before" />
+              </div>
             </div>
-            <p className="text-slate-500 text-xs mt-6 mb-3">30-day money-back guarantee. No questions, no conditions.</p>
-            <span className="text-slate-500 text-xs underline">Full details about the program →</span>
+
+            <div className="mt-6 bg-slate-900/50 border border-slate-800 rounded-lg p-6 text-center">
+              <p className="text-slate-400 text-sm"><span className="text-white font-medium">30-Day Guarantee:</span> If you join and it&apos;s not for you, I refund you within 30 days. No questions, no conditions.</p>
+            </div>
+            <div className="mt-4 text-center">
+              <span className="text-slate-500 text-xs underline">Full details about the program →</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Window closed state */}
+      {/* Window OPEN state */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-          / — Window Closed (waitlist mode)
+          / — Window Open (checkout active)
         </div>
-        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 400 }}>
-          <div className="w-full max-w-lg text-center">
-            <h1 className="text-3xl font-bold text-white mb-2">Boundless Creator Program</h1>
-            <p className="text-green-400 text-sm font-medium mb-6">Founders Edition — $999 for 3 months</p>
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="p-6 text-left">
-                <ul className="space-y-2.5">
-                  {['Personal channel review in your first week','Weekly live session — Wednesdays 2 PM EST','Full BCP resource library','Direct access to Dave in Discord','Founder\'s rate locked in for as long as you stay'].map((item, i) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="text-slate-300 text-sm">{item}</span>
+        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 700 }}>
+          <div className="w-full max-w-2xl">
+            <div className="mb-8 flex justify-center">
+              <div className="text-3xl font-bold text-blue-400 italic">Boundless Creator</div>
+            </div>
+            <div className="text-center mb-6">
+              <div className="text-sm text-slate-400 mb-3">Window closes in</div>
+              <div className="flex items-center justify-center gap-3">
+                {[{v:'02',l:'days'},{v:'14',l:'hours'},{v:'37',l:'min'},{v:'09',l:'sec'}].map((u, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="bg-slate-800 border border-slate-700 rounded-lg w-16 h-16 flex items-center justify-center">
+                        <span className="text-2xl font-bold text-white font-mono">{u.v}</span>
+                      </div>
+                      <span className="text-xs text-slate-500 mt-1">{u.l}</span>
+                    </div>
+                    {i < 3 && <span className="text-slate-600 text-xl font-bold mb-4">:</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-xl">
+              <div className="bg-gradient-to-r from-blue-600/20 to-blue-500/10 border-b border-slate-800 p-6">
+                <div className="text-blue-400 text-sm font-medium mb-1">Founders Edition — 3 months</div>
+                <h1 className="text-2xl font-bold text-white mb-2">Boundless Creator Program</h1>
+                <p className="text-slate-300">Personal channel reviews, weekly live sessions, and direct access to Dave.</p>
+              </div>
+              <div className="p-6 border-b border-slate-800">
+                <h2 className="text-lg font-semibold text-white mb-4">What&apos;s Included</h2>
+                <ul className="space-y-3">
+                  {['Personal channel review in your first week','Weekly live session (Wednesdays 2 PM EST)','Full BCP resource library','Direct access to Dave in Discord','Founder\'s rate locked in for as long as you stay'].map((f, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                      <span className="text-slate-300">{f}</span>
                     </li>
                   ))}
                 </ul>
               </div>
-              <div className="px-6 pb-6">
+              <div className="p-6 border-b border-slate-800">
+                <h2 className="text-lg font-semibold text-white mb-4">Payment</h2>
+                <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-500/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-white">Pay in Full</div>
+                      <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
+                    </div>
+                    <div className="text-2xl font-bold text-white">$999</div>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6">
+                <button className="w-full bg-blue-600 text-white font-semibold text-lg px-8 py-4 rounded-lg opacity-75 cursor-default">
+                  Pay $999
+                </button>
+                <div className="mt-4 flex items-center justify-center gap-2 text-slate-500 text-sm">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                  Secure payment powered by Stripe
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 bg-slate-900/50 border border-slate-800 rounded-lg p-6 text-center">
+              <p className="text-slate-400 text-sm"><span className="text-white font-medium">30-Day Guarantee:</span> If you join and it&apos;s not for you, I refund you within 30 days. No questions, no conditions.</p>
+            </div>
+            <div className="mt-4 text-center space-y-3">
+              <span className="text-slate-500 text-xs underline block">Full details about the program →</span>
+              <span className="text-slate-500 text-xs underline">FAQ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Window CLOSED state */}
+      <div className="border border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
+          / — Window Closed (waitlist mode)
+        </div>
+        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 600 }}>
+          <div className="w-full max-w-2xl">
+            <div className="mb-8 flex justify-center">
+              <div className="text-3xl font-bold text-blue-400 italic">Boundless Creator</div>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-xl">
+              <div className="bg-gradient-to-r from-blue-600/20 to-blue-500/10 border-b border-slate-800 p-6">
+                <div className="text-blue-400 text-sm font-medium mb-1">Founders Edition — 3 months</div>
+                <h1 className="text-2xl font-bold text-white mb-2">Boundless Creator Program</h1>
+                <p className="text-slate-300">Personal channel reviews, weekly live sessions, and direct access to Dave.</p>
+              </div>
+              <div className="p-6 border-b border-slate-800">
+                <h2 className="text-lg font-semibold text-white mb-4">What&apos;s Included</h2>
+                <ul className="space-y-3">
+                  {['Personal channel review in your first week','Weekly live session (Wednesdays 2 PM EST)','Full BCP resource library','Direct access to Dave in Discord','Founder\'s rate locked in for as long as you stay'].map((f, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                      <span className="text-slate-300">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="p-6 border-b border-slate-800">
+                <h2 className="text-lg font-semibold text-white mb-4">Payment</h2>
+                <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-500/10">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-white">Pay in Full</div>
+                      <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
+                    </div>
+                    <div className="text-2xl font-bold text-white">$999</div>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6">
                 <WaitlistForm context="after" />
               </div>
             </div>
@@ -162,44 +273,52 @@ export default function PreviewPage() {
     </div>
   );
 
+  /* ─── Post-Payment Tab ─── */
   const renderPostPayment = () => (
     <div className="space-y-8">
       <div className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-          /welcome — Payment Confirmed + Questionnaire Prompt
+        <div className="bg-slate-800 px-4 py-2 flex items-center justify-between">
+          <span className="text-sm text-slate-400 font-mono">/welcome — Payment Confirmed</span>
+          <a href="/welcome?test=true" target="_blank" className="text-blue-400 hover:text-blue-300 text-xs underline">Open test version →</a>
         </div>
-        <div className="bg-slate-950 p-6">
-          <p className="text-slate-400 text-sm mb-4">
-            After Stripe payment succeeds, the member lands here. Shows confirmation, what happens next, and a button to start the onboarding questionnaire inline.
-          </p>
-          <a href="/welcome?test=true" target="_blank" className="text-blue-400 hover:text-blue-300 underline text-sm">
-            Open test version in new tab →
-          </a>
-        </div>
-      </div>
-
-      <div className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-          /welcome — Payment Confirmed ✅
-        </div>
-        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 400 }}>
-          <div className="max-w-2xl text-center">
+        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 500 }}>
+          <div className="w-full max-w-2xl">
             <div className="bg-slate-900 border border-slate-800 rounded-lg p-8 shadow-xl">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-green-500/20 rounded-full mb-4">
-                <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-green-500/20 rounded-full mb-4">
+                  <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                </div>
+                <h1 className="text-3xl font-bold text-white mb-4">Welcome, Dave!</h1>
+                <p className="text-lg text-slate-300">Your payment is confirmed. You&apos;re a founding member of the Boundless Creator Program.</p>
               </div>
-              <h1 className="text-3xl font-bold text-white mb-4">Welcome, Dave!</h1>
-              <p className="text-lg text-slate-300 mb-6">Your payment is confirmed. You&apos;re a founding member.</p>
               <div className="bg-slate-800/50 rounded-lg p-6 text-left">
-                {['Check your email — Discord invite incoming','Fill out the questionnaire below','Your review arrives within a week','First live session: Wednesday May 6 at 2 PM EST'].map((step, i) => (
-                  <div key={i} className="flex gap-3 mb-3 last:mb-0">
-                    <span className="flex-shrink-0 w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold text-white">{i+1}</span>
-                    <span className="text-slate-300 text-sm mt-1">{step}</span>
-                  </div>
-                ))}
+                <h2 className="text-lg font-semibold text-white mb-4">What Happens Next</h2>
+                <ol className="space-y-4">
+                  {[
+                    { title: 'Check your email', desc: "You'll receive a welcome email with your Discord invite and everything you need to get started." },
+                    { title: 'Fill out the questionnaire below', desc: "This is how I write your personal channel review. The more detail you give, the better the review." },
+                    { title: 'Your review arrives within a week', desc: "I'll send you an audio note when it's posted in Discord." },
+                    { title: 'First live session: Wednesday May 6 at 2 PM EST', desc: "Recurring Wednesdays. Recorded if you can't make it." },
+                  ].map((step, i) => (
+                    <li key={i} className="flex gap-3">
+                      <span className="flex-shrink-0 w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold text-white">{i+1}</span>
+                      <div>
+                        <div className="text-white font-medium">{step.title}</div>
+                        <div className="text-slate-400 text-sm">{step.desc}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
               </div>
+            </div>
+
+            {/* Questionnaire prompt */}
+            <div className="mt-8 bg-slate-900 border border-slate-800 rounded-lg p-8 shadow-xl text-center">
+              <h2 className="text-2xl font-bold text-white mb-4">Your Onboarding Questionnaire</h2>
+              <p className="text-slate-300 mb-2">This takes about 10-15 minutes. Your answers are how I write your personal channel review.</p>
+              <p className="text-slate-400 text-sm mb-8">The more specific you are, the more useful the review. Don&apos;t rush it.</p>
+              <button className="bg-blue-600 text-white font-semibold px-8 py-3 rounded-lg opacity-75 cursor-default">Start Questionnaire →</button>
+              <p className="text-slate-500 text-xs mt-4">Not ready right now? No problem. We&apos;ll email you a link to fill this out later.</p>
             </div>
           </div>
         </div>
@@ -209,11 +328,12 @@ export default function PreviewPage() {
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
           /welcome — Error State ❌
         </div>
-        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 300 }}>
+        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 250 }}>
           <div className="max-w-lg text-center">
             <div className="bg-slate-900 border border-slate-800 rounded-lg p-8 shadow-xl">
               <h1 className="text-2xl font-bold text-white mb-4">Something went wrong</h1>
-              <p className="text-slate-400">We couldn&apos;t verify your payment. Reach out to <span className="text-blue-400">hello@boundlesscreator.com</span>.</p>
+              <p className="text-slate-400">We couldn&apos;t verify your payment. Don&apos;t worry — if you were charged, your payment is safe.</p>
+              <p className="text-slate-400 mt-4">Please reach out to <span className="text-blue-400">hello@boundlesscreator.com</span> and I&apos;ll get you sorted right away.</p>
             </div>
           </div>
         </div>
@@ -221,22 +341,21 @@ export default function PreviewPage() {
     </div>
   );
 
+  /* ─── Questionnaire Tab ─── */
   const renderQuestionnaire = () => (
     <div className="space-y-8">
       <div className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-          /questionnaire — Standalone (for email reminder links)
+        <div className="bg-slate-800 px-4 py-2 flex items-center justify-between">
+          <span className="text-sm text-slate-400 font-mono">/questionnaire — Standalone (for email reminder links)</span>
+          <a href="/questionnaire" target="_blank" className="text-blue-400 hover:text-blue-300 text-xs underline">Open in new tab →</a>
         </div>
         <div className="bg-slate-950 p-6">
           <p className="text-slate-400 text-sm mb-2">
             Shareable link: <code className="text-blue-400">bcp.boundlesscreator.com/questionnaire?email=their@email.com</code>
           </p>
-          <p className="text-slate-400 text-sm mb-4">
+          <p className="text-slate-400 text-sm">
             {questionnaire.length} questions across {sections.length} sections. Kit tag &quot;BCP Questionnaire Submitted&quot; applied on submit to stop reminder emails.
           </p>
-          <a href="/questionnaire" target="_blank" className="text-blue-400 hover:text-blue-300 underline text-sm">
-            Open in new tab →
-          </a>
         </div>
       </div>
 
@@ -245,7 +364,7 @@ export default function PreviewPage() {
         return (
           <div key={section.id} className="border border-slate-700 rounded-lg overflow-hidden">
             <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-              Section {section.number}: {section.title} ({qs.length} questions)
+              Section {section.number}: {section.title} ({qs.length} {qs.length === 1 ? 'question' : 'questions'})
             </div>
             <div className="bg-slate-950 p-6 space-y-4">
               {qs.map(q => (
@@ -268,25 +387,74 @@ export default function PreviewPage() {
     </div>
   );
 
+  /* ─── Insight Tab ─── */
   const renderInsight = () => (
-    <div className="border border-slate-700 rounded-lg overflow-hidden">
-      <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-        /insight — Boundless Insight Lead Magnet Page
-      </div>
-      <div className="bg-slate-950 p-6">
-        <p className="text-slate-400 text-sm mb-4">
-          Email capture page for the Boundless Insight Chrome extension. Tags with &quot;Boundless Insight&quot; in Kit (tag ID: 19206528).
-        </p>
-        <a href="/insight" target="_blank" className="text-blue-400 hover:text-blue-300 underline text-sm">
-          Open in new tab →
-        </a>
+    <div className="space-y-8">
+      <div className="border border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-800 px-4 py-2 flex items-center justify-between">
+          <span className="text-sm text-slate-400 font-mono">/insight — Boundless Insight Lead Magnet</span>
+          <a href="/insight" target="_blank" className="text-blue-400 hover:text-blue-300 text-xs underline">Open in new tab →</a>
+        </div>
+        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 600 }}>
+          <div className="w-full max-w-3xl">
+            <div className="mb-8 flex justify-center">
+              <div className="text-3xl font-bold text-blue-400 italic">Boundless Creator</div>
+            </div>
+            <div className="text-center mb-12">
+              <h1 className="text-4xl font-bold text-white mb-4">Boundless Insight</h1>
+              <p className="text-xl text-slate-300 max-w-2xl mx-auto">
+                A free Chrome extension that gives you AI-powered analysis of any YouTube video&apos;s packaging — thumbnails, titles, and metadata — so you can learn what works and apply it to your own channel.
+              </p>
+            </div>
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-6">
+              <h2 className="text-2xl font-bold text-white mb-6">What it does</h2>
+              <div className="grid md:grid-cols-2 gap-6">
+                {[
+                  { icon: '🎯', title: 'Packaging Analysis', desc: "AI-powered breakdown of any video's thumbnail, title, and metadata." },
+                  { icon: '📊', title: 'Learn From Any Video', desc: 'Study what top creators do right and apply it to your own packaging.' },
+                  { icon: '🔍', title: 'Actionable Feedback', desc: 'Not just "this is good" — specific notes you can act on.' },
+                  { icon: '⚡', title: 'One Click', desc: 'Works right on any YouTube video page. No setup required.' },
+                ].map((f, i) => (
+                  <div key={i} className="flex gap-3">
+                    <div className="flex-shrink-0 w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
+                      <span className="text-blue-400 text-lg">{f.icon}</span>
+                    </div>
+                    <div>
+                      <h3 className="text-white font-medium mb-1">{f.title}</h3>
+                      <p className="text-slate-400 text-sm">{f.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-8">
+              <div className="rounded-lg">
+                <h3 className="text-lg font-bold text-white mb-2 text-center">Get Boundless Insight</h3>
+                <p className="text-slate-400 text-sm text-center mb-4">
+                  A free tool that gives you instant feedback on your YouTube thumbnails, titles, and descriptions.
+                </p>
+                <div className="max-w-md mx-auto space-y-3">
+                  <input type="text" placeholder="First name" disabled className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-slate-500 cursor-default" />
+                  <input type="email" placeholder="Email address" disabled className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-slate-500 cursor-default" />
+                  <button disabled className="w-full bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg opacity-75 cursor-default">Get It Free</button>
+                </div>
+                <p className="text-slate-600 text-xs text-center mt-3">No spam. Unsubscribe anytime.</p>
+              </div>
+            </div>
+            <div className="mt-8 bg-slate-900 border border-slate-800 rounded-lg p-4 text-center">
+              <p className="text-slate-400 text-sm">
+                Submits to Kit Form #9377397. Subscriber confirms email → redirected to Chrome Web Store download.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 
+  /* ─── Admin Tab ─── */
   const renderAdmin = () => (
     <div className="space-y-8">
-      {/* Window Status */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Current Window Status</div>
         <div className="bg-slate-950 p-6">
@@ -313,19 +481,14 @@ export default function PreviewPage() {
               <p className="text-slate-400 text-sm">Closed: {formatDate(windowClose!)}</p>
             </div>
           )}
-          <p className="text-slate-500 text-xs mt-4">
-            Default: First Friday of each month 9AM EST → Sunday midnight EST. Server-side enforced.
-          </p>
+          <p className="text-slate-500 text-xs mt-4">Default: First Friday of each month 9AM EST → Sunday midnight EST. Server-side enforced.</p>
         </div>
       </div>
 
-      {/* Window Controls */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Update Window</div>
         <div className="bg-slate-950 p-6 space-y-4">
-          <p className="text-slate-400 text-sm">
-            Updates env vars via Vercel API and triggers a redeploy (~30 seconds).
-          </p>
+          <p className="text-slate-400 text-sm">Updates env vars via Vercel API and triggers a redeploy (~30 seconds).</p>
           <div>
             <label className="block text-white text-sm font-medium mb-1">Admin Secret</label>
             <input type="password" value={adminSecret} onChange={(e) => setAdminSecret(e.target.value)} placeholder="Enter admin secret" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
@@ -357,19 +520,37 @@ export default function PreviewPage() {
         </div>
       </div>
 
-      {/* Kit Tags */}
+      <div className="border border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Quick Links</div>
+        <div className="bg-slate-950 p-6">
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: 'Checkout Page', href: '/' },
+              { label: 'Welcome / Post-Payment', href: '/welcome?test=true' },
+              { label: 'Questionnaire', href: '/questionnaire' },
+              { label: 'Boundless Insight', href: '/insight' },
+              { label: 'Invite Page', href: '/join' },
+            ].map(link => (
+              <a key={link.href} href={link.href} target="_blank" className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-4 py-3 text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                {link.label} <span className="text-slate-600">→</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Kit Tags</div>
         <div className="bg-slate-950 p-6">
           <table className="w-full text-sm">
             <tbody className="divide-y divide-slate-800">
               {[
-                ['BCP Member', '8240961', 'Applied on payment'],
+                ['BCP Member', '8240961', 'Applied on payment (webhook)'],
                 ['BCP Waitlist Member', '8231366', 'Waitlist signup'],
                 ['BCP Questionnaire Submitted', '19206526', 'Stops reminder emails'],
-                ['Boundless Insight', '19206528', '/insight email capture'],
+                ['Boundless Insight', '—', 'Kit Form #9377397 handles tagging'],
               ].map(([name, id, desc]) => (
-                <tr key={id}>
+                <tr key={name}>
                   <td className="py-2 text-white font-medium">{name}</td>
                   <td className="py-2 text-slate-500 font-mono">{id}</td>
                   <td className="py-2 text-slate-500">{desc}</td>

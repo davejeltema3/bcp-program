@@ -5,6 +5,8 @@ Copy these into Vercel after importing the repo.
 ## Stripe (same account as Accelerator)
 ```
 STRIPE_SECRET_KEY=sk_live_... (same key from apply.boundlesscreator.com)
+STRIPE_WEBHOOK_SECRET=(reserved for future subscription management webhook)
+STRIPE_WEBHOOK_SECRET_NOTIFICATIONS=whsec_... (checkout.session.completed notifications)
 ```
 
 ## Kit

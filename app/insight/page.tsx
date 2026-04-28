@@ -1,14 +1,72 @@
 'use client';
 
 import { useState } from 'react';
-import WaitlistForm from '@/components/WaitlistForm';
 
 /**
  * Boundless Insight lead magnet landing page.
- * Email capture → Kit tag "Boundless Insight" → redirect to download/install.
+ * Submits to Kit Form #9377397 — Kit handles double opt-in,
+ * confirmation email, incentive delivery, and redirect to Chrome Web Store.
  */
+
+const KIT_FORM_ID = '9377397';
+
 export default function InsightPage() {
+  const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>();
   const [logoError, setLogoError] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+
+    setLoading(true);
+    setError(undefined);
+
+    try {
+      // Submit directly to Kit's form endpoint
+      const response = await fetch(`https://api.convertkit.com/v3/forms/${KIT_FORM_ID}/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email_address: email,
+          first_name: firstName || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to subscribe');
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-lg text-center">
+          <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/20 rounded-full mb-4">
+              <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Check your email!</h2>
+            <p className="text-slate-300">
+              Confirm your email and you&apos;ll be taken straight to the download. 
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -29,7 +87,7 @@ export default function InsightPage() {
             Boundless Insight
           </h1>
           <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            A free Chrome extension that gives you AI-powered analysis of any YouTube video&apos;s packaging — thumbnails, titles, and metadata — so you can learn what works and apply it to your own channel.
+            A free Chrome extension that shows you exactly why some YouTube videos get clicked and others don&apos;t — so you can apply what works to your own channel.
           </p>
         </div>
 
@@ -80,7 +138,40 @@ export default function InsightPage() {
 
         {/* Email Capture */}
         <section className="mb-12">
-          <WaitlistForm context="insight" />
+          <div className="rounded-lg">
+            <h3 className="text-lg font-bold text-white mb-2 text-center">Get Boundless Insight</h3>
+            <p className="text-slate-400 text-sm text-center mb-4">
+              Drop your email, confirm it, and you&apos;ll be taken straight to the Chrome Web Store to install.
+            </p>
+
+            <form onSubmit={handleSubmit} className="space-y-3 max-w-md mx-auto">
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="First name"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+              />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email address"
+                required
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+              />
+              {error && <p className="text-red-400 text-sm">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading || !email}
+                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Joining...' : 'Get It Free'}
+              </button>
+            </form>
+
+            <p className="text-slate-600 text-xs text-center mt-3">No spam. Unsubscribe anytime.</p>
+          </div>
         </section>
 
         {/* About */}

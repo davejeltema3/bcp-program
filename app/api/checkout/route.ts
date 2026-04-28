@@ -10,21 +10,24 @@ function getStripe() {
 
 export async function POST(request: NextRequest) {
   try {
+    const { customerEmail, bypassWindow } = await request.json();
+
     // Enforce purchase window server-side
     // Even if someone has the page open from before, this blocks payment
-    const windowConfig = getWindowConfig();
-    const state = getWindowState(windowConfig);
+    // The /join page sends bypassWindow=true to skip this check
+    if (!bypassWindow) {
+      const windowConfig = getWindowConfig();
+      const state = getWindowState(windowConfig);
 
-    if (state !== 'open') {
-      return NextResponse.json(
-        { error: state === 'before'
-          ? 'The purchase window is not open yet. Check back soon!'
-          : 'The purchase window has closed. Join the waitlist to get notified about the next one.' },
-        { status: 403 }
-      );
+      if (state !== 'open') {
+        return NextResponse.json(
+          { error: state === 'before'
+            ? 'The purchase window is not open yet. Check back soon!'
+            : 'The purchase window has closed. Join the waitlist to get notified about the next one.' },
+          { status: 403 }
+        );
+      }
     }
-
-    const { customerEmail } = await request.json();
 
     const origin = request.headers.get('origin') || 'https://bcp.boundlesscreator.com';
     const stripe = getStripe();
