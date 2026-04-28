@@ -77,18 +77,18 @@ export default function WaitlistForm({ context }: WaitlistFormProps) {
   const h = headlines[context];
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 md:p-8">
-      <h3 className="text-xl font-bold text-white mb-2 text-center">{h.title}</h3>
-      <p className="text-slate-400 text-center mb-6">{h.subtitle}</p>
+    <div className="rounded-lg">
+      <h3 className="text-lg font-bold text-white mb-2 text-center">{h.title}</h3>
+      <p className="text-slate-400 text-sm text-center mb-4">{h.subtitle}</p>
 
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col gap-3">
           <input
             type="text"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             placeholder="First name"
-            className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
           />
           <input
             type="email"
@@ -96,7 +96,7 @@ export default function WaitlistForm({ context }: WaitlistFormProps) {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email address"
             required
-            className="flex-[2] bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
           />
         </div>
         {error && <p className="text-red-400 text-sm">{error}</p>}

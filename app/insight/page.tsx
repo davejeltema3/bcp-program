@@ -29,7 +29,7 @@ export default function InsightPage() {
             Boundless Insight
           </h1>
           <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            A free Chrome extension that gives you instant, AI-powered feedback on your YouTube thumbnails, titles, and descriptions.
+            A free Chrome extension that gives you AI-powered analysis of any YouTube video&apos;s packaging — thumbnails, titles, and metadata — so you can learn what works and apply it to your own channel.
           </p>
         </div>
 
@@ -43,26 +43,26 @@ export default function InsightPage() {
                   <span className="text-blue-400 text-lg">🎯</span>
                 </div>
                 <div>
-                  <h3 className="text-white font-medium mb-1">Thumbnail Analysis</h3>
-                  <p className="text-slate-400 text-sm">Get specific feedback on what&apos;s working and what isn&apos;t in your thumbnail.</p>
+                  <h3 className="text-white font-medium mb-1">Packaging Analysis</h3>
+                  <p className="text-slate-400 text-sm">AI-powered breakdown of any video&apos;s thumbnail, title, and metadata.</p>
                 </div>
               </div>
               <div className="flex gap-3">
                 <div className="flex-shrink-0 w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
-                  <span className="text-blue-400 text-lg">✍️</span>
+                  <span className="text-blue-400 text-lg">📊</span>
                 </div>
                 <div>
-                  <h3 className="text-white font-medium mb-1">Title Review</h3>
-                  <p className="text-slate-400 text-sm">Find out if your title is doing its job — hooking the right viewer.</p>
+                  <h3 className="text-white font-medium mb-1">Learn From Any Video</h3>
+                  <p className="text-slate-400 text-sm">Study what top creators do right and apply it to your own packaging.</p>
                 </div>
               </div>
               <div className="flex gap-3">
                 <div className="flex-shrink-0 w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
-                  <span className="text-blue-400 text-lg">📝</span>
+                  <span className="text-blue-400 text-lg">🔍</span>
                 </div>
                 <div>
-                  <h3 className="text-white font-medium mb-1">Description Check</h3>
-                  <p className="text-slate-400 text-sm">See if your description is helping or hurting discoverability.</p>
+                  <h3 className="text-white font-medium mb-1">Actionable Feedback</h3>
+                  <p className="text-slate-400 text-sm">Not just &quot;this is good&quot; — specific notes you can act on.</p>
                 </div>
               </div>
               <div className="flex gap-3">
@@ -70,8 +70,8 @@ export default function InsightPage() {
                   <span className="text-blue-400 text-lg">⚡</span>
                 </div>
                 <div>
-                  <h3 className="text-white font-medium mb-1">Instant Feedback</h3>
-                  <p className="text-slate-400 text-sm">Works right inside YouTube Studio. No switching tabs.</p>
+                  <h3 className="text-white font-medium mb-1">One Click</h3>
+                  <p className="text-slate-400 text-sm">Works right on any YouTube video page. No setup required.</p>
                 </div>
               </div>
             </div>
