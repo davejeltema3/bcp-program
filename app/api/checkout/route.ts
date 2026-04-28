@@ -10,10 +10,9 @@ function getStripe() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { customerEmail, bypassWindow } = await request.json();
+    const { customerEmail, bypassWindow, paymentMode } = await request.json();
 
     // Enforce purchase window server-side
-    // Even if someone has the page open from before, this blocks payment
     // The /join page sends bypassWindow=true to skip this check
     if (!bypassWindow) {
       const windowConfig = getWindowConfig();
@@ -32,6 +31,49 @@ export async function POST(request: NextRequest) {
     const origin = request.headers.get('origin') || 'https://bcp.boundlesscreator.com';
     const stripe = getStripe();
 
+    // Subscription mode: recurring quarterly ($333/quarter)
+    if (paymentMode === 'subscription') {
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        ...(customerEmail ? { customer_email: customerEmail } : {}),
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: 'Boundless Creator Program — Founders Edition',
+                description: 'Quarterly membership: Personal channel review, weekly live sessions, resource library, Discord access. Renews every 3 months until cancelled.',
+              },
+              unit_amount: 99900, // $999.00
+              recurring: {
+                interval: 'month',
+                interval_count: 3, // every 3 months
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        subscription_data: {
+          metadata: {
+            program: 'bcp-founders',
+            payment_type: 'subscription',
+          },
+        },
+        metadata: {
+          program: 'bcp-founders',
+          duration: 'quarterly-recurring',
+          payment_type: 'subscription',
+        },
+        success_url: `${origin}/welcome?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/`,
+        allow_promotion_codes: true,
+      });
+
+      return NextResponse.json({ url: session.url });
+    }
+
+    // Default: one-time payment ($999)
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
@@ -52,9 +94,10 @@ export async function POST(request: NextRequest) {
       metadata: {
         program: 'bcp-founders',
         duration: '3 months',
+        payment_type: 'one-time',
       },
       success_url: `${origin}/welcome?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/checkout`,
+      cancel_url: `${origin}/`,
       allow_promotion_codes: true,
     });
 

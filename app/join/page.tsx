@@ -7,10 +7,16 @@ import { useState } from 'react';
  * Dave can send this URL directly to people he wants to let in outside the normal window.
  * URL: bcp.boundlesscreator.com/join
  */
+
+type PaymentMode = 'one-time' | 'subscription';
+
+const SUBSCRIPTION_ENABLED = process.env.NEXT_PUBLIC_ENABLE_SUBSCRIPTION === 'true';
+
 export default function JoinPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [logoError, setLogoError] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>('one-time');
 
   const handleCheckout = async () => {
     setIsLoading(true);
@@ -21,7 +27,11 @@ export default function JoinPage() {
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerEmail: email, bypassWindow: true }),
+        body: JSON.stringify({
+          customerEmail: email,
+          bypassWindow: true,
+          paymentMode: SUBSCRIPTION_ENABLED ? paymentMode : undefined,
+        }),
       });
       const data = await response.json();
       if (data.error) { setError(data.error); setIsLoading(false); return; }
@@ -31,6 +41,8 @@ export default function JoinPage() {
       setIsLoading(false);
     }
   };
+
+  const buttonLabel = paymentMode === 'subscription' ? 'Subscribe — $999/quarter' : 'Pay $999';
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
@@ -88,18 +100,46 @@ export default function JoinPage() {
             <h2 className="text-lg font-semibold text-white mb-4">
               Payment
             </h2>
-            <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-500/10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-semibold text-white">Pay in Full</div>
-                  <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
+            <div className="space-y-3">
+              <button
+                onClick={() => setPaymentMode('one-time')}
+                className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                  paymentMode === 'one-time'
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold text-white">Pay in Full</div>
+                    <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
+                  </div>
+                  <div className="text-2xl font-bold text-white">$999</div>
                 </div>
-                <div className="text-2xl font-bold text-white">$999</div>
-              </div>
+              </button>
+
+              {SUBSCRIPTION_ENABLED && (
+                <button
+                  onClick={() => setPaymentMode('subscription')}
+                  className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                    paymentMode === 'subscription'
+                      ? 'border-blue-500 bg-blue-500/10'
+                      : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-white">Quarterly Auto-Renew</div>
+                      <div className="text-sm text-slate-400 mt-0.5">$999 every 3 months — cancel anytime</div>
+                    </div>
+                    <div className="text-2xl font-bold text-white">$999<span className="text-sm text-slate-400 font-normal">/qtr</span></div>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* CTA — always available, no window check */}
+          {/* CTA — always available */}
           <div className="p-6 md:p-8">
             {error && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-4">
@@ -120,7 +160,7 @@ export default function JoinPage() {
                   Redirecting to Stripe...
                 </span>
               ) : (
-                'Pay $999'
+                buttonLabel
               )}
             </button>
             <div className="mt-4 flex items-center justify-center gap-2 text-slate-500 text-sm">

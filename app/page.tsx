@@ -5,6 +5,9 @@ import CountdownTimer from '@/components/CountdownTimer';
 import WaitlistForm from '@/components/WaitlistForm';
 
 type WindowState = 'before' | 'open' | 'after';
+type PaymentMode = 'one-time' | 'subscription';
+
+const SUBSCRIPTION_ENABLED = process.env.NEXT_PUBLIC_ENABLE_SUBSCRIPTION === 'true';
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -14,6 +17,7 @@ export default function HomePage() {
   const [windowOpen, setWindowOpen] = useState<Date | null>(null);
   const [windowClose, setWindowClose] = useState<Date | null>(null);
   const [showFaq, setShowFaq] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>('one-time');
 
   useEffect(() => {
     const openStr = process.env.NEXT_PUBLIC_WINDOW_OPEN;
@@ -41,7 +45,10 @@ export default function HomePage() {
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerEmail: email }),
+        body: JSON.stringify({
+          customerEmail: email,
+          paymentMode: SUBSCRIPTION_ENABLED ? paymentMode : undefined,
+        }),
       });
       const data = await response.json();
       if (data.error) { setError(data.error); setIsLoading(false); return; }
@@ -55,10 +62,15 @@ export default function HomePage() {
   const faqs = [
     { q: "What if I'm brand new?", a: "Works for any sub count. The review is tailored to where you actually are." },
     { q: "What if I'm already at 50K?", a: "Same answer. The system covers both." },
-    { q: "Is this auto-renewing?", a: "No. $999 for three months. That's it." },
+    ...(SUBSCRIPTION_ENABLED
+      ? [{ q: "How does the subscription work?", a: "$999 every 3 months, auto-renews. Cancel anytime from your Stripe billing portal. No commitments." }]
+      : [{ q: "Is this auto-renewing?", a: "No. $999 for three months. That's it." }]
+    ),
     { q: "Can I cancel?", a: "30-day refund. No conditions, no questions." },
     { q: "What's the high-ticket program?", a: "The Boundless Creator Accelerator is 1-on-1, $6K+. Same systems, more hand-holding." },
   ];
+
+  const buttonLabel = paymentMode === 'subscription' ? 'Subscribe — $999/quarter' : 'Pay $999';
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
@@ -87,7 +99,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Card — matches Accelerator checkout style */}
+        {/* Card */}
         <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-xl">
           {/* Plan Header */}
           <div className="bg-gradient-to-r from-blue-600/20 to-blue-500/10 border-b border-slate-800 p-6 md:p-8">
@@ -130,14 +142,44 @@ export default function HomePage() {
             <h2 className="text-lg font-semibold text-white mb-4">
               Payment
             </h2>
-            <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-500/10">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-semibold text-white">Pay in Full</div>
-                  <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
+            <div className="space-y-3">
+              {/* One-time option (always shown) */}
+              <button
+                onClick={() => setPaymentMode('one-time')}
+                className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                  paymentMode === 'one-time'
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold text-white">Pay in Full</div>
+                    <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
+                  </div>
+                  <div className="text-2xl font-bold text-white">$999</div>
                 </div>
-                <div className="text-2xl font-bold text-white">$999</div>
-              </div>
+              </button>
+
+              {/* Subscription option (only if enabled) */}
+              {SUBSCRIPTION_ENABLED && (
+                <button
+                  onClick={() => setPaymentMode('subscription')}
+                  className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                    paymentMode === 'subscription'
+                      ? 'border-blue-500 bg-blue-500/10'
+                      : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-white">Quarterly Auto-Renew</div>
+                      <div className="text-sm text-slate-400 mt-0.5">$999 every 3 months — cancel anytime</div>
+                    </div>
+                    <div className="text-2xl font-bold text-white">$999<span className="text-sm text-slate-400 font-normal">/qtr</span></div>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
 
@@ -164,7 +206,7 @@ export default function HomePage() {
                       Redirecting to Stripe...
                     </span>
                   ) : (
-                    'Pay $999'
+                    buttonLabel
                   )}
                 </button>
                 <div className="mt-4 flex items-center justify-center gap-2 text-slate-500 text-sm">
