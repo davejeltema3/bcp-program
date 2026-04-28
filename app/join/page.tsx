@@ -9,14 +9,23 @@ import { useState } from 'react';
  */
 
 type PaymentMode = 'one-time' | 'subscription';
+type CheckoutMode = 'one-time' | 'subscription' | 'both';
 
-const SUBSCRIPTION_ENABLED = process.env.NEXT_PUBLIC_ENABLE_SUBSCRIPTION === 'true';
+function getCheckoutMode(): CheckoutMode {
+  const explicit = process.env.NEXT_PUBLIC_CHECKOUT_MODE;
+  if (explicit === 'subscription' || explicit === 'both' || explicit === 'one-time') return explicit;
+  if (process.env.NEXT_PUBLIC_ENABLE_SUBSCRIPTION === 'true') return 'both';
+  return 'one-time';
+}
+
+const CHECKOUT_MODE = getCheckoutMode();
+const SUBSCRIPTION_ENABLED = CHECKOUT_MODE === 'both' || CHECKOUT_MODE === 'subscription';
 
 export default function JoinPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [logoError, setLogoError] = useState(false);
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>('one-time');
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>(CHECKOUT_MODE === 'subscription' ? 'subscription' : 'one-time');
 
   const handleCheckout = async () => {
     setIsLoading(true);
@@ -30,7 +39,7 @@ export default function JoinPage() {
         body: JSON.stringify({
           customerEmail: email,
           bypassWindow: true,
-          paymentMode: SUBSCRIPTION_ENABLED ? paymentMode : undefined,
+          paymentMode: CHECKOUT_MODE === 'both' ? paymentMode : CHECKOUT_MODE === 'subscription' ? 'subscription' : undefined,
         }),
       });
       const data = await response.json();
@@ -101,24 +110,26 @@ export default function JoinPage() {
               Payment
             </h2>
             <div className="space-y-3">
-              <button
-                onClick={() => setPaymentMode('one-time')}
-                className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                  paymentMode === 'one-time'
-                    ? 'border-blue-500 bg-blue-500/10'
-                    : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold text-white">Pay in Full</div>
-                    <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
+              {CHECKOUT_MODE !== 'subscription' && (
+                <button
+                  onClick={() => setPaymentMode('one-time')}
+                  className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                    paymentMode === 'one-time'
+                      ? 'border-blue-500 bg-blue-500/10'
+                      : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-white">Pay in Full</div>
+                      <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
+                    </div>
+                    <div className="text-2xl font-bold text-white">$999</div>
                   </div>
-                  <div className="text-2xl font-bold text-white">$999</div>
-                </div>
-              </button>
+                </button>
+              )}
 
-              {SUBSCRIPTION_ENABLED && (
+              {CHECKOUT_MODE !== 'one-time' && (
                 <button
                   onClick={() => setPaymentMode('subscription')}
                   className={`w-full p-4 rounded-lg border-2 text-left transition-all ${

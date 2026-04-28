@@ -6,8 +6,19 @@ import WaitlistForm from '@/components/WaitlistForm';
 
 type WindowState = 'before' | 'open' | 'after';
 type PaymentMode = 'one-time' | 'subscription';
+type CheckoutMode = 'one-time' | 'subscription' | 'both';
 
-const SUBSCRIPTION_ENABLED = process.env.NEXT_PUBLIC_ENABLE_SUBSCRIPTION === 'true';
+// Determine checkout mode: NEXT_PUBLIC_CHECKOUT_MODE takes priority, fall back to legacy ENABLE_SUBSCRIPTION
+function getCheckoutMode(): CheckoutMode {
+  const explicit = process.env.NEXT_PUBLIC_CHECKOUT_MODE;
+  if (explicit === 'subscription' || explicit === 'both' || explicit === 'one-time') return explicit;
+  // Legacy fallback
+  if (process.env.NEXT_PUBLIC_ENABLE_SUBSCRIPTION === 'true') return 'both';
+  return 'one-time';
+}
+
+const CHECKOUT_MODE = getCheckoutMode();
+const SUBSCRIPTION_ENABLED = CHECKOUT_MODE === 'both' || CHECKOUT_MODE === 'subscription';
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -17,7 +28,7 @@ export default function HomePage() {
   const [windowOpen, setWindowOpen] = useState<Date | null>(null);
   const [windowClose, setWindowClose] = useState<Date | null>(null);
   const [showFaq, setShowFaq] = useState(false);
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>('one-time');
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>(CHECKOUT_MODE === 'subscription' ? 'subscription' : 'one-time');
 
   useEffect(() => {
     const openStr = process.env.NEXT_PUBLIC_WINDOW_OPEN;
@@ -47,7 +58,7 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerEmail: email,
-          paymentMode: SUBSCRIPTION_ENABLED ? paymentMode : undefined,
+          paymentMode: CHECKOUT_MODE === 'both' ? paymentMode : CHECKOUT_MODE === 'subscription' ? 'subscription' : undefined,
         }),
       });
       const data = await response.json();
@@ -62,7 +73,9 @@ export default function HomePage() {
   const faqs = [
     { q: "What if I'm brand new?", a: "Works for any sub count. The review is tailored to where you actually are." },
     { q: "What if I'm already at 50K?", a: "Same answer. The system covers both." },
-    ...(SUBSCRIPTION_ENABLED
+    ...(CHECKOUT_MODE === 'subscription'
+      ? [{ q: "How does the subscription work?", a: "$999 every 3 months, auto-renews. Cancel anytime from your Stripe billing portal. No commitments." }]
+      : CHECKOUT_MODE === 'both'
       ? [{ q: "How does the subscription work?", a: "$999 every 3 months, auto-renews. Cancel anytime from your Stripe billing portal. No commitments." }]
       : [{ q: "Is this auto-renewing?", a: "No. $999 for three months. That's it." }]
     ),
@@ -143,26 +156,28 @@ export default function HomePage() {
               Payment
             </h2>
             <div className="space-y-3">
-              {/* One-time option (always shown) */}
-              <button
-                onClick={() => setPaymentMode('one-time')}
-                className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                  paymentMode === 'one-time'
-                    ? 'border-blue-500 bg-blue-500/10'
-                    : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold text-white">Pay in Full</div>
-                    <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
+              {/* One-time option (shown for 'one-time' and 'both' modes) */}
+              {CHECKOUT_MODE !== 'subscription' && (
+                <button
+                  onClick={() => setPaymentMode('one-time')}
+                  className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                    paymentMode === 'one-time'
+                      ? 'border-blue-500 bg-blue-500/10'
+                      : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-white">Pay in Full</div>
+                      <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
+                    </div>
+                    <div className="text-2xl font-bold text-white">$999</div>
                   </div>
-                  <div className="text-2xl font-bold text-white">$999</div>
-                </div>
-              </button>
+                </button>
+              )}
 
-              {/* Subscription option (only if enabled) */}
-              {SUBSCRIPTION_ENABLED && (
+              {/* Subscription option (shown for 'subscription' and 'both' modes) */}
+              {CHECKOUT_MODE !== 'one-time' && (
                 <button
                   onClick={() => setPaymentMode('subscription')}
                   className={`w-full p-4 rounded-lg border-2 text-left transition-all ${

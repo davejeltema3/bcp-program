@@ -9,23 +9,102 @@ type Section = 'checkout' | 'post-payment' | 'questionnaire' | 'insight' | 'admi
 type WindowState = 'before' | 'open' | 'after' | 'none';
 type CheckoutMode = 'one-time' | 'subscription' | 'both';
 
+// Sub-tab identifiers for checkout variations
+type CheckoutSubTab = 'all'
+  | 'before/one-time' | 'open/one-time' | 'closed/one-time' | 'invite/one-time'
+  | 'before/sub' | 'open/sub' | 'closed/sub' | 'invite/sub'
+  | 'before/both' | 'open/both' | 'closed/both' | 'invite/both';
+
+const CHECKOUT_SUB_TABS: { id: CheckoutSubTab; label: string; dividerBefore?: boolean }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'before/one-time', label: 'before/one-time' },
+  { id: 'open/one-time', label: 'open/one-time' },
+  { id: 'closed/one-time', label: 'closed/one-time' },
+  { id: 'invite/one-time', label: 'invite/one-time' },
+  { id: 'before/sub', label: 'before/sub', dividerBefore: true },
+  { id: 'open/sub', label: 'open/sub' },
+  { id: 'closed/sub', label: 'closed/sub' },
+  { id: 'invite/sub', label: 'invite/sub' },
+  { id: 'before/both', label: 'before/both', dividerBefore: true },
+  { id: 'open/both', label: 'open/both' },
+  { id: 'closed/both', label: 'closed/both' },
+  { id: 'invite/both', label: 'invite/both' },
+];
+
+// Map sub-tab mode shorthand to CheckoutMode
+function subTabToMode(sub: string): CheckoutMode {
+  if (sub.endsWith('/sub') || sub.endsWith('/sub')) {
+    const mode = sub.split('/')[1];
+    if (mode === 'sub') return 'subscription';
+  }
+  if (sub.includes('/one-time')) return 'one-time';
+  if (sub.includes('/both')) return 'both';
+  if (sub.includes('/sub')) return 'subscription';
+  return 'one-time';
+}
+
+function subTabToState(sub: string): 'before' | 'open' | 'closed' | 'invite' {
+  if (sub.startsWith('before/')) return 'before';
+  if (sub.startsWith('open/')) return 'open';
+  if (sub.startsWith('closed/')) return 'closed';
+  if (sub.startsWith('invite/')) return 'invite';
+  return 'before';
+}
+
 export default function PreviewPage() {
   const [activeSection, setActiveSection] = useState<Section>('checkout');
+  const [checkoutSubTab, setCheckoutSubTab] = useState<CheckoutSubTab>('all');
   const [windowState, setWindowState] = useState<WindowState>('none');
   const [windowOpen, setWindowOpen] = useState<Date | null>(null);
   const [windowClose, setWindowClose] = useState<Date | null>(null);
 
-  // Checkout mode for preview (not persisted)
-  const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>('one-time');
-
   // Admin state
+  const [adminSecret, setAdminSecret] = useState('');
   const [adminOpen, setAdminOpen] = useState('');
   const [adminClose, setAdminClose] = useState('');
   const [adminTz, setAdminTz] = useState('America/New_York');
-  const [adminSecret, setAdminSecret] = useState('');
   const [adminResult, setAdminResult] = useState<string>();
   const [adminLoading, setAdminLoading] = useState(false);
   const [autoNotify, setAutoNotify] = useState(false);
+
+  // Deploy checkout mode state
+  const [deployMode, setDeployMode] = useState<CheckoutMode>('one-time');
+  const [deployResult, setDeployResult] = useState<string>();
+  const [deployLoading, setDeployLoading] = useState(false);
+
+  // URL hash sync
+  useEffect(() => {
+    const hash = window.location.hash.slice(1); // remove #
+    if (!hash) return;
+
+    if (hash === 'post-payment') {
+      setActiveSection('post-payment');
+    } else if (hash === 'questionnaire') {
+      setActiveSection('questionnaire');
+    } else if (hash === 'insight') {
+      setActiveSection('insight');
+    } else if (hash === 'admin') {
+      setActiveSection('admin');
+    } else if (hash.startsWith('checkout/')) {
+      setActiveSection('checkout');
+      const sub = hash.replace('checkout/', '') as CheckoutSubTab;
+      // Validate it's a real sub-tab
+      if (CHECKOUT_SUB_TABS.some(t => t.id === sub)) {
+        setCheckoutSubTab(sub);
+      }
+    } else if (hash === 'checkout') {
+      setActiveSection('checkout');
+      setCheckoutSubTab('all');
+    }
+  }, []);
+
+  const updateHash = (section: Section, subTab?: string) => {
+    if (section === 'checkout') {
+      window.location.hash = subTab && subTab !== 'all' ? `checkout/${subTab}` : 'checkout';
+    } else {
+      window.location.hash = section;
+    }
+  };
 
   useEffect(() => {
     const openStr = process.env.NEXT_PUBLIC_WINDOW_OPEN;
@@ -75,6 +154,28 @@ export default function PreviewPage() {
       }
     } catch { setAdminResult('❌ Failed to connect.'); }
     finally { setAdminLoading(false); }
+  };
+
+  const handleDeployMode = async () => {
+    if (!adminSecret) { setDeployResult('❌ Enter admin secret above.'); return; }
+    setDeployLoading(true);
+    setDeployResult(undefined);
+    try {
+      const response = await fetch('/api/admin/checkout-mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: adminSecret, mode: deployMode }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        let msg = `✅ Checkout mode set to "${data.mode}". Redeploying (~30s).`;
+        if (data.warning) msg += `\n⚠️ ${data.warning}`;
+        setDeployResult(msg);
+      } else {
+        setDeployResult(`❌ ${data.error || 'Failed'}`);
+      }
+    } catch { setDeployResult('❌ Failed to connect.'); }
+    finally { setDeployLoading(false); }
   };
 
   const formatDate = (d: Date) => d.toLocaleString('en-US', {
@@ -285,14 +386,85 @@ export default function PreviewPage() {
     );
   };
 
-  /* ─── Checkout Tab ─── */
-  const renderCheckout = () => (
-    <div className="space-y-8">
-      {renderCheckoutPreview(checkoutMode, 'before')}
-      {renderCheckoutPreview(checkoutMode, 'open')}
-      {renderCheckoutPreview(checkoutMode, 'closed')}
-    </div>
-  );
+  /* ─── Invite Page Preview for a single mode ─── */
+  const renderInvitePreview = (mode: CheckoutMode) => {
+    const modeLabel = checkoutModeLabel(mode);
+    const modeSlug = mode === 'one-time' ? 'One-Time Only' : mode === 'subscription' ? 'Subscription Only' : 'Both Options';
+
+    return (
+      <div key={`invite-${mode}`} className="border border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
+          /join — Invite Page ({modeSlug})
+        </div>
+        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 700 }}>
+          <div className="w-full max-w-2xl">
+            {/* Invite bypass note */}
+            <div className="mb-6 bg-blue-500/10 border border-blue-500/30 rounded-lg px-4 py-2 text-center">
+              <p className="text-blue-400 text-sm">This page bypasses the purchase window — checkout is always available</p>
+            </div>
+
+            {renderLogo()}
+
+            {/* No countdown timer for invite pages */}
+
+            {/* Card */}
+            <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-xl">
+              {renderCardHeader()}
+              {renderFeatures()}
+              {renderPaymentSection(mode)}
+              <div className="p-6">
+                {renderPayButton(mode)}
+              </div>
+            </div>
+
+            {renderGuarantee()}
+            <div className="mt-4 text-center">
+              <span className="text-slate-500 text-xs underline block">Full details about the program →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* ─── Checkout Tab (with sub-tabs) ─── */
+  const renderCheckout = () => {
+    // Build the list of previews to show
+    type PreviewItem = { type: 'checkout'; mode: CheckoutMode; state: 'before' | 'open' | 'closed' }
+      | { type: 'invite'; mode: CheckoutMode };
+
+    let previews: PreviewItem[] = [];
+
+    if (checkoutSubTab === 'all') {
+      // Show all 12
+      const modes: CheckoutMode[] = ['one-time', 'subscription', 'both'];
+      const states: ('before' | 'open' | 'closed')[] = ['before', 'open', 'closed'];
+      for (const mode of modes) {
+        for (const state of states) {
+          previews.push({ type: 'checkout', mode, state });
+        }
+        previews.push({ type: 'invite', mode });
+      }
+    } else {
+      const state = subTabToState(checkoutSubTab);
+      const mode = subTabToMode(checkoutSubTab);
+      if (state === 'invite') {
+        previews = [{ type: 'invite', mode }];
+      } else {
+        previews = [{ type: 'checkout', mode, state }];
+      }
+    }
+
+    return (
+      <div className="space-y-8">
+        {previews.map((p, i) =>
+          p.type === 'checkout'
+            ? <div key={`checkout-${p.mode}-${p.state}`}>{renderCheckoutPreview(p.mode, p.state)}</div>
+            : <div key={`invite-${p.mode}`}>{renderInvitePreview(p.mode)}</div>
+        )}
+      </div>
+    );
+  };
 
   /* ─── Post-Payment Tab ─── */
   const renderPostPayment = () => (
@@ -476,19 +648,47 @@ export default function PreviewPage() {
   /* ─── Admin Tab ─── */
   const renderAdmin = () => (
     <div className="space-y-8">
-      {/* 1. Checkout Mode toggle */}
+      {/* 1. Deploy Checkout Mode */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Checkout Mode (Preview)</div>
-        <div className="bg-slate-950 p-6">
-          <p className="text-slate-400 text-sm mb-4">Controls which checkout variation is shown in the Checkout tab. Preview only — does not change env vars.</p>
-          <div className="flex gap-2">
-            {(['one-time', 'subscription', 'both'] as CheckoutMode[]).map((mode) => (
-              <button key={mode} onClick={() => setCheckoutMode(mode)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${checkoutMode === mode ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700'}`}>
-                {checkoutModeLabel(mode)}
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Deploy Checkout Mode</div>
+        <div className="bg-slate-950 p-6 space-y-4">
+          <p className="text-slate-400 text-sm">Changes the live checkout mode on the production site. Updates env vars and triggers a redeploy (~30s).</p>
+          <div className="space-y-3">
+            {([
+              { mode: 'one-time' as CheckoutMode, label: 'One-Time Only', desc: 'Single $999 payment. No subscription option shown.' },
+              { mode: 'subscription' as CheckoutMode, label: 'Subscription Only', desc: '$999/quarter auto-renew. No one-time option shown.' },
+              { mode: 'both' as CheckoutMode, label: 'Both Options', desc: 'User chooses between pay-in-full ($999) or quarterly auto-renew ($999/qtr).' },
+            ]).map(({ mode, label, desc }) => (
+              <button
+                key={mode}
+                onClick={() => setDeployMode(mode)}
+                className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
+                  deployMode === mode
+                    ? 'border-blue-500 bg-blue-500/10'
+                    : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-4 h-4 rounded-full border-2 ${deployMode === mode ? 'border-blue-500 bg-blue-500' : 'border-slate-600'} flex items-center justify-center`}>
+                    {deployMode === mode && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white">{label}</div>
+                    <div className="text-sm text-slate-400 mt-0.5">{desc}</div>
+                  </div>
+                </div>
               </button>
             ))}
           </div>
+          {deployResult && <p className="text-sm whitespace-pre-line">{deployResult}</p>}
+          <button
+            onClick={handleDeployMode}
+            disabled={deployLoading || !adminSecret}
+            className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 disabled:cursor-not-allowed"
+          >
+            {deployLoading ? 'Deploying...' : `Update Mode to "${checkoutModeLabel(deployMode)}" & Redeploy`}
+          </button>
+          {!adminSecret && <p className="text-yellow-400/80 text-xs">⚠️ Enter admin secret in the &quot;Update Window&quot; section below first.</p>}
         </div>
       </div>
 
@@ -647,14 +847,46 @@ export default function PreviewPage() {
               {questionnaire.length} questions · {sections.length} sections · Full funnel
             </span>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+
+          {/* Section tabs */}
+          <div className="flex gap-2 mb-3">
             {sectionTabs.map((tab) => (
-              <button key={tab.id} onClick={() => setActiveSection(tab.id)}
+              <button key={tab.id} onClick={() => {
+                setActiveSection(tab.id);
+                if (tab.id === 'checkout') setCheckoutSubTab('all');
+                updateHash(tab.id);
+              }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${activeSection === tab.id ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'}`}>
                 {tab.label}
               </button>
             ))}
           </div>
+
+          {/* Sub-tabs for Checkout section */}
+          {activeSection === 'checkout' && (
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {CHECKOUT_SUB_TABS.map((tab) => (
+                <div key={tab.id} className="flex items-center gap-1.5">
+                  {tab.dividerBefore && (
+                    <span className="px-1.5 text-slate-600 text-sm select-none">—</span>
+                  )}
+                  <button
+                    onClick={() => {
+                      setCheckoutSubTab(tab.id);
+                      updateHash('checkout', tab.id);
+                    }}
+                    className={`px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors ${
+                      checkoutSubTab === tab.id
+                        ? 'bg-slate-700 text-white'
+                        : 'bg-slate-800/50 text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
       <div className="max-w-4xl mx-auto px-4 py-8">{content}</div>
