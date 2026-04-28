@@ -21,6 +21,8 @@ export default function PreviewPage() {
   const [adminSecret, setAdminSecret] = useState('');
   const [adminResult, setAdminResult] = useState<string>();
   const [adminLoading, setAdminLoading] = useState(false);
+  const [notifyResult, setNotifyResult] = useState<string>();
+  const [notifyLoading, setNotifyLoading] = useState(false);
 
   useEffect(() => {
     const openStr = process.env.NEXT_PUBLIC_WINDOW_OPEN;
@@ -38,6 +40,25 @@ export default function PreviewPage() {
 
   const handleWindowOpened = useCallback(() => setWindowState('open'), []);
   const handleWindowClosed = useCallback(() => setWindowState('after'), []);
+
+  const handleNotifyWaitlist = async () => {
+    if (!adminSecret) { setNotifyResult('❌ Enter admin secret first.'); return; }
+    if (!confirm('This will email ALL waitlist subscribers that the window is open. Continue?')) return;
+    setNotifyLoading(true);
+    setNotifyResult(undefined);
+    try {
+      const response = await fetch('/api/admin/notify-waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: adminSecret }),
+      });
+      const data = await response.json();
+      setNotifyResult(data.success
+        ? `✅ ${data.message}`
+        : `❌ ${data.error || 'Failed'}`);
+    } catch { setNotifyResult('❌ Failed to connect.'); }
+    finally { setNotifyLoading(false); }
+  };
 
   const handleAdminUpdate = async () => {
     if (!adminOpen || !adminClose || !adminSecret) return;
@@ -220,6 +241,32 @@ export default function PreviewPage() {
               <span className="text-slate-500 text-xs underline block">Full details about the program →</span>
               <span className="text-slate-500 text-xs underline">FAQ</span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Links */}
+      <div className="border border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Page Links</div>
+        <div className="bg-slate-950 p-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <a href="/" target="_blank" className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-4 py-3 text-sm text-blue-400 hover:text-blue-300 transition-colors">
+              Main Checkout <span className="text-slate-600">→</span>
+            </a>
+            <a href="/join" target="_blank" className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-4 py-3 text-sm text-blue-400 hover:text-blue-300 transition-colors">
+              Invite Page (no window) <span className="text-slate-600">→</span>
+            </a>
+            <a href="/welcome?test=true" target="_blank" className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-4 py-3 text-sm text-blue-400 hover:text-blue-300 transition-colors">
+              Post-Payment Test <span className="text-slate-600">→</span>
+            </a>
+          </div>
+          <div className="mt-4 bg-slate-900 border border-slate-800 rounded-lg p-4">
+            <h4 className="text-white text-sm font-medium mb-2">Subscription Mode</h4>
+            <p className="text-slate-400 text-xs">
+              {process.env.NEXT_PUBLIC_ENABLE_SUBSCRIPTION === 'true'
+                ? '🟢 Quarterly auto-renew option is ENABLED — both one-time and subscription options shown.'
+                : '⚪ Quarterly auto-renew is OFF. Set NEXT_PUBLIC_ENABLE_SUBSCRIPTION=true in Vercel to enable.'}
+            </p>
           </div>
         </div>
       </div>
@@ -539,6 +586,24 @@ export default function PreviewPage() {
         </div>
       </div>
 
+      {/* Notify Waitlist */}
+      <div className="border border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Notify Waitlist</div>
+        <div className="bg-slate-950 p-6 space-y-4">
+          <p className="text-slate-400 text-sm">
+            Tags all &quot;BCP Waitlist Member&quot; subscribers with &quot;BCP Window Open Notification&quot; — which triggers the Kit email automation you set up.
+          </p>
+          <p className="text-slate-500 text-xs">
+            ⚠️ Requires admin secret above. Uses Kit automation (tag ID: 19208524) — set up the email sequence in Kit first.
+          </p>
+          {notifyResult && <p className="text-sm">{notifyResult}</p>}
+          <button onClick={handleNotifyWaitlist} disabled={notifyLoading || !adminSecret} className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 disabled:cursor-not-allowed">
+            {notifyLoading ? 'Notifying...' : '📢 Notify Waitlist — Window is Open'}
+          </button>
+        </div>
+      </div>
+
+      {/* Kit Tags */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Kit Tags</div>
         <div className="bg-slate-950 p-6">
@@ -548,6 +613,7 @@ export default function PreviewPage() {
                 ['BCP Member', '8240961', 'Applied on payment (webhook)'],
                 ['BCP Waitlist Member', '8231366', 'Waitlist signup'],
                 ['BCP Questionnaire Submitted', '19206526', 'Stops reminder emails'],
+                ['BCP Window Open Notification', '19208524', 'Triggers "window open" email'],
                 ['Boundless Insight', '—', 'Kit Form #9377397 handles tagging'],
               ].map(([name, id, desc]) => (
                 <tr key={name}>
@@ -558,6 +624,19 @@ export default function PreviewPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* System Map */}
+      <div className="border border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">System Map</div>
+        <div className="bg-slate-950 p-6">
+          <p className="text-slate-400 text-sm mb-4">
+            Full documentation of how everything connects — Stripe, Kit, Discord, webhooks, tags, and all the pages.
+          </p>
+          <a href="/system-map.md" target="_blank" className="inline-block bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-6 py-3 text-sm text-blue-400 hover:text-blue-300 transition-colors">
+            View Full System Map <span className="text-slate-600">→</span>
+          </a>
         </div>
       </div>
     </div>
