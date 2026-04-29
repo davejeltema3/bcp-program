@@ -9,6 +9,7 @@ import { useState } from 'react';
  */
 
 const KIT_FORM_ID = '9377397';
+const KIT_API_KEY = '8r2gDZv9vgYKgeS4TAeKdw';
 
 export default function InsightPage() {
   const [email, setEmail] = useState('');
@@ -31,7 +32,8 @@ export default function InsightPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email_address: email,
+          api_key: KIT_API_KEY,
+          email: email,
           first_name: firstName || undefined,
         }),
       });
