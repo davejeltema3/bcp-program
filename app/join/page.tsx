@@ -88,7 +88,7 @@ export default function JoinPage() {
               Boundless Creator Program
             </h1>
             <p className="text-slate-300">
-              Personal channel reviews, weekly live sessions, and direct access to Dave.
+              Early access to the course, weekly live sessions, and a personal channel review for founders.
             </p>
           </div>
 
@@ -99,10 +99,10 @@ export default function JoinPage() {
             </h2>
             <ul className="space-y-3">
               {[
-                'Personal channel review in your first week',
+                'Early access to the course as I build it',
                 'Weekly live session (Wednesdays 2 PM EST)',
-                'Full BCP resource library',
                 'Direct access to Dave in Discord',
+                'Personal channel review (founders only)',
                 'Founder\'s rate locked in for as long as you stay',
               ].map((feature, i) => (
                 <li key={i} className="flex items-start gap-3">
@@ -133,7 +133,7 @@ export default function JoinPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-semibold text-white">Pay in Full</div>
-                      <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
+                      <div className="text-sm text-slate-400 mt-0.5">One-time payment, no auto-renewal</div>
                     </div>
                     <div className="text-2xl font-bold text-white">$999</div>
                   </div>
