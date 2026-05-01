@@ -6,6 +6,10 @@ interface WaitlistFormProps {
   context: 'before' | 'after' | 'insight';
 }
 
+// Kit Form for BCP Waitlist — gives Dave control over double opt-in + incentive email
+const KIT_WAITLIST_FORM_ID = '8175003';
+const KIT_API_KEY = '8r2gDZv9vgYKgeS4TAeKdw';
+
 export default function WaitlistForm({ context }: WaitlistFormProps) {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -21,13 +25,14 @@ export default function WaitlistForm({ context }: WaitlistFormProps) {
     setError(undefined);
 
     try {
-      const response = await fetch('/api/waitlist', {
+      // Submit directly to Kit's form endpoint — Kit handles double opt-in
+      const response = await fetch(`https://api.convertkit.com/v3/forms/${KIT_WAITLIST_FORM_ID}/subscribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,
-          firstName: firstName || undefined,
-          source: context,
+          api_key: KIT_API_KEY,
+          email: email,
+          first_name: firstName || undefined,
         }),
       });
 
@@ -46,11 +51,11 @@ export default function WaitlistForm({ context }: WaitlistFormProps) {
   if (submitted) {
     return (
       <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-6 text-center">
-        <div className="text-green-400 text-lg font-semibold mb-1">You&apos;re on the list!</div>
+        <div className="text-green-400 text-lg font-semibold mb-1">Check your email!</div>
         <p className="text-slate-400 text-sm">
           {context === 'insight'
-            ? "Check your email for the download link."
-            : "I'll let you know when the next window opens."}
+            ? "Confirm your email to get the download link."
+            : "Confirm your email to get on the waitlist. You're not on the list until you click the button in the email."}
         </p>
       </div>
     );

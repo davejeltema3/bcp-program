@@ -47,17 +47,18 @@ function verifyWebhook(stripe: Stripe, body: string, signature: string): Stripe.
   throw lastError || new Error('Webhook verification failed');
 }
 
-async function tagKit(email: string, name?: string, tagId?: string) {
+async function tagKit(email: string, name?: string, tagId?: string, customFields?: Record<string, string>) {
   const apiKey = process.env.KIT_API_KEY;
   if (!apiKey || !email) return;
 
-  // Create/update subscriber
+  // Create/update subscriber (with optional custom fields like discord_invite)
   await fetch('https://api.kit.com/v4/subscribers', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Kit-Api-Key': apiKey },
     body: JSON.stringify({
       email_address: email,
       ...(name ? { first_name: name.split(' ')[0] } : {}),
+      ...(customFields ? { fields: customFields } : {}),
     }),
   });
 
@@ -68,6 +69,43 @@ async function tagKit(email: string, name?: string, tagId?: string) {
       headers: { 'Content-Type': 'application/json', 'X-Kit-Api-Key': apiKey },
       body: JSON.stringify({ email_address: email }),
     });
+  }
+}
+
+/**
+ * Generate a single-use Discord invite for a new member.
+ * Creates the invite at payment time so each member gets exactly one.
+ * Returns the full invite URL or null if Discord isn't configured.
+ */
+async function generateDiscordInvite(): Promise<string | null> {
+  const botToken = process.env.DISCORD_BOT_TOKEN;
+  const channelId = process.env.DISCORD_INVITE_CHANNEL_ID;
+
+  if (!botToken || !channelId) return null;
+
+  try {
+    const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/invites`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bot ${botToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        max_age: 604800, // 7 days
+        max_uses: 1,
+        unique: true,
+      }),
+    });
+
+    const data = await response.json();
+    if (data.code) {
+      return `https://discord.gg/${data.code}`;
+    }
+    console.error('Discord invite creation failed:', data);
+    return null;
+  } catch (err) {
+    console.error('Discord invite generation error:', err);
+    return null;
   }
 }
 
@@ -129,11 +167,25 @@ export async function POST(request: NextRequest) {
             console.error('Discord notification failed:', err);
           }
 
-          // Tag as BCP Member in Kit
+          // Generate a unique single-use Discord invite for this member
+          let discordInviteUrl: string | null = null;
+          try {
+            discordInviteUrl = await generateDiscordInvite();
+            if (discordInviteUrl) {
+              console.log(`Discord invite generated for ${email}: ${discordInviteUrl}`);
+            }
+          } catch (err) {
+            console.error('Discord invite generation failed:', err);
+          }
+
+          // Tag as BCP Member in Kit + store Discord invite as custom field
           if (email !== 'N/A') {
             try {
               const tagId = process.env.KIT_BCP_MEMBER_TAG_ID || '8240961';
-              await tagKit(email, name !== 'Unknown' ? name : undefined, tagId);
+              const customFields = discordInviteUrl
+                ? { discord_invite: discordInviteUrl }
+                : undefined;
+              await tagKit(email, name !== 'Unknown' ? name : undefined, tagId, customFields);
             } catch (err) {
               console.error('Kit tagging from webhook failed:', err);
             }
