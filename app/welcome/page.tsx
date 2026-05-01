@@ -6,6 +6,7 @@ import ProgressBar from '@/components/ProgressBar';
 import QuestionCard from '@/components/QuestionCard';
 import TextInput from '@/components/TextInput';
 import MultipleChoice from '@/components/MultipleChoice';
+import AnalyticsAccessGuide from '@/components/AnalyticsAccessGuide';
 
 interface WelcomeData {
   success: boolean;
@@ -215,9 +216,9 @@ export default function WelcomePage() {
                 <li className="flex gap-3">
                   <span className="flex-shrink-0 w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold text-white">3</span>
                   <div>
-                    <div className="text-white font-medium">Your review arrives within a week</div>
+                    <div className="text-white font-medium">Your channel review</div>
                     <div className="text-slate-400 text-sm">
-                      I&apos;ll send you an audio note when it&apos;s posted in Discord.
+                      I&apos;ll post it in Discord when it&apos;s ready.
                     </div>
                   </div>
                 </li>
@@ -273,10 +274,10 @@ export default function WelcomePage() {
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">Questionnaire submitted!</h2>
             <p className="text-slate-300 mb-4">
-              I&apos;ll use your answers to write your personal channel review. Expect it within your first week.
+              I&apos;ll use your answers to write your personal channel review.
             </p>
             <p className="text-slate-400 text-sm">
-              Check your email for the Discord invite and keep an eye out for my audio note.
+              Check your email for the Discord invite.
             </p>
           </div>
         </div>
@@ -304,7 +305,11 @@ export default function WelcomePage() {
       <ProgressBar current={currentIndex + 1} total={questions.length + 1} />
       <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4">
         <div className="w-full max-w-3xl">
-          <QuestionCard question={question.question} subtext={question.subtext}>
+          <QuestionCard
+            question={question.question}
+            subtext={question.subtext === 'ANALYTICS_ACCESS_STRUCTURED' ? undefined : question.subtext}
+          >
+            {question.subtext === 'ANALYTICS_ACCESS_STRUCTURED' && <AnalyticsAccessGuide />}
             {question.type === 'multiple-choice' && question.choices && (
               <>
                 <MultipleChoice

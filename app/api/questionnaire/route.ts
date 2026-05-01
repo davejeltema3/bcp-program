@@ -26,13 +26,11 @@ export async function POST(request: NextRequest) {
   try {
     const { answers, email, name } = await request.json();
 
-    // Submit to Google Forms if configured
-    if (process.env.BCP_GOOGLE_FORM_ACTION_URL) {
-      try {
-        await submitToGoogleForms(answers, email, name);
-      } catch (error) {
-        console.error('Google Forms submission error:', error);
-      }
+    // Submit to Google Forms (URL hardcoded — always runs)
+    try {
+      await submitToGoogleForms(answers, email, name);
+    } catch (error) {
+      console.error('Google Forms submission error:', error);
     }
 
     // Tag in Kit to stop reminder emails

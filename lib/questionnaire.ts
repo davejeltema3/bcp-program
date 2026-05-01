@@ -111,11 +111,11 @@ export const questions: QuestionItem[] = [
     placeholder: 'e.g. "I think my tutorial on X did well because it hit a real pain point people were searching for..."',
     required: true,
   },
-  // Q9 — Analytics access
+  // Q9 — Analytics access (subtext rendered as structured HTML in the component)
   {
     id: 'analytics_access',
     question: 'Can you grant me viewer access to your YouTube analytics?',
-    subtext: 'Without your analytics, I\'m working with one hand tied behind my back. Public data shows what\'s happening on the surface. Your private analytics show me why.\n\nSteps (2 minutes): YouTube Studio → Settings → Permissions → Invite → hello@boundlesscreator.com → Select "Viewer" → Done.\n\nYou can revoke anytime. I\'ll remove myself after completing your review.',
+    subtext: 'ANALYTICS_ACCESS_STRUCTURED',
     type: 'multiple-choice',
     required: true,
     choices: [

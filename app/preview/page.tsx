@@ -8,6 +8,7 @@ import ProgressBar from '@/components/ProgressBar';
 import QuestionCard from '@/components/QuestionCard';
 import TextInput from '@/components/TextInput';
 import MultipleChoice from '@/components/MultipleChoice';
+import AnalyticsAccessGuide from '@/components/AnalyticsAccessGuide';
 
 type Section = 'checkout' | 'post-payment' | 'questionnaire' | 'insight' | 'admin';
 type WindowState = 'before' | 'open' | 'after' | 'none';
@@ -500,7 +501,7 @@ export default function PreviewPage() {
                   {[
                     { title: 'Check your email', desc: "You'll receive a welcome email with your Discord invite and everything you need to get started." },
                     { title: 'Fill out the questionnaire below', desc: "This is how I write your personal channel review. The more detail you give, the better the review." },
-                    { title: 'Your review arrives within a week', desc: "I'll send you an audio note when it's posted in Discord." },
+                    { title: 'Your channel review', desc: "I'll post it in Discord when it's ready." },
                     { title: 'First live session: Wednesday May 6 at 2 PM EST', desc: "Recurring Wednesdays. Recorded if you can't make it." },
                   ].map((step, i) => (
                     <li key={i} className="flex gap-3">
@@ -577,7 +578,11 @@ export default function PreviewPage() {
               <div className="h-full bg-blue-500" style={{ width: `${((i + 1) / (questions.length + 1)) * 100}%` }} />
             </div>
             <div className="p-8">
-              <QuestionCard question={q.question} subtext={q.subtext}>
+              <QuestionCard
+                question={q.question}
+                subtext={q.subtext === 'ANALYTICS_ACCESS_STRUCTURED' ? undefined : q.subtext}
+              >
+                {q.subtext === 'ANALYTICS_ACCESS_STRUCTURED' && <AnalyticsAccessGuide />}
                 {q.type === 'multiple-choice' && q.choices && (
                   <>
                     <MultipleChoice
@@ -653,10 +658,10 @@ export default function PreviewPage() {
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">Questionnaire submitted!</h2>
               <p className="text-slate-300 mb-4">
-                I&apos;ll use your answers to write your personal channel review. Expect it within your first week.
+                I&apos;ll use your answers to write your personal channel review.
               </p>
               <p className="text-slate-400 text-sm">
-                Check your email for the Discord invite and keep an eye out for my audio note.
+                Check your email for the Discord invite.
               </p>
             </div>
           </div>
