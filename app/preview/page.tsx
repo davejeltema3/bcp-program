@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import CountdownTimer from '@/components/CountdownTimer';
 import WaitlistForm from '@/components/WaitlistForm';
 import { questions } from '@/lib/questionnaire';
+import ProgressBar from '@/components/ProgressBar';
+import QuestionCard from '@/components/QuestionCard';
+import TextInput from '@/components/TextInput';
+import MultipleChoice from '@/components/MultipleChoice';
 
 type Section = 'checkout' | 'post-payment' | 'questionnaire' | 'insight' | 'admin';
 type WindowState = 'before' | 'open' | 'after' | 'none';
@@ -545,7 +549,7 @@ export default function PreviewPage() {
     <div className="space-y-8">
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 flex items-center justify-between">
-          <span className="text-sm text-slate-400 font-mono">/questionnaire — Multi-page flow (matches BCA application style)</span>
+          <span className="text-sm text-slate-400 font-mono">/questionnaire — Multi-page flow ({questions.length} pages)</span>
           <a href="/questionnaire" target="_blank" className="text-blue-400 hover:text-blue-300 text-xs underline">Open in new tab →</a>
         </div>
         <div className="bg-slate-950 p-6">
@@ -553,7 +557,7 @@ export default function PreviewPage() {
             Shareable link: <code className="text-blue-400">bcp.boundlesscreator.com/questionnaire?email=their@email.com</code>
           </p>
           <p className="text-slate-400 text-sm">
-            {questions.length} questions, one per page with progress bar. Kit tag &quot;BCP Questionnaire Submitted&quot; applied on submit to stop reminder emails.
+            Kit tag &quot;BCP Questionnaire Submitted&quot; (19206526) applied on submit. Answers go to Google Form → Sheet.
           </p>
         </div>
       </div>
@@ -561,23 +565,103 @@ export default function PreviewPage() {
       {questions.map((q, i) => (
         <div key={q.id} className="border border-slate-700 rounded-lg overflow-hidden">
           <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-            Page {i + 1} of {questions.length}
+            Question {i + 1}/{questions.length}: {q.id}
+            {q.type === 'multiple-choice' && <span className="ml-2 text-blue-400">[multiple-choice]</span>}
+            {q.type === 'text' && <span className="ml-2 text-green-400">[text]</span>}
+            {q.type === 'url' && <span className="ml-2 text-purple-400">[url]</span>}
+            {q.type === 'textarea' && <span className="ml-2 text-yellow-400">[textarea]</span>}
           </div>
-          <div className="bg-slate-950 p-6">
-            <div className="border-l-2 border-slate-700 pl-4">
-              <div className="text-white text-sm font-medium">
-                {q.question}
-                {q.required && <span className="text-red-400 ml-1">*</span>}
-              </div>
-              {q.subtext && <div className="text-slate-500 text-xs mt-0.5 whitespace-pre-line">{q.subtext}</div>}
-              <div className="text-slate-600 text-xs mt-1 font-mono">
-                id: {q.id} | type: {q.type}
-                {q.choices && ` | choices: ${q.choices.map(c => c.value).join(', ')}`}
+          <div className="bg-slate-950 relative">
+            {/* Progress bar preview */}
+            <div className="h-1 bg-slate-900">
+              <div className="h-full bg-blue-500" style={{ width: `${((i + 1) / (questions.length + 1)) * 100}%` }} />
+            </div>
+            <div className="p-8">
+              <QuestionCard question={q.question} subtext={q.subtext}>
+                {q.type === 'multiple-choice' && q.choices && (
+                  <>
+                    <MultipleChoice
+                      choices={q.choices}
+                      value=""
+                      onChange={() => {}}
+                      onNext={() => {}}
+                    />
+                    {i > 0 && (
+                      <button className="mt-6 px-6 py-3 text-slate-400 cursor-default">← Back</button>
+                    )}
+                  </>
+                )}
+                {q.type === 'textarea' && (
+                  <>
+                    <TextInput
+                      value=""
+                      onChange={() => {}}
+                      placeholder={q.placeholder}
+                      multiline={true}
+                      required={q.required}
+                    />
+                    <div className="flex gap-4 mt-6">
+                      {i > 0 && (
+                        <button className="px-6 py-3 text-slate-400 cursor-default">← Back</button>
+                      )}
+                      <button className="flex-1 bg-blue-600 text-white font-semibold px-8 py-3 rounded-lg opacity-50 cursor-default">
+                        {i === questions.length - 1 ? 'Submit →' : 'Continue →'}
+                      </button>
+                    </div>
+                  </>
+                )}
+                {(q.type === 'text' || q.type === 'url') && (
+                  <>
+                    <TextInput
+                      value=""
+                      onChange={() => {}}
+                      placeholder={q.placeholder}
+                      type={q.type === 'url' ? 'url' : 'text'}
+                      required={q.required}
+                    />
+                    <div className="flex gap-4 mt-6">
+                      {i > 0 && (
+                        <button className="px-6 py-3 text-slate-400 cursor-default">← Back</button>
+                      )}
+                      <button className="flex-1 bg-blue-600 text-white font-semibold px-8 py-3 rounded-lg opacity-50 cursor-default">
+                        Continue →
+                      </button>
+                    </div>
+                  </>
+                )}
+              </QuestionCard>
+              <div className="mt-6 text-center text-slate-500 text-xs">
+                Question {i + 1} of {questions.length}
               </div>
             </div>
           </div>
         </div>
       ))}
+
+      {/* Submission complete screen */}
+      <div className="border border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
+          Submission Complete
+        </div>
+        <div className="bg-slate-950 p-8 flex items-center justify-center" style={{ minHeight: 300 }}>
+          <div className="max-w-lg text-center">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-8 shadow-xl">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/20 rounded-full mb-4">
+                <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">Questionnaire submitted!</h2>
+              <p className="text-slate-300 mb-4">
+                I&apos;ll use your answers to write your personal channel review. Expect it within your first week.
+              </p>
+              <p className="text-slate-400 text-sm">
+                Check your email for the Discord invite and keep an eye out for my audio note.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 
