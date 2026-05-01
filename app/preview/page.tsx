@@ -862,7 +862,74 @@ export default function PreviewPage() {
         </div>
       </div>
 
-      {/* 4. Quick Links */}
+      {/* 4. Generate Questionnaire Link */}
+      <div className="border border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Generate Questionnaire Link</div>
+        <div className="bg-slate-950 p-6 space-y-4">
+          <p className="text-slate-400 text-sm">Enter a member&apos;s info to generate a personalized questionnaire link you can send them.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-white text-sm font-medium mb-1">Email</label>
+              <input
+                type="email"
+                id="qlink-email"
+                placeholder="their@email.com"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-white text-sm font-medium mb-1">First Name</label>
+              <input
+                type="text"
+                id="qlink-name"
+                placeholder="Their name"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                const email = (document.getElementById('qlink-email') as HTMLInputElement)?.value;
+                const name = (document.getElementById('qlink-name') as HTMLInputElement)?.value;
+                if (!email) return;
+                const params = new URLSearchParams();
+                params.set('email', email);
+                if (name) params.set('name', name);
+                const url = `https://bcp.boundlesscreator.com/questionnaire?${params.toString()}`;
+                navigator.clipboard.writeText(url);
+                const el = document.getElementById('qlink-result');
+                if (el) { el.textContent = url; el.classList.remove('hidden'); }
+                const btn = document.getElementById('qlink-copied');
+                if (btn) { btn.textContent = '✅ Copied!'; setTimeout(() => { btn.textContent = 'Generate & Copy Link'; }, 2000); }
+              }}
+              id="qlink-copied"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition-all duration-200"
+            >
+              Generate &amp; Copy Link
+            </button>
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                const email = (document.getElementById('qlink-email') as HTMLInputElement)?.value;
+                const name = (document.getElementById('qlink-name') as HTMLInputElement)?.value;
+                if (!email) return;
+                const params = new URLSearchParams();
+                params.set('email', email);
+                if (name) params.set('name', name);
+                window.open(`/questionnaire?${params.toString()}`, '_blank');
+              }}
+              className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-6 py-2 rounded-lg transition-all duration-200 flex items-center"
+            >
+              Preview →
+            </a>
+          </div>
+          <div id="qlink-result" className="hidden bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-sm text-blue-400 font-mono break-all" />
+        </div>
+      </div>
+
+      {/* 5. Quick Links */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Quick Links</div>
         <div className="bg-slate-950 p-6">
@@ -870,7 +937,6 @@ export default function PreviewPage() {
             {[
               { label: 'Checkout Page', href: '/' },
               { label: 'Welcome / Post-Payment', href: '/welcome?test=true' },
-              { label: 'Questionnaire', href: '/questionnaire' },
               { label: 'Boundless Insight', href: '/insight' },
               { label: 'Invite Page', href: '/join' },
             ].map(link => (
