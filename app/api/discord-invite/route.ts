@@ -34,11 +34,16 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
 
-    if (data.code) {
+    if (!response.ok) {
+      console.error('Discord API error:', data);
+      return NextResponse.json({ error: `Discord error: ${data.message || 'Failed to create invite'}` }, { status: 500 });
+    }
+
+    if (data.code && typeof data.code === 'string') {
       return NextResponse.redirect(`https://discord.gg/${data.code}`);
     }
 
-    return NextResponse.json({ error: 'Failed to create invite' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to create invite — no invite code returned' }, { status: 500 });
   } catch (error) {
     console.error('Discord invite error:', error);
     return NextResponse.json({ error: 'Failed to create invite' }, { status: 500 });
