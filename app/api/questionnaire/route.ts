@@ -61,36 +61,54 @@ export async function POST(request: NextRequest) {
 }
 
 async function submitToGoogleForms(answers: Record<string, string>, email?: string, name?: string) {
-  const formUrl = process.env.BCP_GOOGLE_FORM_ACTION_URL;
-  if (!formUrl) return;
+  const formUrl = process.env.BCP_GOOGLE_FORM_ACTION_URL
+    || 'https://docs.google.com/forms/d/e/1FAIpQLSeChQcPaZNfogKDloLPdYk242-li3PQLkwkBk6hFAnA1jmVow/formResponse';
 
   const formData = new URLSearchParams();
 
-  // Map questionnaire fields to Google Form entry IDs
+  // Google Form entry IDs (scraped from form HTML)
+  const ENTRY = {
+    first_name:        'entry.2097721795',
+    email:             'entry.1911423929',
+    channel_url:       'entry.2044768400',
+    questionnaire_sub: 'entry.1476304573',
+    monetized:         'entry.513173253',
+    ai_comfort:        'entry.231593935',
+    hours_per_week:    'entry.134149865',
+    best_video_theory: 'entry.1841833113',
+    challenge:         'entry.1322755048',
+    content_goals:     'entry.1587458703',
+    program_goals:     'entry.1252611344',
+    analytics_access:  'entry.610455116',
+    anything_else:     'entry.1026472512',
+  } as const;
+
+  // Pre-filled from Stripe payment data
+  if (name) {
+    const firstName = name.split(' ')[0];
+    formData.append(ENTRY.first_name, firstName);
+  }
+  if (email) formData.append(ENTRY.email, email);
+
+  // Mark as submitted
+  formData.append(ENTRY.questionnaire_sub, 'Yes');
+
   // Human-answered fields
-  const fieldMap: Record<string, string | undefined> = {
-    channel_url: process.env.BCP_FORM_FIELD_CHANNEL_URL,
-    monetized: process.env.BCP_FORM_FIELD_MONETIZED,
-    ai_comfort: process.env.BCP_FORM_FIELD_AI_COMFORT,
-    hours_per_week: process.env.BCP_FORM_FIELD_HOURS_PER_WEEK,
-    best_video_theory: process.env.BCP_FORM_FIELD_BEST_VIDEO_THEORY,
-    challenge: process.env.BCP_FORM_FIELD_CHALLENGE,
-    content_goals: process.env.BCP_FORM_FIELD_CONTENT_GOALS,
-    program_goals: process.env.BCP_FORM_FIELD_PROGRAM_GOALS,
-    analytics_access: process.env.BCP_FORM_FIELD_ANALYTICS_ACCESS,
-    anything_else: process.env.BCP_FORM_FIELD_ANYTHING_ELSE,
+  const fieldMap: Record<string, string> = {
+    channel_url:       ENTRY.channel_url,
+    monetized:         ENTRY.monetized,
+    ai_comfort:        ENTRY.ai_comfort,
+    hours_per_week:    ENTRY.hours_per_week,
+    best_video_theory: ENTRY.best_video_theory,
+    challenge:         ENTRY.challenge,
+    content_goals:     ENTRY.content_goals,
+    program_goals:     ENTRY.program_goals,
+    analytics_access:  ENTRY.analytics_access,
+    anything_else:     ENTRY.anything_else,
   };
 
-  // Add email and name if we have form fields for them
-  if (process.env.BCP_FORM_FIELD_EMAIL && email) {
-    formData.append(process.env.BCP_FORM_FIELD_EMAIL, email);
-  }
-  if (process.env.BCP_FORM_FIELD_NAME && name) {
-    formData.append(process.env.BCP_FORM_FIELD_NAME, name);
-  }
-
   Object.entries(fieldMap).forEach(([key, entryId]) => {
-    if (entryId && answers[key]) {
+    if (answers[key]) {
       formData.append(entryId, answers[key]);
     }
   });
