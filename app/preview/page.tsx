@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import CountdownTimer from '@/components/CountdownTimer';
 import WaitlistForm from '@/components/WaitlistForm';
-import { questionnaire, sections } from '@/lib/questionnaire';
+import { questions } from '@/lib/questionnaire';
 
 type Section = 'checkout' | 'post-payment' | 'questionnaire' | 'insight' | 'admin';
 type WindowState = 'before' | 'open' | 'after' | 'none';
@@ -211,7 +211,7 @@ export default function PreviewPage() {
     <div className="p-6 border-b border-slate-800">
       <h2 className="text-lg font-semibold text-white mb-4">What&apos;s Included</h2>
       <ul className="space-y-3">
-        {['Personal channel review in your first week','Weekly live session (Wednesdays 2 PM EST)','Full BCP resource library','Direct access to Dave in Discord','Founder\'s rate locked in for as long as you stay'].map((f, i) => (
+        {['Early access to the course as I build it','Weekly live session (Wednesdays 2 PM EST)','Direct access to Dave in Discord','Personal channel review (founders only)','Founder\'s rate locked in for as long as you stay'].map((f, i) => (
           <li key={i} className="flex items-start gap-3">
             <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
             <span className="text-slate-300">{f}</span>
@@ -225,7 +225,7 @@ export default function PreviewPage() {
     <div className="bg-gradient-to-r from-blue-600/20 to-blue-500/10 border-b border-slate-800 p-6">
       <div className="text-blue-400 text-sm font-medium mb-1">Founders Edition — 3 months</div>
       <h1 className="text-2xl font-bold text-white mb-2">Boundless Creator Program</h1>
-      <p className="text-slate-300">Personal channel reviews, weekly live sessions, and direct access to Dave.</p>
+      <p className="text-slate-300">Early access to the course, weekly live sessions, and a personal channel review for founders.</p>
     </div>
   );
 
@@ -545,7 +545,7 @@ export default function PreviewPage() {
     <div className="space-y-8">
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 flex items-center justify-between">
-          <span className="text-sm text-slate-400 font-mono">/questionnaire — Standalone (for email reminder links)</span>
+          <span className="text-sm text-slate-400 font-mono">/questionnaire — Multi-page flow (matches BCA application style)</span>
           <a href="/questionnaire" target="_blank" className="text-blue-400 hover:text-blue-300 text-xs underline">Open in new tab →</a>
         </div>
         <div className="bg-slate-950 p-6">
@@ -553,36 +553,31 @@ export default function PreviewPage() {
             Shareable link: <code className="text-blue-400">bcp.boundlesscreator.com/questionnaire?email=their@email.com</code>
           </p>
           <p className="text-slate-400 text-sm">
-            {questionnaire.length} questions across {sections.length} sections. Kit tag &quot;BCP Questionnaire Submitted&quot; applied on submit to stop reminder emails.
+            {questions.length} questions, one per page with progress bar. Kit tag &quot;BCP Questionnaire Submitted&quot; applied on submit to stop reminder emails.
           </p>
         </div>
       </div>
 
-      {sections.map((section) => {
-        const qs = questionnaire.filter(q => q.section === section.id);
-        return (
-          <div key={section.id} className="border border-slate-700 rounded-lg overflow-hidden">
-            <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-              Section {section.number}: {section.title} ({qs.length} {qs.length === 1 ? 'question' : 'questions'})
-            </div>
-            <div className="bg-slate-950 p-6 space-y-4">
-              {qs.map(q => (
-                <div key={q.id} className="border-l-2 border-slate-700 pl-4">
-                  <div className="text-white text-sm font-medium">
-                    {q.question || '(Analytics access section)'}
-                    {q.required && <span className="text-red-400 ml-1">*</span>}
-                  </div>
-                  {q.subtext && <div className="text-slate-500 text-xs mt-0.5">{q.subtext}</div>}
-                  <div className="text-slate-600 text-xs mt-1 font-mono">
-                    id: {q.id} | type: {q.type}
-                    {q.options && ` | options: ${q.options.map(o => o.value).join(', ')}`}
-                  </div>
-                </div>
-              ))}
+      {questions.map((q, i) => (
+        <div key={q.id} className="border border-slate-700 rounded-lg overflow-hidden">
+          <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
+            Page {i + 1} of {questions.length}
+          </div>
+          <div className="bg-slate-950 p-6">
+            <div className="border-l-2 border-slate-700 pl-4">
+              <div className="text-white text-sm font-medium">
+                {q.question}
+                {q.required && <span className="text-red-400 ml-1">*</span>}
+              </div>
+              {q.subtext && <div className="text-slate-500 text-xs mt-0.5 whitespace-pre-line">{q.subtext}</div>}
+              <div className="text-slate-600 text-xs mt-1 font-mono">
+                id: {q.id} | type: {q.type}
+                {q.choices && ` | choices: ${q.choices.map(c => c.value).join(', ')}`}
+              </div>
             </div>
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 
@@ -850,7 +845,7 @@ export default function PreviewPage() {
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-xl font-bold text-white">BCP Program — Preview & Admin</h1>
             <span className="text-sm text-slate-400">
-              {questionnaire.length} questions · {sections.length} sections · Full funnel
+              {questions.length} questions · Multi-page flow · Full funnel
             </span>
           </div>
 

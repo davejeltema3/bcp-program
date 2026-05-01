@@ -4,6 +4,23 @@ import { NextRequest, NextResponse } from 'next/server';
  * Questionnaire submission endpoint.
  * Saves to Google Forms and sends Discord notification.
  * Also tags Kit subscriber with "BCP Questionnaire Submitted" to stop reminder sequence.
+ *
+ * Google Sheet column order:
+ * Timestamp | First Name | Email | Channel URL | Questionnaire Submitted? |
+ * Active Creator | Duration | Subscribers | Total Videos | Channel Age |
+ * Upload Cadence | Content Niche | Target Audience | Top Videos | Bottom Videos |
+ * Average Views (30 Days) | Shorts Evaluation | Monetized? |
+ * Comfortable with AI? | Hours per Week | Best Video Theory |
+ * Content Goals | Program Goals | Challenge | Anything Else? | AI Evaluation
+ *
+ * Human-answered fields submitted here:
+ *   channel_url, monetized, ai_comfort, hours_per_week, best_video_theory,
+ *   challenge, content_goals, program_goals, analytics_access, anything_else
+ *
+ * AI-derived fields (filled post-submission):
+ *   active_creator, duration, subscribers, total_videos, channel_age,
+ *   upload_cadence, content_niche, target_audience, top_videos, bottom_videos,
+ *   average_views_30d, shorts_evaluation, ai_evaluation
  */
 export async function POST(request: NextRequest) {
   try {
@@ -50,26 +67,16 @@ async function submitToGoogleForms(answers: Record<string, string>, email?: stri
   const formData = new URLSearchParams();
 
   // Map questionnaire fields to Google Form entry IDs
-  // These env vars need to be set when the Google Form is created
+  // Human-answered fields
   const fieldMap: Record<string, string | undefined> = {
-    name_channel: process.env.BCP_FORM_FIELD_NAME_CHANNEL,
-    day_job: process.env.BCP_FORM_FIELD_DAY_JOB,
-    weekly_hours: process.env.BCP_FORM_FIELD_WEEKLY_HOURS,
-    life_style: process.env.BCP_FORM_FIELD_LIFE_STYLE,
-    best_videos: process.env.BCP_FORM_FIELD_BEST_VIDEOS,
-    worst_videos: process.env.BCP_FORM_FIELD_WORST_VIDEOS,
-    audience_gap: process.env.BCP_FORM_FIELD_AUDIENCE_GAP,
-    bottleneck: process.env.BCP_FORM_FIELD_BOTTLENECK,
-    creation_process: process.env.BCP_FORM_FIELD_CREATION_PROCESS,
-    email_list: process.env.BCP_FORM_FIELD_EMAIL_LIST,
-    revenue: process.env.BCP_FORM_FIELD_REVENUE,
-    existing_offers: process.env.BCP_FORM_FIELD_EXISTING_OFFERS,
-    what_didnt_work: process.env.BCP_FORM_FIELD_WHAT_DIDNT_WORK,
-    goals_6_12: process.env.BCP_FORM_FIELD_GOALS,
-    worth_it: process.env.BCP_FORM_FIELD_WORTH_IT,
-    off_limits: process.env.BCP_FORM_FIELD_OFF_LIMITS,
+    channel_url: process.env.BCP_FORM_FIELD_CHANNEL_URL,
+    monetized: process.env.BCP_FORM_FIELD_MONETIZED,
     ai_comfort: process.env.BCP_FORM_FIELD_AI_COMFORT,
-    tools_used: process.env.BCP_FORM_FIELD_TOOLS_USED,
+    hours_per_week: process.env.BCP_FORM_FIELD_HOURS_PER_WEEK,
+    best_video_theory: process.env.BCP_FORM_FIELD_BEST_VIDEO_THEORY,
+    challenge: process.env.BCP_FORM_FIELD_CHALLENGE,
+    content_goals: process.env.BCP_FORM_FIELD_CONTENT_GOALS,
+    program_goals: process.env.BCP_FORM_FIELD_PROGRAM_GOALS,
     analytics_access: process.env.BCP_FORM_FIELD_ANALYTICS_ACCESS,
     anything_else: process.env.BCP_FORM_FIELD_ANYTHING_ELSE,
   };
@@ -114,17 +121,30 @@ async function sendDiscordNotification(name?: string, email?: string, answers?: 
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) return;
 
-  const analyticsStatus = answers?.analytics_access === 'granted' ? '✅ Granted' : '⏭️ Skipped';
+  const analyticsStatus = answers?.analytics_access === 'granted'
+    ? '✅ Granted'
+    : answers?.analytics_access === 'later'
+    ? '⏳ Later'
+    : '⏭️ Skipped';
+
+  const monetizedStatus = answers?.monetized === 'yes'
+    ? '✅ Yes'
+    : answers?.monetized === 'no'
+    ? '❌ No'
+    : '❓ Unsure';
 
   const embed = {
     title: '📋 BCP Questionnaire Submitted',
     color: 0x3b82f6,
     fields: [
-      { name: 'Name', value: name || answers?.name_channel || 'Unknown', inline: true },
+      { name: 'Name', value: name || 'Unknown', inline: true },
       { name: 'Email', value: email || 'N/A', inline: true },
+      { name: 'Channel', value: answers?.channel_url || 'N/A', inline: false },
+      { name: 'Monetized', value: monetizedStatus, inline: true },
       { name: 'Analytics', value: analyticsStatus, inline: true },
-      { name: 'Bottleneck', value: truncate(answers?.bottleneck || 'N/A', 200), inline: false },
-      { name: 'Goals', value: truncate(answers?.goals_6_12 || 'N/A', 200), inline: false },
+      { name: 'AI Comfort', value: answers?.ai_comfort ? `${answers.ai_comfort}/5` : 'N/A', inline: true },
+      { name: 'Challenge', value: truncate(answers?.challenge || 'N/A', 200), inline: false },
+      { name: 'Program Goals', value: truncate(answers?.program_goals || 'N/A', 200), inline: false },
     ],
     timestamp: new Date().toISOString(),
   };
