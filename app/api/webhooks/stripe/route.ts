@@ -98,10 +98,16 @@ async function generateDiscordInvite(): Promise<string | null> {
     });
 
     const data = await response.json();
-    if (data.code) {
+
+    if (!response.ok) {
+      console.error('Discord API error:', data);
+      return null;
+    }
+
+    if (data.code && typeof data.code === 'string') {
       return `https://discord.gg/${data.code}`;
     }
-    console.error('Discord invite creation failed:', data);
+    console.error('Discord invite creation failed — no invite code returned:', data);
     return null;
   } catch (err) {
     console.error('Discord invite generation error:', err);
