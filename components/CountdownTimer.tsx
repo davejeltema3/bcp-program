@@ -32,17 +32,22 @@ export default function CountdownTimer({ target, label, onComplete }: CountdownT
 
   if (time.total <= 0) return null;
 
-  // Build compact time string: "2d 14h 32m 08s" or "14h 32m 08s" or "32m 08s"
+  // Build compact time string
   const parts: string[] = [];
   if (time.days > 0) parts.push(`${time.days}d`);
   if (time.hours > 0 || time.days > 0) parts.push(`${String(time.hours).padStart(2, '0')}h`);
   parts.push(`${String(time.minutes).padStart(2, '0')}m`);
   parts.push(`${String(time.seconds).padStart(2, '0')}s`);
 
+  // Total hours remaining — shift to red at 8 hours or less
+  const totalHours = time.total / (1000 * 60 * 60);
+  const isUrgent = totalHours <= 8;
+  const timerColor = isUrgent ? 'text-red-400' : 'text-green-400';
+
   return (
-    <div className="text-center">
-      <span className="text-sm text-slate-400">{label} </span>
-      <span className="text-green-400 font-mono font-bold text-lg tabular-nums">
+    <div className="flex flex-col items-center gap-1">
+      <span className="text-sm text-slate-400">{label}</span>
+      <span className={`${timerColor} font-mono font-bold text-lg tabular-nums`}>
         {parts.join(' ')}
       </span>
     </div>

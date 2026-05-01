@@ -60,8 +60,8 @@ export default function HomePage() {
   const faqs = [
     { q: "What if I'm brand new?", a: "Works for any sub count. The review is tailored to where you actually are." },
     { q: "What if I'm already at 50K?", a: "Same answer. The system covers both." },
-    { q: "Is this auto-renewing?", a: "No. It's a one-time payment for 3 months. That's it." },
-    { q: "What about the installment option?", a: "Two payments of $549.50, billed 30 days apart. Same program, same access, just split into two." },
+    { q: "Is this auto-renewing?", a: "No. It's a one-time payment for 12 weeks. That's it." },
+    { q: "What about the installment option?", a: "Two payments of $599, billed 30 days apart. Same program, same access, just split into two." },
     { q: "Can I cancel?", a: "30-day refund. No conditions, no questions." },
     { q: "What's the high-ticket program?", a: "The Boundless Creator Accelerator is 1-on-1, $6K+. Same systems, more hand-holding." },
   ];
@@ -83,20 +83,20 @@ export default function HomePage() {
 
         {/* Card */}
         <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-xl">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-green-600/20 to-green-500/10 border-b border-slate-800 px-6 py-5 md:px-8 md:py-6">
-            <div className="text-green-400 text-xs font-semibold uppercase tracking-wider mb-2">
+          {/* Header — blue branding to match logo */}
+          <div className="bg-gradient-to-r from-blue-600/20 to-blue-500/10 border-b border-slate-800 px-6 py-5 md:px-8 md:py-6">
+            <div className="text-blue-400 text-xs font-semibold uppercase tracking-wider mb-2">
               Founders Cohort — Limited Spots
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">
               Join the Founders Cohort
             </h1>
-            <p className="text-green-300/80 text-sm font-medium">
+            <p className="text-green-400 text-sm font-medium">
               Get founding member pricing — 50% off
             </p>
           </div>
 
-          {/* Timer (when window is relevant) */}
+          {/* Timer */}
           {windowState === 'before' && windowOpen && (
             <div className="px-6 py-3 border-b border-slate-800 bg-slate-900/50">
               <CountdownTimer target={windowOpen} label="Opens in" onComplete={handleWindowOpened} />
@@ -104,7 +104,7 @@ export default function HomePage() {
           )}
           {windowState === 'open' && windowClose && (
             <div className="px-6 py-3 border-b border-slate-800 bg-slate-900/50">
-              <CountdownTimer target={windowClose} label="Founders pricing ends in" onComplete={handleWindowClosed} />
+              <CountdownTimer target={windowClose} label="Enrollment closes in" onComplete={handleWindowClosed} />
             </div>
           )}
 
@@ -118,23 +118,23 @@ export default function HomePage() {
               Founders Edition — You save $999
             </div>
             <p className="text-slate-500 text-xs mt-1">
-              3 months of direct coaching. One-time payment.
+              12 weeks of direct coaching. One-time payment.
             </p>
           </div>
 
-          {/* What's Included */}
+          {/* What You Get */}
           <div className="px-6 py-5 md:px-8 border-b border-slate-800">
             <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
               What You Get
             </h2>
             <ul className="space-y-2.5">
               {[
-                'Personal channel review with Dave (founders only)',
-                'Weekly live strategy sessions (Wednesdays 2 PM EST)',
-                'Direct access to Dave in a private Discord community',
-                'Early access to the full course as it\'s built',
-                'Custom growth roadmap for your channel',
-                'Founder\'s rate locked in for life',
+                '12 weeks of intensive YouTube training',
+                '90-minute live strategy sessions every week',
+                'Daily access to Dave for real-time feedback',
+                'A personal deep-dive review of your channel',
+                'The exact systems and frameworks I use to grow channels',
+                'Founders pricing locked in for every future cohort',
               ].map((feature, i) => (
                 <li key={i} className="flex items-start gap-2.5">
                   <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -144,18 +144,6 @@ export default function HomePage() {
                 </li>
               ))}
             </ul>
-          </div>
-
-          {/* Key Dates */}
-          <div className="px-6 py-4 md:px-8 border-b border-slate-800 flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-green-500">●</span>
-              <span className="text-slate-400">Community access the moment you join</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-green-500">●</span>
-              <span className="text-slate-400">First live session: Wednesday, May 7</span>
-            </div>
           </div>
 
           {/* CTA Buttons */}
@@ -168,7 +156,7 @@ export default function HomePage() {
                   </div>
                 )}
 
-                {/* Primary: Pay in Full */}
+                {/* Primary: Pay in Full — blue to match branding */}
                 <div className="relative">
                   {/* 50% off badge */}
                   <div className="absolute -top-2.5 -right-2 z-10">
@@ -179,7 +167,7 @@ export default function HomePage() {
                   <button
                     onClick={() => handleCheckout('full')}
                     disabled={isLoading}
-                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold text-lg px-8 py-4 rounded-lg transition-all duration-200 hover:scale-[1.02] shadow-lg hover:shadow-green-500/30 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold text-lg px-8 py-4 rounded-lg transition-all duration-200 hover:scale-[1.02] shadow-lg hover:shadow-blue-500/30 disabled:hover:scale-100 disabled:cursor-not-allowed"
                   >
                     {isLoading ? (
                       <span className="flex items-center justify-center gap-2">
@@ -210,9 +198,21 @@ export default function HomePage() {
                       Redirecting...
                     </span>
                   ) : (
-                    'Or pay in 2 installments — $549.50 × 2'
+                    'Or pay in two monthly installments — $599'
                   )}
                 </button>
+
+                {/* Key details — below buttons */}
+                <div className="mt-4 space-y-1.5">
+                  <div className="flex items-center justify-center gap-2 text-sm">
+                    <span className="text-green-500 text-xs">●</span>
+                    <span className="text-slate-400 text-xs">Community access the moment you join</span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-sm">
+                    <span className="text-green-500 text-xs">●</span>
+                    <span className="text-slate-400 text-xs">First live session: Wednesday, May 7</span>
+                  </div>
+                </div>
 
                 <div className="mt-3 flex items-center justify-center gap-2 text-slate-500 text-xs">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

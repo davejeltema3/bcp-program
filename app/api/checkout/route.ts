@@ -95,9 +95,9 @@ export async function POST(request: NextRequest) {
               currency: 'usd',
               product_data: {
                 name: 'Boundless Creator Program — Founders Edition (Installment)',
-                description: '2 payments of $549.50, billed 30 days apart. Full 3-month program access.',
+                description: '2 payments of $599, billed 30 days apart. Full 12-week program access.',
               },
-              unit_amount: 54950, // $549.50
+              unit_amount: 59900, // $599.00
               recurring: {
                 interval: 'month',
                 interval_count: 1,
