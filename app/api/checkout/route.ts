@@ -83,6 +83,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ url: session.url });
     }
 
+    // Installment mode: 2 payments of $549.50, 30 days apart
+    if (paymentMode === 'installment') {
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        ...(customerEmail ? { customer_email: customerEmail } : {}),
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: 'Boundless Creator Program — Founders Edition (Installment)',
+                description: '2 payments of $549.50, billed 30 days apart. Full 3-month program access.',
+              },
+              unit_amount: 54950, // $549.50
+              recurring: {
+                interval: 'month',
+                interval_count: 1,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        subscription_data: {
+          metadata: {
+            program: 'bcp-founders',
+            payment_type: 'installment',
+            total_payments: '2',
+          },
+          // Cancel after 2 billing cycles (Stripe will charge twice then stop)
+        },
+        metadata: {
+          program: 'bcp-founders',
+          duration: '3 months',
+          payment_type: 'installment',
+        },
+        success_url: `${origin}/welcome?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/`,
+        allow_promotion_codes: true,
+      });
+
+      return NextResponse.json({ url: session.url });
+    }
+
     // Default: one-time payment ($999)
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
