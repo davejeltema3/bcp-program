@@ -1,9 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Dynamic Discord invite endpoint.
- * Same as the Accelerator site — creates a one-time invite link.
+ * Fallback Discord invite endpoint.
+ * 
+ * Primary flow: Stripe webhook generates a unique single-use invite per subscriber
+ * and stores it in Kit's discord_invite custom field. Kit emails use that.
+ * 
+ * This endpoint is the fallback ({{ subscriber.discord_invite | default: this_url }}).
+ * It reuses an existing invite if one is still valid, rather than creating
+ * a new one on every request (which caused 168+ orphaned invites from
+ * email client link prefetching, crawlers, etc.).
  */
+
+// In-memory cache for the fallback invite (survives across requests in the same serverless instance)
+let cachedInvite: { code: string; expiresAt: number } | null = null;
+
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token');
 
@@ -18,7 +29,38 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Discord not configured' }, { status: 500 });
   }
 
+  // Return cached invite if still valid (with 1-hour buffer before expiry)
+  const now = Date.now();
+  if (cachedInvite && cachedInvite.expiresAt > now + 3600_000) {
+    return NextResponse.redirect(`https://discord.gg/${cachedInvite.code}`);
+  }
+
   try {
+    // Check for an existing reusable invite on this channel first
+    const existingRes = await fetch(`https://discord.com/api/v10/channels/${channelId}/invites`, {
+      headers: { Authorization: `Bot ${botToken}` },
+    });
+
+    if (existingRes.ok) {
+      const invites = await existingRes.json();
+      // Look for a Hazel-created multi-use invite that's still valid
+      const reusable = invites.find((inv: any) =>
+        inv.inviter?.bot === true &&
+        inv.max_uses === 0 && // unlimited uses
+        inv.max_age > 0 &&
+        new Date(inv.expires_at).getTime() > now + 3600_000
+      );
+
+      if (reusable) {
+        cachedInvite = {
+          code: reusable.code,
+          expiresAt: new Date(reusable.expires_at).getTime(),
+        };
+        return NextResponse.redirect(`https://discord.gg/${reusable.code}`);
+      }
+    }
+
+    // No reusable invite found — create one (unlimited uses, 7 days)
     const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/invites`, {
       method: 'POST',
       headers: {
@@ -27,7 +69,7 @@ export async function GET(request: NextRequest) {
       },
       body: JSON.stringify({
         max_age: 604800, // 7 days
-        max_uses: 1,
+        max_uses: 0,     // unlimited uses (this is the fallback, not per-subscriber)
         unique: true,
       }),
     });
@@ -40,6 +82,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (data.code && typeof data.code === 'string') {
+      cachedInvite = {
+        code: data.code,
+        expiresAt: now + 604800_000,
+      };
       return NextResponse.redirect(`https://discord.gg/${data.code}`);
     }
 
