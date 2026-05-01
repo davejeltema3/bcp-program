@@ -79,6 +79,7 @@ async function submitToGoogleForms(answers: Record<string, string>, email?: stri
     program_goals:     'entry.1252611344',
     analytics_access:  'entry.610455116',
     anything_else:     'entry.1026472512',
+    // what_didnt_work: needs a new field added to Google Form — will map once entry ID is known
   } as const;
 
   // Pre-filled from Stripe payment data
@@ -147,7 +148,9 @@ async function sendDiscordNotification(name?: string, email?: string, answers?: 
     ? '✅ Yes'
     : answers?.monetized === 'no'
     ? '❌ No'
-    : '❓ Unsure';
+    : answers?.monetized === 'no-plan'
+    ? '🚫 Don\'t plan to'
+    : '❓ Unknown';
 
   const embed = {
     title: '📋 BCP Questionnaire Submitted',

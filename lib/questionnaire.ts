@@ -43,13 +43,12 @@ export const questions: QuestionItem[] = [
   {
     id: 'monetized',
     question: 'Is your channel monetized?',
-    subtext: 'Are you currently in the YouTube Partner Program?',
     type: 'multiple-choice',
     required: true,
     choices: [
-      { text: 'Yes, I\'m monetized', value: 'yes' },
-      { text: 'No, not yet', value: 'no' },
-      { text: 'I\'m not sure', value: 'unsure' },
+      { text: 'Yes', value: 'yes' },
+      { text: 'No', value: 'no' },
+      { text: 'Don\'t plan to', value: 'no-plan' },
     ],
   },
   // Q3 — AI Comfort
@@ -59,11 +58,11 @@ export const questions: QuestionItem[] = [
     type: 'multiple-choice',
     required: true,
     choices: [
-      { text: '1 — What is AI?', value: '1' },
-      { text: '2 — I\'ve tried ChatGPT a few times', value: '2' },
-      { text: '3 — I use AI occasionally for specific tasks', value: '3' },
-      { text: '4 — AI is part of my regular workflow', value: '4' },
-      { text: '5 — I\'m deep in the AI rabbit hole', value: '5' },
+      { text: 'What is AI?', value: '1' },
+      { text: 'I\'ve tried ChatGPT a few times', value: '2' },
+      { text: 'I use AI occasionally for specific tasks', value: '3' },
+      { text: 'AI is part of my regular workflow', value: '4' },
+      { text: 'I\'m deep in the AI rabbit hole', value: '5' },
     ],
   },
   // Q4 — Hours per week
@@ -84,7 +83,16 @@ export const questions: QuestionItem[] = [
     placeholder: 'e.g. "I can\'t figure out what content to make next" or "My views have plateaued and I don\'t know why"...',
     required: true,
   },
-  // Q6 — Content goals
+  // Q6 — What hasn't worked
+  {
+    id: 'what_didnt_work',
+    question: 'What have you tried that hasn\'t worked?',
+    subtext: 'Past strategies, programs, investments. Helps me avoid retreading the same ground.',
+    type: 'textarea',
+    placeholder: 'e.g. "Tried posting shorts daily for 3 months, got nowhere" or "Paid for a YouTube course that didn\'t help"...',
+    required: false,
+  },
+  // Q7 — Content goals
   {
     id: 'content_goals',
     question: 'What are your goals for your YouTube channel in the next 6-12 months?',

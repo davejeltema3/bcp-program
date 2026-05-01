@@ -47,7 +47,6 @@ export default function AnalyticsAccessGuide() {
           <div className="text-slate-400 text-xs space-y-1">
             <p>Viewer-only access. I can&apos;t edit, post, or change anything.</p>
             <p>You can revoke anytime in YouTube Studio. Two clicks.</p>
-            <p>I&apos;ll remove myself after completing your review.</p>
           </div>
         </div>
       </div>
