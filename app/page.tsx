@@ -16,6 +16,22 @@ export default function HomePage() {
   const [windowClose, setWindowClose] = useState<Date | null>(null);
 
   useEffect(() => {
+    // Allow ?preview_state=before|open|after to force window state (for /preview iframes)
+    const params = new URLSearchParams(window.location.search);
+    const previewState = params.get('preview_state');
+    if (previewState === 'before' || previewState === 'open' || previewState === 'after') {
+      setWindowState(previewState);
+      // Set fake dates so timers render
+      if (previewState === 'before') {
+        setWindowOpen(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000));
+        setWindowClose(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000));
+      } else if (previewState === 'open') {
+        setWindowOpen(new Date(Date.now() - 24 * 60 * 60 * 1000));
+        setWindowClose(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000));
+      }
+      return;
+    }
+
     const openStr = process.env.NEXT_PUBLIC_WINDOW_OPEN;
     const closeStr = process.env.NEXT_PUBLIC_WINDOW_CLOSE;
     if (!openStr || !closeStr) { setWindowState('open'); return; }
