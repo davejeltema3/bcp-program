@@ -1,36 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { upsertQuestionnaireAnswers } from '@/lib/sheets';
 
 /**
  * Questionnaire submission endpoint.
- * Saves to Google Forms and sends Discord notification.
+ * Saves to Google Sheet (upserts — updates existing payment row or creates new).
  * Also tags Kit subscriber with "BCP Questionnaire Submitted" to stop reminder sequence.
  *
  * Google Sheet column order:
  * Timestamp | First Name | Email | Channel URL | Questionnaire Submitted? |
  * Active Creator | Duration | Subscribers | Total Videos | Channel Age |
- * Upload Cadence | Content Niche | Target Audience | Top Videos | Bottom Videos |
+ * Upload Cadence | Content Type | Target Audience | Top Videos | Bottom Videos |
  * Average Views (30 Days) | Shorts Evaluation | Monetized? |
  * Comfortable with AI? | Hours per Week | Best Video Theory |
- * Content Goals | Program Goals | Challenge | Anything Else? | AI Evaluation
+ * Hasn't worked? | Content Goals | Program Goals | Challenge | Analytics Access
  *
  * Human-answered fields submitted here:
  *   channel_url, monetized, ai_comfort, hours_per_week, best_video_theory,
- *   challenge, content_goals, program_goals, analytics_access, anything_else
+ *   what_didnt_work, challenge, content_goals, program_goals, analytics_access
  *
  * AI-derived fields (filled post-submission):
  *   active_creator, duration, subscribers, total_videos, channel_age,
- *   upload_cadence, content_niche, target_audience, top_videos, bottom_videos,
- *   average_views_30d, shorts_evaluation, ai_evaluation
+ *   upload_cadence, content_type, target_audience, top_videos, bottom_videos,
+ *   average_views_30d, shorts_evaluation
  */
 export async function POST(request: NextRequest) {
   try {
     const { answers, email, name } = await request.json();
 
-    // Submit to Google Forms (URL hardcoded — always runs)
+    // Upsert to Google Sheet (finds existing payment row by email, or creates new)
     try {
-      await submitToGoogleForms(answers, email, name);
+      await upsertQuestionnaireAnswers(email, name, answers);
     } catch (error) {
-      console.error('Google Forms submission error:', error);
+      console.error('Google Sheets upsert error:', error);
     }
 
     // Tag in Kit to stop reminder emails
@@ -56,67 +57,6 @@ export async function POST(request: NextRequest) {
     console.error('Questionnaire submission error:', error);
     return NextResponse.json({ success: true }); // Graceful — don't block the user
   }
-}
-
-async function submitToGoogleForms(answers: Record<string, string>, email?: string, name?: string) {
-  const formUrl = process.env.BCP_GOOGLE_FORM_ACTION_URL
-    || 'https://docs.google.com/forms/d/e/1FAIpQLSeChQcPaZNfogKDloLPdYk242-li3PQLkwkBk6hFAnA1jmVow/formResponse';
-
-  const formData = new URLSearchParams();
-
-  // Google Form entry IDs (scraped from form HTML)
-  const ENTRY = {
-    first_name:        'entry.2097721795',
-    email:             'entry.1911423929',
-    channel_url:       'entry.2044768400',
-    questionnaire_sub: 'entry.1476304573',
-    monetized:         'entry.513173253',
-    ai_comfort:        'entry.231593935',
-    hours_per_week:    'entry.134149865',
-    best_video_theory: 'entry.1841833113',
-    challenge:         'entry.1322755048',
-    content_goals:     'entry.1587458703',
-    program_goals:     'entry.1252611344',
-    analytics_access:  'entry.610455116',
-    anything_else:     'entry.1026472512',
-    what_didnt_work:   'entry.1101230076',
-  } as const;
-
-  // Pre-filled from Stripe payment data
-  if (name) {
-    const firstName = name.split(' ')[0];
-    formData.append(ENTRY.first_name, firstName);
-  }
-  if (email) formData.append(ENTRY.email, email);
-
-  // Mark as submitted
-  formData.append(ENTRY.questionnaire_sub, 'Yes');
-
-  // Human-answered fields
-  const fieldMap: Record<string, string> = {
-    channel_url:       ENTRY.channel_url,
-    monetized:         ENTRY.monetized,
-    ai_comfort:        ENTRY.ai_comfort,
-    hours_per_week:    ENTRY.hours_per_week,
-    best_video_theory: ENTRY.best_video_theory,
-    challenge:         ENTRY.challenge,
-    content_goals:     ENTRY.content_goals,
-    program_goals:     ENTRY.program_goals,
-    analytics_access:  ENTRY.analytics_access,
-    anything_else:     ENTRY.anything_else,
-  };
-
-  Object.entries(fieldMap).forEach(([key, entryId]) => {
-    if (answers[key]) {
-      formData.append(entryId, answers[key]);
-    }
-  });
-
-  await fetch(formUrl, {
-    method: 'POST',
-    body: formData,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
 }
 
 async function tagQuestionnaireSubmitted(email: string) {

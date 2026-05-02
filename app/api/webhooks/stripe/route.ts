@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { createPaymentRow } from '@/lib/sheets';
 
 /**
  * Stripe webhook handler for BCP (bcp.boundlesscreator.com).
@@ -115,29 +116,6 @@ async function generateDiscordInvite(): Promise<string | null> {
   }
 }
 
-/**
- * Create a placeholder row in the Google Sheet when someone pays,
- * before they fill out the questionnaire. This lets Dave see new members
- * immediately and start writing notes.
- */
-async function createSheetPlaceholder(name: string, email: string) {
-  const formUrl = process.env.BCP_GOOGLE_FORM_ACTION_URL
-    || 'https://docs.google.com/forms/d/e/1FAIpQLSeChQcPaZNfogKDloLPdYk242-li3PQLkwkBk6hFAnA1jmVow/formResponse';
-
-  const formData = new URLSearchParams();
-
-  // Same entry IDs as the questionnaire route
-  formData.append('entry.2097721795', name.split(' ')[0]); // first_name
-  formData.append('entry.1911423929', email);                // email
-  formData.append('entry.1476304573', 'No');                 // questionnaire_sub = No (not yet filled out)
-
-  await fetch(formUrl, {
-    method: 'POST',
-    body: formData,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  });
-}
-
 async function discordNotify(embed: Record<string, any>) {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) return;
@@ -237,10 +215,10 @@ export async function POST(request: NextRequest) {
           // and start notes before they fill out the questionnaire
           if (email !== 'N/A') {
             try {
-              await createSheetPlaceholder(name, email);
-              console.log(`Sheet placeholder created for ${email}`);
+              await createPaymentRow(name, email);
+              console.log(`Sheet row created for ${email}`);
             } catch (err) {
-              console.error('Sheet placeholder creation failed:', err);
+              console.error('Sheet row creation failed:', err);
             }
           }
         }
