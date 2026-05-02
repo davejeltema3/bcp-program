@@ -211,12 +211,22 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Create placeholder row in Google Sheet so Dave can see the new member
-          // and start notes before they fill out the questionnaire
+          // Create/update member row in Google Sheet with full payment details
           if (email !== 'N/A') {
             try {
-              await createPaymentRow(name, email);
-              console.log(`Sheet row created for ${email}`);
+              const amountPaid = session.amount_total ? session.amount_total / 100 : 999;
+              const paymentType = session.metadata?.payment_type === 'installment' ? 'installment' : 'one-time';
+              const stripeCustomerId = typeof session.customer === 'string' ? session.customer : (session.customer as any)?.id || '';
+              const stripeSessionId = session.id;
+
+              await createPaymentRow(name, email, {
+                paymentType,
+                amountPaid,
+                stripeCustomerId,
+                stripeSessionId,
+                discordInviteUrl: discordInviteUrl || undefined,
+              });
+              console.log(`Sheet row created/updated for ${email}`);
             } catch (err) {
               console.error('Sheet row creation failed:', err);
             }

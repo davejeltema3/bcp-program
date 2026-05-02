@@ -306,6 +306,72 @@ export default function PreviewPage() {
         </div>
       </div>
 
+      {/* Add Member */}
+      <div className="border border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Add Member (No Payment Required)</div>
+        <div className="bg-slate-950 p-6 space-y-4">
+          <p className="text-slate-400 text-sm">Add someone to the program without going through checkout. Creates their sheet row, tags them in Kit (triggers welcome email + Discord invite), and generates a questionnaire link.</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-white text-sm font-medium mb-1">First Name</label>
+              <input type="text" id="add-member-name" placeholder="Their name" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-white text-sm font-medium mb-1">Email</label>
+              <input type="email" id="add-member-email" placeholder="their@email.com" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-white text-sm font-medium mb-1">Duration (days)</label>
+            <input type="number" id="add-member-duration" defaultValue={90} min={1} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 max-w-[200px]" />
+          </div>
+          <div id="add-member-result" className="hidden text-sm whitespace-pre-line" />
+          <button
+            id="add-member-btn"
+            onClick={async () => {
+              const nameEl = document.getElementById('add-member-name') as HTMLInputElement;
+              const emailEl = document.getElementById('add-member-email') as HTMLInputElement;
+              const durationEl = document.getElementById('add-member-duration') as HTMLInputElement;
+              const resultEl = document.getElementById('add-member-result');
+              const btnEl = document.getElementById('add-member-btn');
+              if (!nameEl?.value || !emailEl?.value || !adminSecret) return;
+              if (btnEl) { btnEl.textContent = 'Adding...'; (btnEl as HTMLButtonElement).disabled = true; }
+              if (resultEl) resultEl.className = 'hidden';
+              try {
+                const res = await fetch('/api/admin/add-member', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    secret: adminSecret,
+                    name: nameEl.value,
+                    email: emailEl.value,
+                    durationDays: parseInt(durationEl.value) || 90,
+                  }),
+                });
+                const data = await res.json();
+                if (resultEl) {
+                  resultEl.className = 'text-sm whitespace-pre-line';
+                  if (data.success) {
+                    let msg = `✅ ${data.message}`;
+                    if (data.questionnaireLink) msg += `\n📋 Questionnaire: ${data.questionnaireLink}`;
+                    if (data.discordInviteUrl) msg += `\n💬 Discord invite: ${data.discordInviteUrl}`;
+                    resultEl.textContent = msg;
+                  } else {
+                    resultEl.textContent = `❌ ${data.error}`;
+                  }
+                }
+              } catch { if (resultEl) { resultEl.className = 'text-sm'; resultEl.textContent = '❌ Failed to connect.'; } }
+              finally { if (btnEl) { btnEl.textContent = 'Add Member'; (btnEl as HTMLButtonElement).disabled = false; } }
+            }}
+            disabled={!adminSecret}
+            className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 disabled:cursor-not-allowed"
+          >
+            Add Member
+          </button>
+          {!adminSecret && <p className="text-yellow-400/80 text-xs">⚠️ Enter admin secret in the &quot;Update Window&quot; section above first.</p>}
+        </div>
+      </div>
+
       {/* Generate Questionnaire Link */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Generate Questionnaire Link</div>
