@@ -13,14 +13,16 @@ export async function POST(request: NextRequest) {
     const { customerEmail, bypassWindow, paymentMode: requestedMode } = await request.json();
 
     // Determine effective payment mode based on checkout mode config
+    // Installment is always allowed regardless of checkout mode (it's a payment split, not a mode)
     const checkoutMode = process.env.NEXT_PUBLIC_CHECKOUT_MODE || (process.env.NEXT_PUBLIC_ENABLE_SUBSCRIPTION === 'true' ? 'both' : 'one-time');
     let paymentMode = requestedMode;
-    if (checkoutMode === 'subscription') {
-      paymentMode = 'subscription'; // Always subscription when mode is subscription-only
-    } else if (checkoutMode === 'one-time') {
-      paymentMode = undefined; // Always one-time when mode is one-time-only
+    if (requestedMode !== 'installment') {
+      if (checkoutMode === 'subscription') {
+        paymentMode = 'subscription';
+      } else if (checkoutMode === 'one-time') {
+        paymentMode = undefined;
+      }
     }
-    // 'both' mode: use whatever the client requested
 
     // Enforce purchase window server-side
     // The /join page sends bypassWindow=true to skip this check
