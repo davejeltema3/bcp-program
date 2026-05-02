@@ -184,6 +184,19 @@ export async function POST(request: NextRequest) {
             console.error('Discord invite generation failed:', err);
           }
 
+          // Auto-cancel installment subscriptions after 2 payments
+          // (cancel_at not available in checkout session subscription_data for this SDK version)
+          if (session.mode === 'subscription' && session.metadata?.payment_type === 'installment' && session.subscription) {
+            try {
+              const subId = typeof session.subscription === 'string' ? session.subscription : (session.subscription as any).id;
+              const cancelAt = Math.floor(Date.now() / 1000) + (62 * 24 * 60 * 60); // ~62 days
+              await stripe.subscriptions.update(subId, { cancel_at: cancelAt });
+              console.log(`Installment subscription ${subId} set to auto-cancel at ${new Date(cancelAt * 1000).toISOString()}`);
+            } catch (err) {
+              console.error('Failed to set installment auto-cancel:', err);
+            }
+          }
+
           // Tag as BCP Member in Kit + store Discord invite as custom field
           if (email !== 'N/A') {
             try {

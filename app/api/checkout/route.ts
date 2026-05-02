@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ url: session.url });
     }
 
-    // Installment mode: 2 payments of $549.50, 30 days apart
+    // Installment mode: 2 payments of $599, billed 30 days apart
     if (paymentMode === 'installment') {
       const session = await stripe.checkout.sessions.create({
         mode: 'subscription',
@@ -112,7 +112,6 @@ export async function POST(request: NextRequest) {
             payment_type: 'installment',
             total_payments: '2',
           },
-          // Cancel after 2 billing cycles (Stripe will charge twice then stop)
         },
         metadata: {
           program: 'bcp-founders',

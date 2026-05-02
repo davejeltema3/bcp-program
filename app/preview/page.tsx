@@ -4,61 +4,17 @@ import { useState, useEffect, useCallback } from 'react';
 import CountdownTimer from '@/components/CountdownTimer';
 import WaitlistForm from '@/components/WaitlistForm';
 import { questions } from '@/lib/questionnaire';
-import ProgressBar from '@/components/ProgressBar';
 import QuestionCard from '@/components/QuestionCard';
 import TextInput from '@/components/TextInput';
 import MultipleChoice from '@/components/MultipleChoice';
 import AnalyticsAccessGuide from '@/components/AnalyticsAccessGuide';
 
-type Section = 'checkout' | 'post-payment' | 'questionnaire' | 'insight' | 'admin';
+type Section = 'landing' | 'post-payment' | 'questionnaire' | 'insight' | 'admin';
 type WindowState = 'before' | 'open' | 'after' | 'none';
-type CheckoutMode = 'one-time' | 'subscription' | 'both';
-
-// Sub-tab identifiers for checkout variations
-type CheckoutSubTab = 'all'
-  | 'before/one-time' | 'open/one-time' | 'closed/one-time' | 'invite/one-time'
-  | 'before/sub' | 'open/sub' | 'closed/sub' | 'invite/sub'
-  | 'before/both' | 'open/both' | 'closed/both' | 'invite/both';
-
-const CHECKOUT_SUB_TABS: { id: CheckoutSubTab; label: string; dividerBefore?: boolean }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'before/one-time', label: 'before/one-time' },
-  { id: 'open/one-time', label: 'open/one-time' },
-  { id: 'closed/one-time', label: 'closed/one-time' },
-  { id: 'invite/one-time', label: 'invite/one-time' },
-  { id: 'before/sub', label: 'before/sub', dividerBefore: true },
-  { id: 'open/sub', label: 'open/sub' },
-  { id: 'closed/sub', label: 'closed/sub' },
-  { id: 'invite/sub', label: 'invite/sub' },
-  { id: 'before/both', label: 'before/both', dividerBefore: true },
-  { id: 'open/both', label: 'open/both' },
-  { id: 'closed/both', label: 'closed/both' },
-  { id: 'invite/both', label: 'invite/both' },
-];
-
-// Map sub-tab mode shorthand to CheckoutMode
-function subTabToMode(sub: string): CheckoutMode {
-  if (sub.endsWith('/sub') || sub.endsWith('/sub')) {
-    const mode = sub.split('/')[1];
-    if (mode === 'sub') return 'subscription';
-  }
-  if (sub.includes('/one-time')) return 'one-time';
-  if (sub.includes('/both')) return 'both';
-  if (sub.includes('/sub')) return 'subscription';
-  return 'one-time';
-}
-
-function subTabToState(sub: string): 'before' | 'open' | 'closed' | 'invite' {
-  if (sub.startsWith('before/')) return 'before';
-  if (sub.startsWith('open/')) return 'open';
-  if (sub.startsWith('closed/')) return 'closed';
-  if (sub.startsWith('invite/')) return 'invite';
-  return 'before';
-}
 
 export default function PreviewPage() {
-  const [activeSection, setActiveSection] = useState<Section>('checkout');
-  const [checkoutSubTab, setCheckoutSubTab] = useState<CheckoutSubTab>('all');
+  const [activeSection, setActiveSection] = useState<Section>('landing');
+  const [landingSubTab, setLandingSubTab] = useState<'open' | 'before' | 'after' | 'invite'>('open');
   const [windowState, setWindowState] = useState<WindowState>('none');
   const [windowOpen, setWindowOpen] = useState<Date | null>(null);
   const [windowClose, setWindowClose] = useState<Date | null>(null);
@@ -72,40 +28,26 @@ export default function PreviewPage() {
   const [adminLoading, setAdminLoading] = useState(false);
   const [autoNotify, setAutoNotify] = useState(false);
 
-  // Deploy checkout mode state
-  const [deployMode, setDeployMode] = useState<CheckoutMode>('one-time');
-  const [deployResult, setDeployResult] = useState<string>();
-  const [deployLoading, setDeployLoading] = useState(false);
-
   // URL hash sync
   useEffect(() => {
-    const hash = window.location.hash.slice(1); // remove #
+    const hash = window.location.hash.slice(1);
     if (!hash) return;
-
-    if (hash === 'post-payment') {
-      setActiveSection('post-payment');
-    } else if (hash === 'questionnaire') {
-      setActiveSection('questionnaire');
-    } else if (hash === 'insight') {
-      setActiveSection('insight');
-    } else if (hash === 'admin') {
-      setActiveSection('admin');
-    } else if (hash.startsWith('checkout/')) {
-      setActiveSection('checkout');
-      const sub = hash.replace('checkout/', '') as CheckoutSubTab;
-      // Validate it's a real sub-tab
-      if (CHECKOUT_SUB_TABS.some(t => t.id === sub)) {
-        setCheckoutSubTab(sub);
-      }
-    } else if (hash === 'checkout') {
-      setActiveSection('checkout');
-      setCheckoutSubTab('all');
+    if (hash === 'post-payment') setActiveSection('post-payment');
+    else if (hash === 'questionnaire') setActiveSection('questionnaire');
+    else if (hash === 'insight') setActiveSection('insight');
+    else if (hash === 'admin') setActiveSection('admin');
+    else if (hash.startsWith('landing/')) {
+      setActiveSection('landing');
+      const sub = hash.replace('landing/', '') as any;
+      if (['open', 'before', 'after', 'invite'].includes(sub)) setLandingSubTab(sub);
+    } else if (hash === 'landing') {
+      setActiveSection('landing');
     }
   }, []);
 
   const updateHash = (section: Section, subTab?: string) => {
-    if (section === 'checkout') {
-      window.location.hash = subTab && subTab !== 'all' ? `checkout/${subTab}` : 'checkout';
+    if (section === 'landing') {
+      window.location.hash = subTab ? `landing/${subTab}` : 'landing';
     } else {
       window.location.hash = section;
     }
@@ -147,11 +89,8 @@ export default function PreviewPage() {
       const data = await response.json();
       if (data.success) {
         let msg = `✅ Window updated! Open: ${data.openUTC} → Close: ${data.closeUTC}. Redeploying (~30s).`;
-        if (data.waitlistNotified) {
-          msg += `\n✅ Waitlist notified (${data.waitlistCount} subscribers tagged).`;
-        } else {
-          msg += `\n⏭️ Waitlist notification: disabled.`;
-        }
+        if (data.waitlistNotified) msg += `\n✅ Waitlist notified (${data.waitlistCount} subscribers tagged).`;
+        else msg += `\n⏭️ Waitlist notification: disabled.`;
         if (data.warning) msg += `\n⚠️ ${data.warning}`;
         setAdminResult(msg);
       } else {
@@ -161,318 +100,146 @@ export default function PreviewPage() {
     finally { setAdminLoading(false); }
   };
 
-  const handleDeployMode = async () => {
-    if (!adminSecret) { setDeployResult('❌ Enter admin secret above.'); return; }
-    setDeployLoading(true);
-    setDeployResult(undefined);
-    try {
-      const response = await fetch('/api/admin/checkout-mode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret: adminSecret, mode: deployMode }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        let msg = `✅ Checkout mode set to "${data.mode}". Redeploying (~30s).`;
-        if (data.warning) msg += `\n⚠️ ${data.warning}`;
-        setDeployResult(msg);
-      } else {
-        setDeployResult(`❌ ${data.error || 'Failed'}`);
-      }
-    } catch { setDeployResult('❌ Failed to connect.'); }
-    finally { setDeployLoading(false); }
-  };
-
   const formatDate = (d: Date) => d.toLocaleString('en-US', {
     timeZone: 'America/New_York', weekday: 'long', month: 'long', day: 'numeric',
     hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
   });
 
   const sectionTabs: { id: Section; label: string }[] = [
-    { id: 'checkout', label: 'Checkout / Landing' },
+    { id: 'landing', label: 'Landing Page' },
     { id: 'post-payment', label: 'Post-Payment' },
     { id: 'questionnaire', label: 'Questionnaire' },
     { id: 'insight', label: 'Boundless Insight' },
     { id: 'admin', label: 'Admin' },
   ];
 
-  const checkoutModeLabel = (mode: CheckoutMode): string => {
-    switch (mode) {
-      case 'one-time': return 'One-Time Only';
-      case 'subscription': return 'Subscription Only';
-      case 'both': return 'Both Options';
-    }
-  };
+  const landingSubTabs: { id: 'open' | 'before' | 'after' | 'invite'; label: string }[] = [
+    { id: 'open', label: 'Window Open' },
+    { id: 'before', label: 'Before Window' },
+    { id: 'after', label: 'After Window' },
+    { id: 'invite', label: 'Invite Page' },
+  ];
 
-  /* ─── Shared Components ─── */
+  /* ─── Landing Page Preview ─── */
+  const renderLanding = () => {
+    const isInvite = landingSubTab === 'invite';
+    const state = landingSubTab === 'open' ? 'open' : landingSubTab === 'before' ? 'before' : landingSubTab === 'after' ? 'after' : 'open';
+    const stateLabel = landingSubTab === 'open' ? '🟢 Window Open — Full sales page with checkout' :
+      landingSubTab === 'before' ? '⏳ Before Window — Countdown + waitlist at checkout' :
+      landingSubTab === 'after' ? '🔴 After Window — Waitlist form at checkout' :
+      '🔗 Invite Page — Bypasses window, always open';
 
-  const renderLogo = () => (
-    <div className="mb-8 flex justify-center">
-      <div className="text-3xl font-bold text-blue-400 italic">Boundless Creator</div>
-    </div>
-  );
-
-  const renderFeatures = () => (
-    <div className="p-6 border-b border-slate-800">
-      <h2 className="text-lg font-semibold text-white mb-4">What&apos;s Included</h2>
-      <ul className="space-y-3">
-        {['Early access to the course as I build it','Weekly live session (Wednesdays 2 PM EST)','Direct access to Dave in Discord','Personal channel review (founders only)','Founder\'s rate locked in for as long as you stay'].map((f, i) => (
-          <li key={i} className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-            <span className="text-slate-300">{f}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-
-  const renderCardHeader = () => (
-    <div className="bg-gradient-to-r from-blue-600/20 to-blue-500/10 border-b border-slate-800 p-6">
-      <div className="text-blue-400 text-sm font-medium mb-1">Founders Edition — 3 months</div>
-      <h1 className="text-2xl font-bold text-white mb-2">Boundless Creator Program</h1>
-      <p className="text-slate-300">Early access to the course, weekly live sessions, and a personal channel review for founders.</p>
-    </div>
-  );
-
-  const renderGuarantee = () => (
-    <div className="mt-6 bg-slate-900/50 border border-slate-800 rounded-lg p-6 text-center">
-      <p className="text-slate-400 text-sm"><span className="text-white font-medium">30-Day Guarantee:</span> If you join and it&apos;s not for you, I refund you within 30 days. No questions, no conditions.</p>
-    </div>
-  );
-
-  const renderPaymentSection = (mode: CheckoutMode) => {
-    if (mode === 'one-time') {
-      return (
-        <div className="p-6 border-b border-slate-800">
-          <h2 className="text-lg font-semibold text-white mb-4">Payment</h2>
-          <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-500/10">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-semibold text-white">Pay in Full</div>
-                <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
-              </div>
-              <div className="text-2xl font-bold text-white">$999</div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    if (mode === 'subscription') {
-      return (
-        <div className="p-6 border-b border-slate-800">
-          <h2 className="text-lg font-semibold text-white mb-4">Payment</h2>
-          <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-500/10">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-semibold text-white">Quarterly Auto-Renew</div>
-                <div className="text-sm text-slate-400 mt-0.5">$999 every 3 months — cancel anytime</div>
-              </div>
-              <div className="text-2xl font-bold text-white">$999/qtr</div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    // both
     return (
-      <div className="p-6 border-b border-slate-800">
-        <h2 className="text-lg font-semibold text-white mb-4">Payment</h2>
-        <div className="space-y-3">
-          <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-500/10 cursor-pointer">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded-full border-2 border-blue-500 bg-blue-500 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
+      <div className="space-y-6">
+        {/* Status banner */}
+        <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
+          <p className="text-sm text-slate-300">{stateLabel}</p>
+          <p className="text-xs text-slate-500 mt-1">
+            {isInvite
+              ? 'URL: bcp.boundlesscreator.com/join — Send directly to people you want to let in outside the window.'
+              : 'URL: bcp.boundlesscreator.com/ — Main landing page. Checkout section adapts to window state.'}
+          </p>
+        </div>
+
+        {/* Embedded iframe preview */}
+        <div className="border border-slate-700 rounded-lg overflow-hidden">
+          <div className="bg-slate-800 px-4 py-2 flex items-center justify-between">
+            <span className="text-sm text-slate-400 font-mono">
+              {isInvite ? '/join' : '/'}
+            </span>
+            <a
+              href={isInvite ? '/join' : '/'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300 text-xs underline"
+            >
+              Open in new tab →
+            </a>
+          </div>
+
+          {/* Sales page structure outline */}
+          <div className="bg-slate-950 p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-white">Page Sections (top to bottom)</h3>
+            <div className="space-y-2">
+              {[
+                { name: 'Hero', desc: 'Headline, sub, stats (15 years / 65K subs / 100+ coached), price card, CTA, testimonial quote' },
+                { name: 'Problem', desc: '"You\'re guessing because nobody\'s told you what\'s broken"' },
+                { name: 'The Wedge (Week One)', desc: 'Personal review details (4 inputs → 3 outputs) + Content checklist' },
+                { name: 'CTA #1', desc: 'Join Now — $999' },
+                { name: 'What Else You Get', desc: 'Weekly live sessions + course drip (9 topics) + resource library' },
+                { name: 'Who This Is For / Not For', desc: 'Two-column comparison' },
+                { name: 'CTA #2', desc: 'Join Now — $999' },
+                { name: 'Reason to Believe', desc: '30-day guarantee + 5 testimonials' },
+                { name: 'Founder Block', desc: '"Why I built this" — personal story' },
+                { name: 'FAQ', desc: '7 questions (pricing, format, refund, installment, etc.)' },
+                ...(state === 'open' ? [{ name: 'Final P.S.', desc: 'Window close date, founders lock-in pitch, final CTA (only shows when window is open)' }] : []),
+                { name: 'Checkout Section', desc: state === 'open'
+                  ? 'Countdown timer + $999 pay button + $599×2 installment button + Stripe checkout'
+                  : state === 'before'
+                  ? 'Countdown timer to open + waitlist signup form'
+                  : 'Waitlist signup form (window closed)' },
+                { name: 'Footer', desc: '30-day guarantee reminder, full details link, contact email' },
+              ].map((s, i) => (
+                <div key={i} className="flex gap-3 bg-slate-900/50 border border-slate-800 rounded p-3">
+                  <span className="text-blue-400 text-xs font-mono font-bold flex-shrink-0 mt-0.5 w-5">{i + 1}</span>
+                  <div>
+                    <span className="text-white text-sm font-medium">{s.name}</span>
+                    <span className="text-slate-500 text-xs ml-2">— {s.desc}</span>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-semibold text-white">Pay in Full</div>
-                  <div className="text-sm text-slate-400 mt-0.5">One-time payment — no auto-renewal</div>
+              ))}
+            </div>
+
+            {/* Payment options detail */}
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 mt-4">
+              <h4 className="text-white font-semibold text-sm mb-3">Checkout Options (when window is open)</h4>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <span className="bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded">PRIMARY</span>
+                  <span className="text-slate-300 text-sm">Pay in full — $999 one-time → Stripe payment mode</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="bg-slate-700 text-slate-300 text-xs font-bold px-2 py-0.5 rounded">SECONDARY</span>
+                  <span className="text-slate-300 text-sm">2 installments — $599 × 2 monthly → Stripe subscription, auto-cancels after 2 payments</span>
                 </div>
               </div>
-              <div className="text-2xl font-bold text-white">$999</div>
-            </div>
-          </div>
-          <div className="p-4 rounded-lg border-2 border-slate-700 bg-slate-800/50 cursor-pointer">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded-full border-2 border-slate-600" />
-                <div>
-                  <div className="font-semibold text-white">Quarterly Auto-Renew</div>
-                  <div className="text-sm text-slate-400 mt-0.5">$999 every 3 months — cancel anytime</div>
-                </div>
-              </div>
-              <div className="text-2xl font-bold text-white">$999/qtr</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderPayButton = (mode: CheckoutMode) => {
-    const label = mode === 'subscription' ? 'Subscribe — $999/quarter' : 'Pay $999';
-    return (
-      <>
-        <button className="w-full bg-blue-600 text-white font-semibold text-lg px-8 py-4 rounded-lg opacity-75 cursor-default">
-          {label}
-        </button>
-        <div className="mt-4 flex items-center justify-center gap-2 text-slate-500 text-sm">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-          Secure payment powered by Stripe
-        </div>
-      </>
-    );
-  };
-
-  const renderCountdownTimer = (timerLabel: string, timerValues: {v: string; l: string}[]) => (
-    <div className="text-center mb-6">
-      <div className="text-sm text-slate-400 mb-3">{timerLabel}</div>
-      <div className="flex items-center justify-center gap-3">
-        {timerValues.map((u, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <div className="flex flex-col items-center">
-              <div className="bg-slate-800 border border-slate-700 rounded-lg w-16 h-16 flex items-center justify-center">
-                <span className="text-2xl font-bold text-white font-mono">{u.v}</span>
-              </div>
-              <span className="text-xs text-slate-500 mt-1">{u.l}</span>
-            </div>
-            {i < 3 && <span className="text-slate-600 text-xl font-bold mb-4">:</span>}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  /* ─── Checkout Preview for a single mode+state ─── */
-  const renderCheckoutPreview = (mode: CheckoutMode, state: 'before' | 'open' | 'closed') => {
-    const stateLabel = state === 'before' ? 'Window Not Yet Open' : state === 'open' ? 'Window Open' : 'Window Closed';
-    const modeLabel = checkoutModeLabel(mode);
-    const pagePath = `/?mode=${mode}`;
-
-    return (
-      <div key={`${mode}-${state}`} className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm font-mono flex items-center justify-between">
-          <span className="text-slate-400">
-            <a href={pagePath} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">{pagePath}</a>
-            {' — '}{stateLabel} ({modeLabel})
-          </span>
-        </div>
-        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: state === 'closed' ? 600 : 700 }}>
-          <div className="w-full max-w-2xl">
-            {renderLogo()}
-
-            {/* Timer for before/open states */}
-            {state === 'before' && renderCountdownTimer('Opens in', [
-              {v:'03',l:'days'},{v:'10',l:'hours'},{v:'18',l:'min'},{v:'42',l:'sec'}
-            ])}
-            {state === 'open' && renderCountdownTimer('Window closes in', [
-              {v:'02',l:'days'},{v:'14',l:'hours'},{v:'37',l:'min'},{v:'09',l:'sec'}
-            ])}
-
-            {/* Card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-xl">
-              {renderCardHeader()}
-              {renderFeatures()}
-              {renderPaymentSection(mode)}
-              <div className="p-6">
-                {state === 'open' ? (
-                  renderPayButton(mode)
-                ) : (
-                  <WaitlistForm context={state === 'before' ? 'before' : 'after'} />
-                )}
-              </div>
             </div>
 
-            {renderGuarantee()}
-            <div className="mt-4 text-center space-y-3">
-              <span className="text-slate-500 text-xs underline block">Full details about the program →</span>
-              {state === 'open' && <span className="text-slate-500 text-xs underline">FAQ</span>}
+            {/* What changes per state */}
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
+              <h4 className="text-white font-semibold text-sm mb-2">Current state: {landingSubTab}</h4>
+              {landingSubTab === 'open' && (
+                <ul className="text-slate-400 text-sm space-y-1">
+                  <li>• Countdown timer shows time until window closes</li>
+                  <li>• Both payment buttons visible (full + installment)</li>
+                  <li>• &quot;Final P.S.&quot; section visible with close date</li>
+                  <li>• &quot;50% OFF&quot; badge on primary button</li>
+                </ul>
+              )}
+              {landingSubTab === 'before' && (
+                <ul className="text-slate-400 text-sm space-y-1">
+                  <li>• Countdown timer shows time until window opens</li>
+                  <li>• Payment buttons replaced with waitlist form</li>
+                  <li>• &quot;Final P.S.&quot; section hidden</li>
+                </ul>
+              )}
+              {landingSubTab === 'after' && (
+                <ul className="text-slate-400 text-sm space-y-1">
+                  <li>• No countdown timer</li>
+                  <li>• Payment buttons replaced with waitlist form</li>
+                  <li>• &quot;Final P.S.&quot; section hidden</li>
+                </ul>
+              )}
+              {landingSubTab === 'invite' && (
+                <ul className="text-slate-400 text-sm space-y-1">
+                  <li>• Same sales page but at /join</li>
+                  <li>• Bypasses window — checkout always available</li>
+                  <li>• Send this URL directly to people you want in</li>
+                </ul>
+              )}
             </div>
           </div>
         </div>
-      </div>
-    );
-  };
-
-  /* ─── Invite Page Preview for a single mode ─── */
-  const renderInvitePreview = (mode: CheckoutMode) => {
-    const modeLabel = checkoutModeLabel(mode);
-    const pagePath = `/join?mode=${mode}`;
-
-    return (
-      <div key={`invite-${mode}`} className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm font-mono flex items-center justify-between">
-          <span className="text-slate-400">
-            <a href={pagePath} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline">{pagePath}</a>
-            {' — '}Invite Page ({modeLabel})
-          </span>
-        </div>
-        <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 700 }}>
-          <div className="w-full max-w-2xl">
-            {/* Invite bypass note */}
-            <div className="mb-6 bg-blue-500/10 border border-blue-500/30 rounded-lg px-4 py-2 text-center">
-              <p className="text-blue-400 text-sm">This page bypasses the purchase window — checkout is always available</p>
-            </div>
-
-            {renderLogo()}
-
-            {/* No countdown timer for invite pages */}
-
-            {/* Card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-xl">
-              {renderCardHeader()}
-              {renderFeatures()}
-              {renderPaymentSection(mode)}
-              <div className="p-6">
-                {renderPayButton(mode)}
-              </div>
-            </div>
-
-            {renderGuarantee()}
-            <div className="mt-4 text-center">
-              <span className="text-slate-500 text-xs underline block">Full details about the program →</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  /* ─── Checkout Tab (with sub-tabs) ─── */
-  const renderCheckout = () => {
-    // Build the list of previews to show
-    type PreviewItem = { type: 'checkout'; mode: CheckoutMode; state: 'before' | 'open' | 'closed' }
-      | { type: 'invite'; mode: CheckoutMode };
-
-    let previews: PreviewItem[] = [];
-
-    if (checkoutSubTab === 'all') {
-      // Show all 12
-      const modes: CheckoutMode[] = ['one-time', 'subscription', 'both'];
-      const states: ('before' | 'open' | 'closed')[] = ['before', 'open', 'closed'];
-      for (const mode of modes) {
-        for (const state of states) {
-          previews.push({ type: 'checkout', mode, state });
-        }
-        previews.push({ type: 'invite', mode });
-      }
-    } else {
-      const state = subTabToState(checkoutSubTab);
-      const mode = subTabToMode(checkoutSubTab);
-      if (state === 'invite') {
-        previews = [{ type: 'invite', mode }];
-      } else {
-        previews = [{ type: 'checkout', mode, state }];
-      }
-    }
-
-    return (
-      <div className="space-y-8">
-        {previews.map((p, i) =>
-          p.type === 'checkout'
-            ? <div key={`checkout-${p.mode}-${p.state}`}>{renderCheckoutPreview(p.mode, p.state)}</div>
-            : <div key={`invite-${p.mode}`}>{renderInvitePreview(p.mode)}</div>
-        )}
       </div>
     );
   };
@@ -502,7 +269,7 @@ export default function PreviewPage() {
                     { title: 'Check your email', desc: "You'll receive a welcome email with your Discord invite and everything you need to get started." },
                     { title: 'Fill out the questionnaire below', desc: "This is how I write your personal channel review. The more detail you give, the better the review." },
                     { title: 'Your channel review', desc: "I'll post it in Discord when it's ready." },
-                    { title: 'First live session: Wednesday May 6 at 2 PM EST', desc: "Recurring Wednesdays. Recorded if you can't make it." },
+                    { title: 'First live session: Wednesday May 7 at 2 PM EST', desc: "Recurring Wednesdays. Recorded if you can't make it." },
                   ].map((step, i) => (
                     <li key={i} className="flex gap-3">
                       <span className="flex-shrink-0 w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold text-white">{i+1}</span>
@@ -516,7 +283,6 @@ export default function PreviewPage() {
               </div>
             </div>
 
-            {/* Questionnaire prompt */}
             <div className="mt-8 bg-slate-900 border border-slate-800 rounded-lg p-8 shadow-xl text-center">
               <h2 className="text-2xl font-bold text-white mb-4">Your Onboarding Questionnaire</h2>
               <p className="text-slate-300 mb-2">This takes about 10-15 minutes. Your answers are how I write your personal channel review.</p>
@@ -529,9 +295,7 @@ export default function PreviewPage() {
       </div>
 
       <div className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-          /welcome — Error State ❌
-        </div>
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">/welcome — Error State ❌</div>
         <div className="bg-slate-950 flex items-center justify-center p-8" style={{ minHeight: 250 }}>
           <div className="max-w-lg text-center">
             <div className="bg-slate-900 border border-slate-800 rounded-lg p-8 shadow-xl">
@@ -573,7 +337,6 @@ export default function PreviewPage() {
             {q.type === 'textarea' && <span className="ml-2 text-yellow-400">[textarea]</span>}
           </div>
           <div className="bg-slate-950 relative">
-            {/* Progress bar preview */}
             <div className="h-1 bg-slate-900">
               <div className="h-full bg-blue-500" style={{ width: `${((i + 1) / (questions.length + 1)) * 100}%` }} />
             </div>
@@ -585,30 +348,15 @@ export default function PreviewPage() {
                 {q.subtext === 'ANALYTICS_ACCESS_STRUCTURED' && <AnalyticsAccessGuide />}
                 {q.type === 'multiple-choice' && q.choices && (
                   <>
-                    <MultipleChoice
-                      choices={q.choices}
-                      value=""
-                      onChange={() => {}}
-                      onNext={() => {}}
-                    />
-                    {i > 0 && (
-                      <button className="mt-6 px-6 py-3 text-slate-400 cursor-default">← Back</button>
-                    )}
+                    <MultipleChoice choices={q.choices} value="" onChange={() => {}} onNext={() => {}} />
+                    {i > 0 && <button className="mt-6 px-6 py-3 text-slate-400 cursor-default">← Back</button>}
                   </>
                 )}
                 {q.type === 'textarea' && (
                   <>
-                    <TextInput
-                      value=""
-                      onChange={() => {}}
-                      placeholder={q.placeholder}
-                      multiline={true}
-                      required={q.required}
-                    />
+                    <TextInput value="" onChange={() => {}} placeholder={q.placeholder} multiline={true} required={q.required} />
                     <div className="flex gap-4 mt-6">
-                      {i > 0 && (
-                        <button className="px-6 py-3 text-slate-400 cursor-default">← Back</button>
-                      )}
+                      {i > 0 && <button className="px-6 py-3 text-slate-400 cursor-default">← Back</button>}
                       <button className="flex-1 bg-blue-600 text-white font-semibold px-8 py-3 rounded-lg opacity-50 cursor-default">
                         {i === questions.length - 1 ? 'Submit →' : 'Continue →'}
                       </button>
@@ -617,37 +365,22 @@ export default function PreviewPage() {
                 )}
                 {(q.type === 'text' || q.type === 'url') && (
                   <>
-                    <TextInput
-                      value=""
-                      onChange={() => {}}
-                      placeholder={q.placeholder}
-                      type={q.type === 'url' ? 'url' : 'text'}
-                      required={q.required}
-                    />
+                    <TextInput value="" onChange={() => {}} placeholder={q.placeholder} type={q.type === 'url' ? 'url' : 'text'} required={q.required} />
                     <div className="flex gap-4 mt-6">
-                      {i > 0 && (
-                        <button className="px-6 py-3 text-slate-400 cursor-default">← Back</button>
-                      )}
-                      <button className="flex-1 bg-blue-600 text-white font-semibold px-8 py-3 rounded-lg opacity-50 cursor-default">
-                        Continue →
-                      </button>
+                      {i > 0 && <button className="px-6 py-3 text-slate-400 cursor-default">← Back</button>}
+                      <button className="flex-1 bg-blue-600 text-white font-semibold px-8 py-3 rounded-lg opacity-50 cursor-default">Continue →</button>
                     </div>
                   </>
                 )}
               </QuestionCard>
-              <div className="mt-6 text-center text-slate-500 text-xs">
-                Question {i + 1} of {questions.length}
-              </div>
+              <div className="mt-6 text-center text-slate-500 text-xs">Question {i + 1} of {questions.length}</div>
             </div>
           </div>
         </div>
       ))}
 
-      {/* Submission complete screen */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">
-          Submission Complete
-        </div>
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Submission Complete</div>
         <div className="bg-slate-950 p-8 flex items-center justify-center" style={{ minHeight: 300 }}>
           <div className="max-w-lg text-center">
             <div className="bg-slate-900 border border-slate-800 rounded-lg p-8 shadow-xl">
@@ -657,12 +390,8 @@ export default function PreviewPage() {
                 </svg>
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">Questionnaire submitted!</h2>
-              <p className="text-slate-300 mb-4">
-                I&apos;ll use your answers to write your personal channel review.
-              </p>
-              <p className="text-slate-400 text-sm">
-                Check your email for the Discord invite.
-              </p>
+              <p className="text-slate-300 mb-4">I&apos;ll use your answers to write your personal channel review.</p>
+              <p className="text-slate-400 text-sm">Check your email for the Discord invite.</p>
             </div>
           </div>
         </div>
@@ -711,18 +440,16 @@ export default function PreviewPage() {
               </div>
             </div>
             <div className="mt-8">
-              <div className="rounded-lg">
-                <h3 className="text-lg font-bold text-white mb-2 text-center">Get Boundless Insight</h3>
-                <p className="text-slate-400 text-sm text-center mb-4">
-                  A free tool that gives you instant feedback on your YouTube thumbnails, titles, and descriptions.
-                </p>
-                <div className="max-w-md mx-auto space-y-3">
-                  <input type="text" placeholder="First name" disabled className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-slate-500 cursor-default" />
-                  <input type="email" placeholder="Email address" disabled className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-slate-500 cursor-default" />
-                  <button disabled className="w-full bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg opacity-75 cursor-default">Get It Free</button>
-                </div>
-                <p className="text-slate-600 text-xs text-center mt-3">No spam. Unsubscribe anytime.</p>
+              <h3 className="text-lg font-bold text-white mb-2 text-center">Get Boundless Insight</h3>
+              <p className="text-slate-400 text-sm text-center mb-4">
+                A free tool that gives you instant feedback on your YouTube thumbnails, titles, and descriptions.
+              </p>
+              <div className="max-w-md mx-auto space-y-3">
+                <input type="text" placeholder="First name" disabled className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-slate-500 cursor-default" />
+                <input type="email" placeholder="Email address" disabled className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-slate-500 cursor-default" />
+                <button disabled className="w-full bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg opacity-75 cursor-default">Get It Free</button>
               </div>
+              <p className="text-slate-600 text-xs text-center mt-3">No spam. Unsubscribe anytime.</p>
             </div>
             <div className="mt-8 bg-slate-900 border border-slate-800 rounded-lg p-4 text-center">
               <p className="text-slate-400 text-sm">
@@ -738,51 +465,7 @@ export default function PreviewPage() {
   /* ─── Admin Tab ─── */
   const renderAdmin = () => (
     <div className="space-y-8">
-      {/* 1. Deploy Checkout Mode */}
-      <div className="border border-slate-700 rounded-lg overflow-hidden">
-        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Deploy Checkout Mode</div>
-        <div className="bg-slate-950 p-6 space-y-4">
-          <p className="text-slate-400 text-sm">Changes the live checkout mode on the production site. Updates env vars and triggers a redeploy (~30s).</p>
-          <div className="space-y-3">
-            {([
-              { mode: 'one-time' as CheckoutMode, label: 'One-Time Only', desc: 'Single $999 payment. No subscription option shown.' },
-              { mode: 'subscription' as CheckoutMode, label: 'Subscription Only', desc: '$999/quarter auto-renew. No one-time option shown.' },
-              { mode: 'both' as CheckoutMode, label: 'Both Options', desc: 'User chooses between pay-in-full ($999) or quarterly auto-renew ($999/qtr).' },
-            ]).map(({ mode, label, desc }) => (
-              <button
-                key={mode}
-                onClick={() => setDeployMode(mode)}
-                className={`w-full p-4 rounded-lg border-2 text-left transition-all ${
-                  deployMode === mode
-                    ? 'border-blue-500 bg-blue-500/10'
-                    : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-4 h-4 rounded-full border-2 ${deployMode === mode ? 'border-blue-500 bg-blue-500' : 'border-slate-600'} flex items-center justify-center`}>
-                    {deployMode === mode && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-white">{label}</div>
-                    <div className="text-sm text-slate-400 mt-0.5">{desc}</div>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-          {deployResult && <p className="text-sm whitespace-pre-line">{deployResult}</p>}
-          <button
-            onClick={handleDeployMode}
-            disabled={deployLoading || !adminSecret}
-            className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 disabled:cursor-not-allowed"
-          >
-            {deployLoading ? 'Deploying...' : `Update Mode to "${checkoutModeLabel(deployMode)}" & Redeploy`}
-          </button>
-          {!adminSecret && <p className="text-yellow-400/80 text-xs">⚠️ Enter admin secret in the &quot;Update Window&quot; section below first.</p>}
-        </div>
-      </div>
-
-      {/* 2. Current Window Status */}
+      {/* Current Window Status */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Current Window Status</div>
         <div className="bg-slate-950 p-6">
@@ -813,7 +496,7 @@ export default function PreviewPage() {
         </div>
       </div>
 
-      {/* 3. Update Window */}
+      {/* Update Window */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Update Window</div>
         <div className="bg-slate-950 p-6 space-y-4">
@@ -843,7 +526,6 @@ export default function PreviewPage() {
             </div>
           </div>
 
-          {/* Auto-notify toggle */}
           <div className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-lg px-4 py-3">
             <div>
               <div className="text-white text-sm font-medium">Auto-notify waitlist when window opens</div>
@@ -862,7 +544,7 @@ export default function PreviewPage() {
         </div>
       </div>
 
-      {/* 4. Generate Questionnaire Link */}
+      {/* Generate Questionnaire Link */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Generate Questionnaire Link</div>
         <div className="bg-slate-950 p-6 space-y-4">
@@ -870,21 +552,11 @@ export default function PreviewPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-white text-sm font-medium mb-1">Email</label>
-              <input
-                type="email"
-                id="qlink-email"
-                placeholder="their@email.com"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-              />
+              <input type="email" id="qlink-email" placeholder="their@email.com" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
             </div>
             <div>
               <label className="block text-white text-sm font-medium mb-1">First Name</label>
-              <input
-                type="text"
-                id="qlink-name"
-                placeholder="Their name"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-              />
+              <input type="text" id="qlink-name" placeholder="Their name" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
             </div>
           </div>
           <div className="flex gap-3">
@@ -929,16 +601,17 @@ export default function PreviewPage() {
         </div>
       </div>
 
-      {/* 5. Quick Links */}
+      {/* Quick Links */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Quick Links</div>
         <div className="bg-slate-950 p-6">
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Checkout Page', href: '/' },
+              { label: 'Landing Page', href: '/' },
               { label: 'Welcome / Post-Payment', href: '/welcome?test=true' },
               { label: 'Boundless Insight', href: '/insight' },
-              { label: 'Invite Page', href: '/join' },
+              { label: 'Invite Page (bypasses window)', href: '/join' },
+              { label: 'Questionnaire', href: '/questionnaire' },
             ].map(link => (
               <a key={link.href} href={link.href} target="_blank" className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-4 py-3 text-sm text-blue-400 hover:text-blue-300 transition-colors">
                 {link.label} <span className="text-slate-600">→</span>
@@ -948,7 +621,7 @@ export default function PreviewPage() {
         </div>
       </div>
 
-      {/* 5. Kit Tags */}
+      {/* Kit Tags */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Kit Tags</div>
         <div className="bg-slate-950 p-6">
@@ -958,7 +631,7 @@ export default function PreviewPage() {
                 ['BCP Member', '8240961', 'Applied on payment (webhook)'],
                 ['BCP Waitlist Member', '8231366', 'Waitlist signup'],
                 ['BCP Questionnaire Submitted', '19206526', 'Stops reminder emails'],
-                ['BCP Window Open Notification', '19208524', 'Applied automatically when window is opened with auto-notify enabled'],
+                ['BCP Window Open Notification', '19208524', 'Applied when window opens with auto-notify'],
                 ['Boundless Insight', '—', 'Kit Form #9377397 handles tagging'],
               ].map(([name, id, desc]) => (
                 <tr key={name}>
@@ -972,7 +645,23 @@ export default function PreviewPage() {
         </div>
       </div>
 
-      {/* 6. System Map */}
+      {/* Payment Flows */}
+      <div className="border border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">Payment Flows</div>
+        <div className="bg-slate-950 p-6 space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
+            <h4 className="text-white font-semibold text-sm mb-2">Full Payment — $999</h4>
+            <p className="text-slate-400 text-sm">Stripe Checkout → payment mode → one-time charge → webhook fires → Kit tagged + Discord invite generated + Discord notification</p>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
+            <h4 className="text-white font-semibold text-sm mb-2">Installment — $599 × 2</h4>
+            <p className="text-slate-400 text-sm">Stripe Checkout → subscription mode → $599 charged immediately → $599 charged 30 days later → auto-cancels after 2 payments (cancel_at set at creation)</p>
+            <p className="text-slate-500 text-xs mt-1">No additional webhook needed — existing subscription lifecycle events handle notifications.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* System Map */}
       <div className="border border-slate-700 rounded-lg overflow-hidden">
         <div className="bg-slate-800 px-4 py-2 text-sm text-slate-400 font-mono">System Map</div>
         <div className="bg-slate-950 p-6">
@@ -987,7 +676,7 @@ export default function PreviewPage() {
     </div>
   );
 
-  const content = activeSection === 'checkout' ? renderCheckout()
+  const content = activeSection === 'landing' ? renderLanding()
     : activeSection === 'post-payment' ? renderPostPayment()
     : activeSection === 'questionnaire' ? renderQuestionnaire()
     : activeSection === 'insight' ? renderInsight()
@@ -999,9 +688,7 @@ export default function PreviewPage() {
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-xl font-bold text-white">BCP Program — Preview & Admin</h1>
-            <span className="text-sm text-slate-400">
-              {questions.length} questions · Multi-page flow · Full funnel
-            </span>
+            <span className="text-sm text-slate-400">{questions.length} questions · Full funnel</span>
           </div>
 
           {/* Section tabs */}
@@ -1009,7 +696,7 @@ export default function PreviewPage() {
             {sectionTabs.map((tab) => (
               <button key={tab.id} onClick={() => {
                 setActiveSection(tab.id);
-                if (tab.id === 'checkout') setCheckoutSubTab('all');
+                if (tab.id === 'landing') setLandingSubTab('open');
                 updateHash(tab.id);
               }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${activeSection === tab.id ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'}`}>
@@ -1018,28 +705,24 @@ export default function PreviewPage() {
             ))}
           </div>
 
-          {/* Sub-tabs for Checkout section */}
-          {activeSection === 'checkout' && (
+          {/* Sub-tabs for Landing section */}
+          {activeSection === 'landing' && (
             <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {CHECKOUT_SUB_TABS.map((tab) => (
-                <div key={tab.id} className="flex items-center gap-1.5">
-                  {tab.dividerBefore && (
-                    <span className="px-1.5 text-slate-600 text-sm select-none">—</span>
-                  )}
-                  <button
-                    onClick={() => {
-                      setCheckoutSubTab(tab.id);
-                      updateHash('checkout', tab.id);
-                    }}
-                    className={`px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors ${
-                      checkoutSubTab === tab.id
-                        ? 'bg-slate-700 text-white'
-                        : 'bg-slate-800/50 text-slate-500 hover:text-slate-300'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                </div>
+              {landingSubTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setLandingSubTab(tab.id);
+                    updateHash('landing', tab.id);
+                  }}
+                  className={`px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors ${
+                    landingSubTab === tab.id
+                      ? 'bg-slate-700 text-white'
+                      : 'bg-slate-800/50 text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  {tab.label}
+                </button>
               ))}
             </div>
           )}
