@@ -4,6 +4,9 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 
 type WindowState = 'before' | 'open' | 'after';
 
+// Toggle to show/hide the hero VSL embed. Flip to true to bring it back.
+const SHOW_VSL = false;
+
 /* =====================================================================
    STYLES — BC design system inlined
    ===================================================================== */
@@ -59,6 +62,7 @@ const STYLES = `
 .bcp-page section.alt { background: var(--bc-ink-850); }
 .bcp-page strong, .bcp-page b { font-weight:600; color:var(--bc-text-100); }
 .bcp-page .blue-em { color:var(--bc-blue-300); font-weight:700; }
+.bcp-page .green-em { color:var(--bc-green-400); font-weight:700; }
 .bcp-page p { margin: 0; }
 .bcp-page a { color: inherit; }
 
@@ -72,9 +76,17 @@ const STYLES = `
   max-width:1320px; margin:0 auto; padding:12px var(--bc-page-x);
   display:flex; align-items:center; justify-content:space-between; gap:var(--s-5);
 }
-.bcp-page .bc-logo { font-size:24px; font-weight:700; color:var(--bc-blue-300); letter-spacing:-0.02em; }
+.bcp-page .bc-logo {
+  font-family: var(--font-urbanist), 'Urbanist', 'Inter', ui-sans-serif, sans-serif;
+  font-size:22px; font-weight:700; color:var(--bc-blue-300); letter-spacing:-0.01em;
+}
 .bcp-page .nav__cta { padding:10px 16px; font-size:14px; flex-shrink:0; }
-.bcp-page .nav__timer { display:flex; flex:1; justify-content:center; min-width:0; }
+.bcp-page .nav__timer {
+  /* Push timer + button to the right edge together. margin-left:auto
+     consumes all the slack between brand and timer, so timer sits right
+     next to the CTA button instead of free-floating in the middle. */
+  display:flex; align-items:center; flex-shrink:0; margin-left:auto;
+}
 .bcp-page .nav__timer .countdown { padding:6px 12px; }
 .bcp-page .nav__timer .countdown__label { font-size:10px; }
 .bcp-page .nav__timer .countdown__value { font-size:14px; }
@@ -105,14 +117,18 @@ const STYLES = `
 .bcp-page .btn--xl { padding:20px 36px; font-size:19px; border-radius:14px; font-weight:700; }
 .bcp-page .btn--block { display:flex; width:100%; }
 
-.bcp-page .overline {
-  display:inline-flex; align-items:center; gap:10px;
+.bcp-page .eyebrow {
+  /* Renamed from .overline because Tailwind has a built-in .overline utility
+     that adds text-decoration:overline (the literal CSS overline). That was
+     stacking on top of every eyebrow on the page. */
+  display:inline-flex; align-items:center; gap:10px; vertical-align:middle;
   font-family:var(--bc-font-mono); font-size:var(--bc-fs-caption);
   color:var(--bc-blue-300); letter-spacing:var(--bc-ls-overline);
-  text-transform:uppercase;
+  text-transform:uppercase; line-height:1;
+  text-decoration:none;
 }
-.bcp-page .overline::before {
-  content:""; width:24px; height:1px; background:currentColor; opacity:.55;
+.bcp-page .eyebrow__line {
+  display:inline-block; width:24px; height:1px; background:currentColor; opacity:.55;
   flex-shrink:0;
 }
 
@@ -125,33 +141,38 @@ const STYLES = `
 .bcp-page .section-sub strong { color:var(--bc-text-100); font-weight:600; }
 .bcp-page .section-head {
   display:flex; align-items:baseline; gap:var(--s-5); margin-bottom:var(--s-7);
+  border-bottom:1px solid var(--bc-ink-700); padding-bottom:var(--s-5);
 }
 .bcp-page .subsection-h { font-size:24px; font-weight:600; letter-spacing:var(--bc-ls-heading); color:var(--bc-text-100); margin:0 0 8px; }
 .bcp-page .subsection-sub { color:var(--bc-text-300); margin:0 0 var(--s-7); font-size:16px; }
 
 .bcp-page .hero { padding:var(--s-9) 0 var(--s-9); position:relative; overflow:hidden; text-align:center; }
 .bcp-page .hero__glow {
-  position:absolute; top:-260px; left:50%; width:1500px; height:780px;
+  position:absolute; top:-180px; left:50%; width:1000px; height:520px;
   transform:translateX(-50%);
   /* Same-hue at 0 alpha avoids banding (default 'transparent' interpolates
-     through middle gray which causes visible rings). */
+     through middle gray which causes visible rings). Tighter and dimmer
+     than the smoothed version so the glow sits behind the headline like
+     a soft halo instead of washing the whole hero. */
   background:radial-gradient(
     ellipse at center,
-    rgba(58,133,255,0.32) 0%,
-    rgba(58,133,255,0.24) 22%,
-    rgba(58,133,255,0.14) 44%,
-    rgba(58,133,255,0.06) 64%,
-    rgba(58,133,255,0.02) 82%,
+    rgba(58,133,255,0.20) 0%,
+    rgba(58,133,255,0.14) 24%,
+    rgba(58,133,255,0.07) 48%,
+    rgba(58,133,255,0.02) 72%,
     rgba(58,133,255,0) 100%
   );
-  pointer-events:none; filter:blur(56px); will-change:filter;
+  pointer-events:none; filter:blur(40px); will-change:filter;
 }
 .bcp-page .hero__inner { position:relative; }
 .bcp-page .hero__top { display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:var(--s-5); }
 .bcp-page .hero__title {
-  font-size:clamp(30px,3.4vw,52px); font-weight:600;
-  letter-spacing:-0.025em; line-height:1.05;
-  color:var(--bc-text-100); margin:0 auto var(--s-4); max-width:30ch; text-wrap:balance;
+  font-size:clamp(28px,3vw,46px); font-weight:600;
+  letter-spacing:-0.025em; line-height:1.08;
+  color:var(--bc-text-100); margin:0 auto var(--s-4); max-width:46ch; text-wrap:balance;
+}
+@media(max-width:760px) {
+  .bcp-page .hero__title { max-width:36ch; }
 }
 .bcp-page .hero__sub { font-size:16px; color:var(--bc-text-300); max-width:58ch; margin:0 auto var(--s-6); line-height:1.5; }
 .bcp-page .hero__sub strong { color:var(--bc-text-100); font-weight:600; }
@@ -171,7 +192,7 @@ const STYLES = `
 
 .bcp-page .hero__cta-stack { display:flex; flex-direction:column; align-items:center; gap:var(--s-3); margin-bottom:0; }
 .bcp-page .hero__price-line { font-size:14px; color:var(--bc-text-300); display:inline-flex; flex-wrap:wrap; justify-content:center; gap:8px; align-items:center; }
-.bcp-page .hero__price-line strong { color:var(--bc-text-100); font-weight:600; }
+.bcp-page .hero__price-line strong { color:var(--bc-green-400); font-weight:700; }
 .bcp-page .hero__price-line .strike { text-decoration:line-through; text-decoration-color:var(--bc-strike); color:var(--bc-text-400); }
 .bcp-page .hero__price-line .dot-sep { color:var(--bc-text-500); }
 
@@ -315,10 +336,26 @@ const STYLES = `
 .bcp-page .weekstrip__b { font-size:12.5px; color:var(--bc-text-400); line-height:1.5; }
 
 .bcp-page .price { background:linear-gradient(180deg,var(--bc-ink-800),var(--bc-ink-850)); border:1px solid var(--bc-ink-600); border-radius:var(--r-4); padding:var(--s-8); position:relative; overflow:hidden; }
-.bcp-page .price::before { content:""; position:absolute; top:-160px; right:-160px; width:380px; height:380px; background:radial-gradient(closest-side,var(--bc-blue-glow),transparent 70%); filter:blur(24px); pointer-events:none; }
-.bcp-page .price__title { font-size:26px; font-weight:600; color:var(--bc-text-100); margin:12px 0 24px; position:relative; }
-.bcp-page .price__row { display:flex; align-items:baseline; gap:var(--s-4); position:relative; flex-wrap:wrap; }
-.bcp-page .price__strike { font-family:var(--bc-font-mono); font-size:20px; color:var(--bc-text-400); text-decoration:line-through; text-decoration-color:var(--bc-strike); }
+.bcp-page .price::before {
+  content:""; position:absolute; top:-160px; right:-160px;
+  width:380px; height:380px;
+  background:radial-gradient(
+    closest-side,
+    rgba(58,133,255,0.16) 0%,
+    rgba(58,133,255,0.08) 40%,
+    rgba(58,133,255,0.02) 70%,
+    rgba(58,133,255,0) 100%
+  );
+  filter:blur(40px); pointer-events:none;
+}
+.bcp-page .price__head-row {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:var(--s-4); flex-wrap:wrap; position:relative;
+}
+.bcp-page .price__head-row .countdown { padding:8px 12px; }
+.bcp-page .price__title { font-size:26px; font-weight:600; color:var(--bc-text-100); margin:16px 0 24px; position:relative; }
+.bcp-page .price__row { display:flex; align-items:baseline; gap:var(--s-5); position:relative; flex-wrap:wrap; }
+.bcp-page .price__strike { font-family:var(--bc-font-mono); font-size:28px; color:var(--bc-text-400); text-decoration:line-through; text-decoration-color:var(--bc-strike); }
 .bcp-page .price__main { font-weight:700; font-size:64px; color:var(--bc-text-100); letter-spacing:-0.025em; line-height:1; }
 .bcp-page .price__alt { font-family:var(--bc-font-mono); font-size:13px; color:var(--bc-text-300); margin-left:8px; }
 .bcp-page .price__sub { font-size:15px; color:var(--bc-text-300); margin:var(--s-3) 0 var(--s-7); position:relative; }
@@ -327,6 +364,18 @@ const STYLES = `
 .bcp-page .price__included { display:flex; flex-direction:column; gap:10px; position:relative; list-style:none; padding:0; margin:0; }
 .bcp-page .price__included li { display:grid; grid-template-columns:18px 1fr; gap:10px; font-size:14px; color:var(--bc-text-200); align-items:start; }
 .bcp-page .price__included li svg { margin-top:3px; color:var(--bc-blue-300); }
+.bcp-page .price__assurances {
+  list-style:none; margin:var(--s-5) 0 0; padding:0;
+  display:flex; flex-direction:column; gap:8px;
+  font-size:13px; color:var(--bc-text-300); position:relative;
+}
+.bcp-page .price__assurances li { display:flex; align-items:center; gap:10px; }
+.bcp-page .price__pip {
+  width:6px; height:6px; border-radius:50%;
+  background:var(--bc-green-400);
+  box-shadow:0 0 8px var(--bc-green-glow);
+  flex-shrink:0;
+}
 .bcp-page .price__guarantee { display:flex; align-items:flex-start; gap:var(--s-3); font-size:13px; color:var(--bc-text-300); margin-top:var(--s-5); position:relative; line-height:1.5; }
 .bcp-page .price__guarantee svg { color:var(--bc-green-400); flex-shrink:0; margin-top:1px; }
 .bcp-page .price__waitlist-form { display:flex; flex-direction:column; gap:10px; margin:0; position:relative; }
@@ -356,36 +405,40 @@ const STYLES = `
 .bcp-page .faq__h { margin-left:auto; margin-right:auto; text-align:center; max-width:30ch; }
 
 .bcp-page .cta-band {
-  background:var(--bc-ink-850); border-top:1px solid var(--bc-ink-700); border-bottom:1px solid var(--bc-ink-700);
+  background:var(--bc-ink-850);
+  border-top:1px solid var(--bc-ink-700); border-bottom:1px solid var(--bc-ink-700);
   padding:var(--s-10) 0; text-align:center; position:relative; overflow:hidden;
 }
 .bcp-page .cta-band__glow {
-  position:absolute; inset:0; pointer-events:none; opacity:.75;
+  /* Squished vertically (height 60%) so the gradient doesn't reach the
+     top or bottom edge of the section. Section background shows through
+     above and below, no hard edge. */
+  position:absolute; inset:0; pointer-events:none; opacity:.6;
   background:radial-gradient(
-    ellipse 80% 100% at center,
-    rgba(58,133,255,0.30) 0%,
-    rgba(58,133,255,0.20) 24%,
+    ellipse 45% 60% at center,
+    rgba(58,133,255,0.32) 0%,
+    rgba(58,133,255,0.20) 22%,
     rgba(58,133,255,0.10) 46%,
-    rgba(58,133,255,0.04) 66%,
-    rgba(58,133,255,0.01) 84%,
+    rgba(58,133,255,0.04) 68%,
+    rgba(58,133,255,0.01) 86%,
     rgba(58,133,255,0) 100%
   );
-  filter:blur(64px); will-change:filter;
+  filter:blur(20px); will-change:filter;
 }
 .bcp-page .cta-band__content { position:relative; }
 .bcp-page .cta-band__title { font-size:clamp(28px,3.5vw,42px); font-weight:600; letter-spacing:var(--bc-ls-heading); color:var(--bc-text-100); margin:0 auto var(--s-5); max-width:24ch; text-wrap:balance; }
 .bcp-page .cta-band__sub { color:var(--bc-text-300); font-size:17px; margin:0 auto var(--s-7); max-width:52ch; }
 .bcp-page .cta-band__fineprint { margin-top:var(--s-5); font-size:13px; color:var(--bc-text-400); }
 
-.bcp-page .founder__title { font-size:clamp(34px,4vw,52px); font-weight:600; letter-spacing:var(--bc-ls-heading); color:var(--bc-text-100); margin:0 0 var(--s-7); line-height:1.1; }
-.bcp-page .founder__body { font-size:18px; color:var(--bc-text-200); line-height:1.65; display:flex; flex-direction:column; gap:var(--s-5); }
+.bcp-page .founder__title { font-size:clamp(34px,4vw,52px); font-weight:600; letter-spacing:var(--bc-ls-heading); color:var(--bc-text-100); margin:0 0 var(--s-8); line-height:1.1; }
+.bcp-page .founder__body { font-size:18px; color:var(--bc-text-200); line-height:1.75; display:flex; flex-direction:column; gap:var(--s-6); }
 .bcp-page .founder__body strong { color:var(--bc-text-100); font-weight:600; }
 .bcp-page .founder__pull {
-  font-size:24px; font-weight:500; color:var(--bc-blue-200);
+  font-size:26px; font-weight:500; color:var(--bc-blue-200);
   border-left:3px solid var(--bc-blue-400); padding-left:var(--s-6);
-  line-height:1.4;
+  line-height:1.4; margin:var(--s-2) 0 !important;
 }
-.bcp-page .founder__sig { font-family:var(--bc-font-mono); font-size:14px; color:var(--bc-text-300); }
+.bcp-page .founder__sig { font-family:var(--bc-font-mono); font-size:16px; color:var(--bc-text-200); margin-top:var(--s-5) !important; }
 
 .bcp-page .ps-section { padding:var(--s-10) 0; }
 .bcp-page .ps {
@@ -755,14 +808,19 @@ function VideoTestimonial({ clips, poster, pull, name, role, featured, posterPos
           />
         ) : (
           <>
-            <div className="tw-video__poster">
-              <img
-                src={poster}
-                alt={`${name} testimonial`}
-                loading="lazy"
-                style={posterPosition ? { objectPosition: posterPosition } : undefined}
-              />
-            </div>
+            {/* Switched from <img> to background-image. object-position was being
+                ignored for some reason; background-position works reliably. */}
+            <div
+              className="tw-video__poster"
+              role="img"
+              aria-label={`${name} testimonial`}
+              style={{
+                backgroundImage: `url(${poster})`,
+                backgroundSize: 'cover',
+                backgroundPosition: posterPosition || 'center',
+                backgroundRepeat: 'no-repeat',
+              }}
+            />
             <div className="tw-video__overlay" />
             <button type="button" className="tw-video__play" aria-label={`Play ${name} testimonial`}>
               <Icon name="play" size={22} />
@@ -812,10 +870,10 @@ const TESTIMONIALS: AnyTestimonial[] = [
     kind: 'video',
     data: {
       clips: ['/testimonials/peter-byrne-1.mp4', '/testimonials/peter-byrne-2.mp4', '/testimonials/peter-byrne-3.mp4', '/testimonials/peter-byrne-4.mp4'],
-      poster: '/testimonials/posters/peter-byrne-1.jpg',
+      poster: '/testimonials/posters/peter-byrne-1.gif',
       pull: 'In the space of three months, the information has been invaluable. My channel gained over 600 subscribers and broke past 5,000 total.',
       name: 'Peter Byrne',
-      role: 'PSX Gaming Memories',
+      role: '@PSXGamingMemories',
       featured: true,
     },
   },
@@ -824,14 +882,14 @@ const TESTIMONIALS: AnyTestimonial[] = [
     data: {
       quote: 'I have spent thousands of dollars in books and courses on YouTube. None of those things solved my problems. I needed to hear the brutal truth, that I had to rethink how I was approaching YouTube. Dave was that reality check.',
       name: 'Paul Backstrom',
-      role: 'Screenwriting Scribe',
+      role: '@ScreenwritingScribe',
     },
   },
   {
     kind: 'video',
     data: {
       clips: ['/testimonials/chanelle-neilson-1.mp4', '/testimonials/chanelle-neilson-2.mp4'],
-      poster: '/testimonials/posters/chanelle-neilson-1.jpg',
+      poster: '/testimonials/posters/chanelle-neilson-1.gif',
       pull: 'I chose Dave because there was such a personalized approach. He was very invested in making sure I got the help I needed. Nothing was off limits.',
       name: 'Chanelle Neilson',
       role: 'YouTube Creator',
@@ -842,7 +900,7 @@ const TESTIMONIALS: AnyTestimonial[] = [
     data: {
       quote: 'Dave was extremely generous with his time and tactical with his advice. Understands current constraints well and points to issues that need to be currently addressed.',
       name: 'Jasim Eisa',
-      role: 'YouTube Creator',
+      role: '@JasimEisa',
     },
   },
   {
@@ -850,17 +908,17 @@ const TESTIMONIALS: AnyTestimonial[] = [
     data: {
       quote: 'My channel was not growing. Talking with Dave was extremely eye-opening. He gave me new insights and a different way to view my channel and who I am making content for.',
       name: 'Michael Dean',
-      role: 'YouTube Creator',
+      role: '@TimberSmokeCo',
     },
   },
   {
     kind: 'video',
     data: {
       clips: ['/testimonials/tim-gardner.mp4'],
-      poster: '/testimonials/posters/tim-gardner.jpg',
+      poster: '/testimonials/posters/tim-gardner.gif',
       pull: 'If you actually want to get serious about filling the top of the funnel and having a process, this would be a perfect system. Ten out of ten.',
       name: 'Tim Gardner',
-      role: 'YouTube Creator',
+      role: '@timgardner4166',
     },
   },
 
@@ -870,17 +928,17 @@ const TESTIMONIALS: AnyTestimonial[] = [
     data: {
       quote: 'He reviewed my channel, watched my videos, and took detailed notes on exactly where I could improve. He not only pointed out my weak spots, he gave concrete examples of how to fix them. People love to say "make a better title or thumbnail," but no one shows you how or why it works. Dave did both.',
       name: 'Melissa Terzis',
-      role: 'DC Real Estate Mama',
+      role: '@DCRealEstateMama',
     },
   },
   {
     kind: 'video',
     data: {
       clips: ['/testimonials/mark-young-1.mp4', '/testimonials/mark-young-2.mp4'],
-      poster: '/testimonials/posters/mark-young-1.jpg',
+      poster: '/testimonials/posters/mark-young-1.gif',
       pull: 'My average view count tripled to around 15K and my subscriber count increased by over 45%. I now have a clear roadmap.',
       name: 'Mark Young',
-      role: 'Artisan Woodworks',
+      role: '@aw_artisanwoodworks',
     },
   },
   {
@@ -888,7 +946,7 @@ const TESTIMONIALS: AnyTestimonial[] = [
     data: {
       quote: "I've completed several YouTube coachings, even Ali Abdaal's. Nothing comes close to what Dave has to offer.",
       name: 'Matt Moss',
-      role: 'Matt Moss PBSM',
+      role: '@MattMossPBSM',
       featured: true,
     },
   },
@@ -896,7 +954,7 @@ const TESTIMONIALS: AnyTestimonial[] = [
     kind: 'video',
     data: {
       clips: ['/testimonials/mireille-nicole-1.mp4', '/testimonials/mireille-nicole-2.mp4'],
-      poster: '/testimonials/posters/mireille-nicole-1.jpg',
+      poster: '/testimonials/posters/mireille-nicole-1.gif',
       pull: 'Information is not what we are missing. It is applying it and seeing my blind spots. Dave will tell you the truth and give you constructive feedback.',
       name: 'Mireille Nicole',
       role: '@mireillenicolecoaching',
@@ -907,7 +965,7 @@ const TESTIMONIALS: AnyTestimonial[] = [
     data: {
       quote: 'Despite my best efforts, my YouTube channel had been stuck for a long time and I just could not figure out what I was missing. In one coaching session, Dave helped me identify the main issues, demystified the whole process, and gave me clear, actionable next steps.',
       name: 'Tara Malone',
-      role: 'My Catholic Homecoming',
+      role: '@MyCatholicHomecoming',
     },
   },
   {
@@ -915,7 +973,7 @@ const TESTIMONIALS: AnyTestimonial[] = [
     data: {
       quote: 'Before the meeting, he rewrote every title for my shows and used that as a training example in the call. I left with great advice and a roadmap. If you are wondering if this is worth the investment, stop wondering.',
       name: 'Brett Hill',
-      role: 'YouTube Creator',
+      role: '@themindfulcoachpodcast',
     },
   },
 
@@ -924,7 +982,7 @@ const TESTIMONIALS: AnyTestimonial[] = [
     kind: 'video',
     data: {
       clips: ['/testimonials/daniel-bassett-1.mp4', '/testimonials/daniel-bassett-2.mp4'],
-      poster: '/testimonials/posters/daniel-bassett-1.jpg',
+      poster: '/testimonials/posters/daniel-bassett-1.gif',
       pull: 'Thumbnails were the most concrete thing. They lifted my game from 2% CTR to 3 to 4%. That increased it massively.',
       name: 'Daniel Bassett',
       role: '@MyLifeByAI',
@@ -935,15 +993,15 @@ const TESTIMONIALS: AnyTestimonial[] = [
     data: {
       quote: 'My conversation with Dave was incredibly helpful and insightful. It was clear he took the time to understand my channel and tailor a personalized strategy that addressed my specific challenges.',
       name: 'Xander Mason',
-      role: 'YouTube Creator',
+      role: '@XanderMasonCooking',
     },
   },
   {
     kind: 'video',
     data: {
       clips: ['/testimonials/morgan-joan-kennedy.mp4'],
-      poster: '/testimonials/posters/morgan-joan-kennedy.jpg',
-      posterPosition: 'center 30%',
+      poster: '/testimonials/posters/morgan-joan-kennedy.gif',
+      posterPosition: 'center 35%',
       pull: 'What was really amazing was how deep of an analysis he did on my channel. Dave really helped me see my blind spots and re-energized me to restart.',
       name: 'Morgan Joan Kennedy',
       role: '@DearestJoanie',
@@ -954,7 +1012,7 @@ const TESTIMONIALS: AnyTestimonial[] = [
     data: {
       quote: "Dave's input and advice was highly customised to my channel and my blind spots. I have tried other YouTube coaching services and none of them were as good.",
       name: 'Andrew Gray',
-      role: 'YouTube Creator',
+      role: '@andrewgraymanshow',
     },
   },
   {
@@ -962,7 +1020,7 @@ const TESTIMONIALS: AnyTestimonial[] = [
     data: {
       quote: 'He really helped me a lot to structure the steps to take, to grow my YT business. He went way beyond what I would have expected and exceeded my expectations.',
       name: 'SBtrader82',
-      role: 'YouTube Creator',
+      role: '@SBtrader82',
     },
   },
   {
@@ -970,7 +1028,7 @@ const TESTIMONIALS: AnyTestimonial[] = [
     data: {
       quote: 'Dave is very knowledgeable. As someone who has walked the walk, it is clear he knows what he is talking about and is able to provide helpful and compassionate insight tailored to me.',
       name: 'Charlie',
-      role: 'YouTube Creator',
+      role: '@FromAcrossTheWeb',
     },
   },
   {
@@ -978,7 +1036,7 @@ const TESTIMONIALS: AnyTestimonial[] = [
     data: {
       quote: 'I am very impressed with Dave Jeltema’s professionalism and his honest feedback. He was very thoughtful and detailed in his audit of my YT channel.',
       name: 'Jacob Eapen',
-      role: 'YouTube Creator',
+      role: '@NewCompassPoint-xz9jp',
     },
   },
 ];
@@ -1084,33 +1142,22 @@ function PricingCard({
 }: PricingCardProps) {
   return (
     <div className="price" id="checkout">
-      <span style={{
-        display: 'inline-block',
-        fontFamily: 'var(--bc-font-mono)',
-        fontSize: 'var(--bc-fs-caption)',
-        color: 'var(--bc-blue-300)',
-        letterSpacing: 'var(--bc-ls-overline)',
-        textTransform: 'uppercase',
-      }}>Founders Round</span>
-      <h3 className="price__title">Full access to the program. <span className="blue-em">$999.</span></h3>
-
-      {windowState === 'before' && windowOpen && (
-        <div style={{ marginBottom: 'var(--s-5)' }}>
+      <div className="price__head-row">
+        <span className="eyebrow"><span className="eyebrow__line" />Founders Round</span>
+        {windowState === 'before' && windowOpen && (
           <Countdown target={windowOpen} label="Opens in" onComplete={onWindowOpened} />
-        </div>
-      )}
-      {windowState === 'open' && windowClose && (
-        <div style={{ marginBottom: 'var(--s-5)' }}>
-          <Countdown target={windowClose} label="Enrollment closes in" onComplete={onWindowClosed} />
-        </div>
-      )}
+        )}
+        {windowState === 'open' && windowClose && (
+          <Countdown target={windowClose} label="Closes in" onComplete={onWindowClosed} />
+        )}
+      </div>
+      <h3 className="price__title">Full access to the program. <span className="blue-em">Three months.</span></h3>
 
       {windowState === 'open' ? (
         <>
           <div className="price__row">
             <span className="price__strike">$1,999</span>
             <span className="price__main">$999</span>
-            <span className="price__alt">or 2&times; $599</span>
           </div>
           <p className="price__sub">
             <strong>Founders keep 50% off every future version.</strong> When the price goes up, your renewal stays half off whatever it becomes.
@@ -1118,13 +1165,12 @@ function PricingCard({
 
           <div className="price__rule" />
           <ul className="price__included">
-            <li><Icon name="check" size={16} /><span>Personal review of your channel, week one</span></li>
-            <li><Icon name="check" size={16} /><span>The content checklist I use every week</span></li>
-            <li><Icon name="check" size={16} /><span>Prototype course (9 documents, dripped + finalized with your feedback)</span></li>
-            <li><Icon name="check" size={16} /><span>Resource library (14 worksheets and systems)</span></li>
-            <li><Icon name="check" size={16} /><span>Weekly 60-min live Q&amp;A on Zoom (Wednesdays, 2pm EST &middot; recorded)</span></li>
+            <li><Icon name="check" size={16} /><span>I review your channel &mdash; what is broken, what to fix first (week one)</span></li>
+            <li><Icon name="check" size={16} /><span>My weekly content system &mdash; the checklist I run before every upload</span></li>
+            <li><Icon name="check" size={16} /><span>All nine pillars of how I make content, broken down inside and out</span></li>
+            <li><Icon name="check" size={16} /><span>14 worksheets and guides &mdash; every framework I use</span></li>
+            <li><Icon name="check" size={16} /><span>Weekly 60-minute live session (Wednesdays at 2pm EST &middot; recorded)</span></li>
             <li><Icon name="check" size={16} /><span>Direct access to me every day</span></li>
-            <li><Icon name="check" size={16} /><span>Full program access &middot; renew or leave when you are ready</span></li>
           </ul>
 
           <div className="price__rule" />
@@ -1144,9 +1190,14 @@ function PricingCard({
               disabled={isLoadingInstall}
               className="btn btn--ghost btn--lg btn--block price__btn-split"
             >
-              <span className="price__btn-main">{isLoadingInstall ? 'Redirecting...' : 'Split into 2 — $599 today, $599 in 30 days'}</span>
+              <span className="price__btn-main">{isLoadingInstall ? 'Redirecting...' : 'Split into 2 — $599 now, $599 in 30 days'}</span>
             </button>
           </div>
+
+          <ul className="price__assurances">
+            <li><span className="price__pip" />Community access the moment you join</li>
+            <li><span className="price__pip" />Direct access to me starts immediately</li>
+          </ul>
 
           <div className="price__guarantee">
             <Icon name="shield" size={18} />
@@ -1218,7 +1269,14 @@ export default function TestPage() {
 
     const openStr = process.env.NEXT_PUBLIC_WINDOW_OPEN;
     const closeStr = process.env.NEXT_PUBLIC_WINDOW_CLOSE;
-    if (!openStr || !closeStr) { setWindowState('open'); return; }
+    if (!openStr || !closeStr) {
+      // No env vars (e.g. local dev). Default to 'open' with placeholder dates
+      // so the nav countdown still renders and we can see the layout.
+      setWindowState('open');
+      setWindowOpen(new Date(Date.now() - 24 * 60 * 60 * 1000));
+      setWindowClose(new Date(Date.now() + 4 * 24 * 60 * 60 * 1000));
+      return;
+    }
     const open = new Date(openStr);
     const close = new Date(closeStr);
     setWindowOpen(open);
@@ -1279,7 +1337,7 @@ export default function TestPage() {
         {/* NAV */}
         <nav className="nav">
           <div className="nav__inner">
-            <a href="#top" className="nav__brand"><span className="bc-logo">Boundless Creator Program</span></a>
+            <a href="#top" className="nav__brand"><span className="bc-logo">Boundless Creator</span><span style={{opacity:0.5,fontSize:'10px',marginLeft:8,fontFamily:'var(--bc-font-mono)',color:'var(--bc-text-400)'}}>[v12]</span></a>
             <div className="nav__timer">
               {windowState === 'open' && windowClose && (
                 <Countdown target={windowClose} label="Closes in" onComplete={handleWindowClosed} />
@@ -1300,13 +1358,13 @@ export default function TestPage() {
               <WindowBadge state={windowState} />
             </div>
             <h1 className="hero__title">
-              Stop <em className="blue-em">guessing</em> what to fix on your channel. Get a personal review from me in your first week.
+              Stop <span className="blue-em">guessing</span> what to fix on your channel. Get a personal review from me in your first week.
             </h1>
             <p className="hero__sub">
-              Working with me directly. The personal review of your channel. The content checklist I use every week. Weekly Q&amp;A on Zoom. Direct access every day.
+              Working with me directly. A deep-dive on your specific channel. The content checklist I use every week. Weekly Q&amp;A on Zoom. Direct access every day.
             </p>
 
-            <VSL />
+            {SHOW_VSL && <VSL />}
 
             <div className="hero__cta-stack">
               {windowState === 'open' ? (
@@ -1316,8 +1374,10 @@ export default function TestPage() {
                   </button>
                   <p className="hero__price-line">
                     <span className="strike">$1,999</span>
+                    <span className="dot-sep">&mdash;</span>
                     <strong>$999 founders price</strong>
-                    <span className="dot-sep">&middot;</span>or 2&times; $599<span className="dot-sep">&middot;</span>30-day refund
+                    <span className="dot-sep">&mdash;</span>
+                    <strong>50% off every future version</strong>
                   </p>
                 </>
               ) : (
@@ -1370,13 +1430,14 @@ export default function TestPage() {
             </div>
             <div className="grid-2 problem-grid">
               <h2 className="problem-quote">
-                You are not guessing because you are new. You are guessing because <span className="blue-em">nobody has told you what is broken</span> on your channel.
+                You&apos;re not lazy. You&apos;re not casual. You&apos;re doing the work. <span className="blue-em">The work just isn&apos;t paying off.</span>
               </h2>
               <ul className="problem-list">
-                <li>You have watched the <strong>thirty-hour curriculum</strong> from the big creator coach. None of it told you what to do <strong>tomorrow</strong>.</li>
-                <li>You have <strong>twelve drafts</strong> in a Google Doc and zero of them are published.</li>
-                <li>You watch creators on the same beat as you and quietly know <strong>your stuff is better</strong>.</li>
-                <li>You do not need another tutorial. You need someone <strong>reading your work</strong>, a system to follow, and people in the room with you.</li>
+                <li>You have been <strong>consistent</strong>. You are posting. The views still are not compounding.</li>
+                <li>You are getting <strong>crickets</strong> on uploads you spent days on.</li>
+                <li>You have watched the courses. Read the threads. You <strong>still do not know what is wrong</strong>.</li>
+                <li>Every upload feels like a <strong>coin flip</strong>. No clear next move.</li>
+                <li>You do not need motivation. You do not need another tutorial. You need <strong>pattern recognition</strong> on your specific channel.</li>
               </ul>
             </div>
           </div>
@@ -1415,7 +1476,7 @@ export default function TestPage() {
             </div>
             <h2 className="section-h">You also get <span className="blue-em">all of this</span>.</h2>
             <p className="section-sub">
-              Renew or leave when you are ready. <strong>Founders keep 50% off every future version.</strong>
+              Renew or leave when you are ready. <strong className="green-em">Founders keep 50% off every future version.</strong>
             </p>
             <div className="grid-2 perks-grid">
               <div className="card card--raised">
@@ -1504,11 +1565,12 @@ export default function TestPage() {
             </div>
             <h2 className="section-h">Try it for <span className="blue-em">thirty days</span>. If it is not worth it, full refund.</h2>
             <p className="section-sub">
-              Use the first month. Get the personal review of your channel. Read the checklist. Show up to a live call. Spend a week in the community. <strong>If it is not worth $999, I do not want your $999.</strong>
+              Use the first month. Get my read on your specific channel. Read the checklist. Show up to a live call. Spend a week in the community. <strong>If it is not worth $999, I do not want your $999.</strong>
             </p>
             <div className="tw">
               <div className="tw__head">
-                <p className="tw__sub">From founders and past clients. <strong>Every one of them real.</strong></p>
+                <span className="eyebrow"><span className="eyebrow__line" />From founders + past clients</span>
+                <p className="tw__sub">Different niches. Different stages. People I have actually worked with.<br /><strong>Every one of them real.</strong></p>
               </div>
               <TestimonialWall />
             </div>
@@ -1521,15 +1583,15 @@ export default function TestPage() {
             <div className="section-head">
               <span className="section-num">06 — From me</span>
             </div>
-            <h2 className="founder__title">Why I built this.</h2>
+            <h2 className="founder__title">Why this exists.</h2>
             <div className="founder__body">
-              <p>I launched my high-ticket program last year after about <strong>35 conversations</strong> with creators. Almost every one of them said the same thing.</p>
+              <p>If you have been doing the work for a year or two and the views still are not compounding, you are who I built this for.</p>
+              <p>Last year I launched my one-on-one program. Out of about <strong>35 conversations</strong> I had with creators before launch, almost every one of them said some version of:</p>
               <p className="founder__pull">&ldquo;I want to work with you. I am not at the spot where it makes sense to pay this much.&rdquo;</p>
-              <p>I have taken close to <strong>200 applications</strong> since. Most of them are not the right fit for the high-ticket. For most of my audience, it is not the right offer.</p>
-              <p><strong>This program is the bridge.</strong> For the creators who are not far in their journey yet, who want my systems, my attention, and my help, but who do not need the full one-on-one container.</p>
-              <p>There are no barriers here. If you want to grow your channel, you are welcome.</p>
-              <p>I think about YouTube all day. Constantly learning, reassessing, reverse-engineering content. <strong>Hours and hours every day.</strong> I enjoy helping. I can talk about this stuff all day long.</p>
-              <p>I think I can help somebody who wants to follow in my footsteps and treat YouTube seriously.</p>
+              <p>I have taken close to <strong>200 applications</strong> since. Most are not the right fit for the high-ticket. For most of my audience, it is not the right offer.</p>
+              <p>So I built this. The program for the creators who want my systems, my attention, and my help, but who <strong>do not need a year of one-on-one</strong>. The ones who are one or two decisions away from the channel actually working.</p>
+              <p>I think about YouTube all day. Constantly reverse-engineering content, watching what is pulling and leaking on other channels, refining my own. <strong>Hours and hours every day.</strong> I am good at this. I enjoy it.</p>
+              <p>If you want a clear read on your specific channel and a system to follow, I think I can help.</p>
               <p className="founder__sig">&mdash; Dave Jeltema</p>
             </div>
           </div>
@@ -1546,7 +1608,7 @@ export default function TestPage() {
               <details className="faq__item" open>
                 <summary className="faq__q">Why is the founders price $999?</summary>
                 <div className="faq__a">
-                  It is intentionally low for the founders round. I want a <strong>small group of founders</strong> who are serious, and who will shape the final version of the course with their feedback. When the price goes up to $1,999, your renewal stays <strong>50% off every future version</strong>.
+                  It is intentionally low for the founders round. I want a <strong>small group of founders</strong> who are serious, and who will shape the final version of the course with their feedback. When the price goes up to $1,999, your renewal stays <strong className="green-em">50% off every future version</strong>.
                 </div>
               </details>
               <details className="faq__item">
@@ -1564,7 +1626,7 @@ export default function TestPage() {
               <details className="faq__item">
                 <summary className="faq__q">How is this different from a course?</summary>
                 <div className="faq__a">
-                  A course is a vault you do not open. This is a <strong>relationship with a coach and a system</strong>. The course is half of what you pay for. The other half is the personal review of your channel and the community.
+                  A course is a vault you do not open. This is a <strong>relationship with a coach and a system</strong>. The course is half of what you pay for. The other half is the read I write on your channel and the community.
                 </div>
               </details>
               <details className="faq__item">
@@ -1594,7 +1656,7 @@ export default function TestPage() {
           <section className="ps-section">
             <div className="container narrow">
               <div className="ps">
-                <span className="ps__label">P.S. &middot; From Dave</span>
+                <span className="ps__label">P.S. &mdash; From Dave</span>
                 <p>If you have read this far, you are the person I built it for.</p>
                 <p>The next founders round either has your name on it or it does not. Either way, three months pass.</p>
                 <p>If you want the systems, the attention, and the help, I will see you Monday.</p>
@@ -1641,9 +1703,10 @@ export default function TestPage() {
         <footer>
           <div className="container">
             <div>
-              <span className="bc-logo" style={{ fontSize: 14, fontWeight: 600, color: 'var(--bc-text-300)' }}>Boundless Creator Program</span>
+              <span className="bc-logo" style={{ fontSize: 14, fontWeight: 600, color: 'var(--bc-text-300)' }}>Boundless Creator</span>
             </div>
             <div className="footer__links">
+              <a href="https://docs.google.com/document/d/1s6-4kCsW94o9FM-nNoFPxJkGMwgjpqCPLmcxWEtNxTs" target="_blank" rel="noopener noreferrer">Full program details</a>
               <a href="mailto:hello@boundlesscreator.com">Contact</a>
               <a href="https://www.youtube.com/@boundlesscreator" target="_blank" rel="noopener noreferrer">YouTube</a>
             </div>
