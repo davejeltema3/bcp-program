@@ -106,10 +106,14 @@ const STYLES = `
 .bcp-page .btn--block { display:flex; width:100%; }
 
 .bcp-page .overline {
-  display:inline-flex; align-items:center; gap:8px;
+  display:inline-flex; align-items:center; gap:10px;
   font-family:var(--bc-font-mono); font-size:var(--bc-fs-caption);
   color:var(--bc-blue-300); letter-spacing:var(--bc-ls-overline);
   text-transform:uppercase;
+}
+.bcp-page .overline::before {
+  content:""; width:24px; height:1px; background:currentColor; opacity:.55;
+  flex-shrink:0;
 }
 
 .bcp-page .section-num { font-family:var(--bc-font-mono); font-size:var(--bc-fs-caption); color:var(--bc-text-400); letter-spacing:var(--bc-ls-mono); }
@@ -121,7 +125,6 @@ const STYLES = `
 .bcp-page .section-sub strong { color:var(--bc-text-100); font-weight:600; }
 .bcp-page .section-head {
   display:flex; align-items:baseline; gap:var(--s-5); margin-bottom:var(--s-7);
-  border-bottom:1px solid var(--bc-ink-700); padding-bottom:var(--s-5);
 }
 .bcp-page .subsection-h { font-size:24px; font-weight:600; letter-spacing:var(--bc-ls-heading); color:var(--bc-text-100); margin:0 0 8px; }
 .bcp-page .subsection-sub { color:var(--bc-text-300); margin:0 0 var(--s-7); font-size:16px; }
@@ -130,17 +133,18 @@ const STYLES = `
 .bcp-page .hero__glow {
   position:absolute; top:-260px; left:50%; width:1500px; height:780px;
   transform:translateX(-50%);
+  /* Same-hue at 0 alpha avoids banding (default 'transparent' interpolates
+     through middle gray which causes visible rings). */
   background:radial-gradient(
     ellipse at center,
     rgba(58,133,255,0.32) 0%,
-    rgba(58,133,255,0.24) 18%,
-    rgba(58,133,255,0.16) 32%,
-    rgba(58,133,255,0.10) 48%,
-    rgba(58,133,255,0.05) 64%,
-    rgba(58,133,255,0.02) 80%,
-    transparent 100%
+    rgba(58,133,255,0.24) 22%,
+    rgba(58,133,255,0.14) 44%,
+    rgba(58,133,255,0.06) 64%,
+    rgba(58,133,255,0.02) 82%,
+    rgba(58,133,255,0) 100%
   );
-  pointer-events:none; filter:blur(40px); will-change:filter;
+  pointer-events:none; filter:blur(56px); will-change:filter;
 }
 .bcp-page .hero__inner { position:relative; }
 .bcp-page .hero__top { display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:var(--s-5); }
@@ -258,6 +262,8 @@ const STYLES = `
 .bcp-page .review__row:last-of-type { border-bottom:0; }
 .bcp-page .review__rowtitle { font-size:16px; font-weight:600; color:var(--bc-blue-200); margin:0 0 6px; }
 .bcp-page .review__rowtext { font-size:14px; color:var(--bc-text-200); margin:0; line-height:1.55; }
+.bcp-page .review__rowtext mark { background:transparent; color:var(--bc-blue-200); font-weight:600; position:relative; padding:0 2px; }
+.bcp-page .review__rowtext mark::before { content:""; position:absolute; left:-2px; right:-2px; bottom:-1px; height:7px; background:var(--bc-blue-glow); filter:blur(3px); z-index:-1; }
 
 .bcp-page .checklist { background:var(--bc-ink-800); border:1px solid var(--bc-ink-600); border-radius:var(--r-4); overflow:hidden; box-shadow:var(--shadow-card); }
 .bcp-page .checklist__head { padding:var(--s-7); border-bottom:1px solid var(--bc-ink-600); background:linear-gradient(180deg,rgba(47,203,134,.04),transparent); }
@@ -354,17 +360,17 @@ const STYLES = `
   padding:var(--s-10) 0; text-align:center; position:relative; overflow:hidden;
 }
 .bcp-page .cta-band__glow {
-  position:absolute; inset:0; pointer-events:none; opacity:.7;
+  position:absolute; inset:0; pointer-events:none; opacity:.75;
   background:radial-gradient(
     ellipse 80% 100% at center,
     rgba(58,133,255,0.30) 0%,
-    rgba(58,133,255,0.20) 22%,
-    rgba(58,133,255,0.12) 40%,
-    rgba(58,133,255,0.06) 58%,
-    rgba(58,133,255,0.02) 78%,
-    transparent 100%
+    rgba(58,133,255,0.20) 24%,
+    rgba(58,133,255,0.10) 46%,
+    rgba(58,133,255,0.04) 66%,
+    rgba(58,133,255,0.01) 84%,
+    rgba(58,133,255,0) 100%
   );
-  filter:blur(48px); will-change:filter;
+  filter:blur(64px); will-change:filter;
 }
 .bcp-page .cta-band__content { position:relative; }
 .bcp-page .cta-band__title { font-size:clamp(28px,3.5vw,42px); font-weight:600; letter-spacing:var(--bc-ls-heading); color:var(--bc-text-100); margin:0 auto var(--s-5); max-width:24ch; text-wrap:balance; }
@@ -440,14 +446,21 @@ const STYLES = `
 .bcp-page .tw-video__poster { position:absolute; inset:0; display:grid; place-items:center; }
 .bcp-page .tw-video__poster img { width:100%; height:100%; object-fit:cover; display:block; }
 .bcp-page .tw-video__play {
-  position:relative; z-index:2; width:64px; height:64px; border-radius:50%;
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  z-index:2; width:64px; height:64px; border-radius:50%;
   display:grid; place-items:center;
-  background:linear-gradient(180deg,var(--bc-blue-400),var(--bc-blue-500));
-  color:#fff; box-shadow:0 12px 32px rgba(58,133,255,.35),0 0 0 6px rgba(58,133,255,.12);
-  transition:transform 200ms ease;
-  border:0; cursor:pointer;
+  background:rgba(15,23,41,.55);
+  color:#fff; opacity:.5;
+  border:1px solid rgba(255,255,255,.25);
+  cursor:pointer;
+  transition:opacity 200ms ease, transform 200ms ease, background 200ms ease;
 }
-.bcp-page .tw-video:hover .tw-video__play { transform:scale(1.06); }
+.bcp-page .tw-video:hover .tw-video__play {
+  opacity:1;
+  background:linear-gradient(180deg,var(--bc-blue-400),var(--bc-blue-500));
+  transform:translate(-50%,-50%) scale(1.06);
+}
 .bcp-page .tw-video__overlay { position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(0,0,0,0.4) 100%); z-index:1; pointer-events:none; }
 
 .bcp-page .form-msg { font-size:13px; color:var(--bc-text-300); margin:8px 0 0; }
@@ -564,22 +577,22 @@ function ReviewArtifact() {
   return (
     <div className="review">
       <div className="review__head">
-        <span className="review__eyebrow">Personal Review &middot; Sample</span>
-        <h3 className="review__title">Where you actually are. The one bottleneck. The next action.</h3>
-        <p className="review__sub">A document I write about your specific channel. Not a list of ten things. The one read you need this week.</p>
+        <span className="review__eyebrow">Personal review &middot; Week 01</span>
+        <h3 className="review__title">&ldquo;Where you actually are. Not where you think you are.&rdquo;</h3>
+        <p className="review__sub">A document about your specific channel. Written from research on your niche, your questionnaire, twenty minutes of me dictating what I see, and your analytics if you give me access.</p>
       </div>
       <div className="review__body">
         <div className="review__row">
-          <h4 className="review__rowtitle">Where I think you actually are</h4>
-          <p className="review__rowtext">Not where you think you are. Not where the algorithm tells you to think you are. Where you are based on what I see in your content, your packaging, and your data.</p>
+          <p className="review__rowtitle">Where you are</p>
+          <p className="review__rowtext">Not where you think you are. Not where the algorithm tells you to think you are. <mark>Where you are based on what I see.</mark> Your packaging, your retention shape, your title and thumb language compared to the people winning in your niche right now.</p>
         </div>
         <div className="review__row">
-          <h4 className="review__rowtitle">The one bottleneck to fix first</h4>
-          <p className="review__rowtext">Not a list of ten things. One. The thing that, if you fix it, the rest gets easier.</p>
+          <p className="review__rowtitle">The one bottleneck to fix first</p>
+          <p className="review__rowtext">Not a list of ten things. <mark>One.</mark> The thing that, if you fix it, makes the rest get easier. Most creators have a packaging bottleneck pretending to be a content bottleneck. Some have it the other way around. I name yours.</p>
         </div>
         <div className="review__row">
-          <h4 className="review__rowtitle">The concrete next action this week</h4>
-          <p className="review__rowtext">Specific. Doable. Something you can start before our first live call.</p>
+          <p className="review__rowtitle">The concrete next action this week</p>
+          <p className="review__rowtext">Specific. Doable. Something you can <mark>start before our first live call</mark>. Not &ldquo;rebrand your channel.&rdquo; Something like: re-cut these three titles, or audit retention on these last four uploads.</p>
         </div>
       </div>
     </div>
@@ -589,27 +602,39 @@ function ReviewArtifact() {
 /* =====================================================================
    CHECKLIST ARTIFACT
    ===================================================================== */
+// Content checklist rows shown inside the ChecklistArtifact (the 7-step weekly process)
 const CHECKLIST_ROWS = [
-  { t: 'Foundational principles', b: 'Why this content exists. Who it serves.' },
-  { t: 'Strategy', b: 'The bigger goal this video moves toward.' },
-  { t: 'Ideation', b: 'Filter ideas through a real problem worth solving.' },
-  { t: 'Titles', b: 'Earn the click. Set the right expectation.' },
-  { t: 'Thumbnails', b: 'Land the promise visually in under a second.' },
-  { t: 'Scripting', b: 'Earn every minute. Cut what does not serve.' },
-  { t: 'Hooks', b: 'First 30 seconds. Honest tension. No bait.' },
-  { t: 'Production', b: 'Ship something you would watch yourself.' },
-  { t: 'Mindset', b: 'Stay in the work without burning out.' },
+  { t: 'Idea', b: 'Outlier translation. The Acute Moment Test. The five validation questions.' },
+  { t: 'Title', b: 'The Three-Layer Test. Layer 1 viewer language. Honesty filter. Target Moments.' },
+  { t: 'Thumbnail', b: "Reinforce, do not repeat. Obvious over clever. Sit next to the big creators." },
+  { t: 'Hook', b: 'Six components. Six templates. Start at dislike. The 20-second rule.' },
+  { t: 'Script', b: 'Setup-tension-payoff. Forward pulls. WHY moments. Structure that earns retention.' },
+  { t: 'Production', b: 'Audio over camera. Three-take minimum. What matters and what does not.' },
+  { t: 'Publish + behavior', b: 'The post-upload moves most creators skip. Where you actually get found.' },
+];
+
+// The nine course documents (Foundational, Strategy, Ideation, etc.) shown in the system map
+const NINE_DOCS: Array<[string, string]> = [
+  ['Foundational Principles', 'Effort × strategy. The chain. Inevitability math. Information vs transformation. Packaging beats content. Good enough beats perfect. The valley of death.'],
+  ['Strategy', 'Who you talk to. What problem you solve. What formats you use. What goals you are working toward. The decisions that decide everything downstream.'],
+  ['Ideation', 'Finding ideas, validating them, knowing when to invest the hours and when to pass. Outlier translation. The Acute Moment Test.'],
+  ['Titles', 'What makes a title work. The Three-Layer Test. Layer 1 viewer language. The Honesty Filter. Target Moments. The anatomy of a great title.'],
+  ['Thumbnails', 'Reinforce, do not repeat. Obvious over clever. The amateur signaling mistakes. Sit next to the big creators.'],
+  ['Scripting', 'Setup-tension-payoff. Forward pulls. WHY moments. The Ed Lawrence pattern. How structure earns retention.'],
+  ['Hooks', 'Six components. Six templates. They start at dislike. The 20-second rule. Why hooks are not summaries.'],
+  ['Production', 'Filming, editing, upload, publish, all combined. Audio over camera. Three-take minimum. Post-upload behavior.'],
+  ['Mindset', 'Named playbooks. When you want to quit. When the comparison trap catches you. When you are stuck. What to do, not what to feel.'],
 ];
 
 function ChecklistArtifact() {
   return (
     <div className="checklist">
       <div className="checklist__head">
-        <span className="checklist__eyebrow">Content Checklist &middot; Sample</span>
-        <h3 className="checklist__title">The step-by-step I run on every piece of content I make.</h3>
-        <p className="checklist__sub">No more blank-page paralysis. Work through it with the bottleneck from your review in mind.</p>
+        <span className="checklist__eyebrow">Content checklist &middot; The system you use every week</span>
+        <h3 className="checklist__title">The same step-by-step process I use to make every piece of content.</h3>
+        <p className="checklist__sub">You are not building your own workflow from scratch. You are working through this with the bottleneck from your review in mind.</p>
       </div>
-      <ul className="checklist__list">
+      <ol className="checklist__list">
         {CHECKLIST_ROWS.map((row, i) => (
           <li key={i} className="checklist__row">
             <span className="checklist__num">{String(i + 1).padStart(2, '0')}</span>
@@ -620,7 +645,7 @@ function ChecklistArtifact() {
             <span className="checklist__check"><Icon name="check" size={18} /></span>
           </li>
         ))}
-      </ul>
+      </ol>
     </div>
   );
 }
@@ -633,19 +658,19 @@ function SystemMap() {
     <div className="system">
       <div className="system__head">
         <div>
-          <h3 className="system__title">The full course</h3>
-          <p className="system__sub">Drips into the community starting your second week. Nine reference docs. The same systems I use on my own channel.</p>
+          <h3 className="system__title">The nine documents</h3>
+          <p className="system__sub">The prototype course. Foundational and mental layers everything else sits on top of. Released over your time in the program. You give feedback, I revise. Founders shape the final version.</p>
         </div>
-        <span className="system__count">9 / 9 modules</span>
+        <span className="system__count">09 / docs</span>
       </div>
       <div className="system__grid">
-        {CHECKLIST_ROWS.map((row, i) => (
-          <div key={i} className="system__node">
+        {NINE_DOCS.map(([n, sub], i) => (
+          <div key={n} className="system__node">
             <div className="system__node-head">
               <span className="system__node-num">{String(i + 1).padStart(2, '0')}</span>
-              <span className="system__node-name">{row.t}</span>
+              <span className="system__node-name">{n}</span>
             </div>
-            <p className="system__node-sub">{row.b}</p>
+            <p className="system__node-sub">{sub}</p>
           </div>
         ))}
       </div>
@@ -654,23 +679,23 @@ function SystemMap() {
 }
 
 /* =====================================================================
-   WEEK STRIP
+   RHYTHM STRIP — Wednesday live, daily access, anytime system, at your pace
    ===================================================================== */
-const WEEK = [
-  { d: 'Mon', t: 'Drop your work', b: 'Post the script, title, or thumbnail you are working on.' },
-  { d: 'Wed', t: '90-minute live', b: 'I work through your stuck points live. 2pm EST. Recorded.', highlight: 1 },
-  { d: 'Fri', t: 'Get a read', b: 'I drop responses on what you posted that week.' },
-  { d: 'Anytime', t: 'Direct access', b: 'Drop in whenever. Daily access between sessions.' },
+const RHYTHM_ITEMS: Array<[string, string, string, '0' | '1']> = [
+  ['WEDNESDAY 2PM EST', 'Live Q&A', '60 minutes on Zoom. Anyone who shows up can ask. Recorded.', '1'],
+  ['DAILY', 'Direct access', "Drop a thumb, a title, a script question. I am there every day.", '0'],
+  ['ANYTIME', 'The system', 'Course documents, worksheets, resource library. Use what you need when you need it.', '0'],
+  ['AT YOUR PACE', 'Plan, ship, review', 'The checklist guides every video. Your bottleneck guides every decision.', '0'],
 ];
 
-function WeekStrip() {
+function RhythmStrip() {
   return (
     <div className="weekstrip">
-      {WEEK.map((day, i) => (
-        <div key={i} className="weekstrip__day" data-highlight={day.highlight ?? 0}>
-          <span className="weekstrip__d">{day.d}</span>
-          <div className="weekstrip__t">{day.t}</div>
-          <div className="weekstrip__b">{day.b}</div>
+      {RHYTHM_ITEMS.map(([d, t, body, hl], i) => (
+        <div key={i} className="weekstrip__day" data-highlight={hl}>
+          <div className="weekstrip__d">{d}</div>
+          <div className="weekstrip__t">{t}</div>
+          <div className="weekstrip__b">{body}</div>
         </div>
       ))}
     </div>
@@ -1058,9 +1083,16 @@ function PricingCard({
   windowOpen, windowClose, onWindowOpened, onWindowClosed,
 }: PricingCardProps) {
   return (
-    <div className="price">
-      <span className="overline" style={{ position: 'relative' }}>Founders Round</span>
-      <h3 className="price__title">Personal review. Live calls. Direct access.</h3>
+    <div className="price" id="checkout">
+      <span style={{
+        display: 'inline-block',
+        fontFamily: 'var(--bc-font-mono)',
+        fontSize: 'var(--bc-fs-caption)',
+        color: 'var(--bc-blue-300)',
+        letterSpacing: 'var(--bc-ls-overline)',
+        textTransform: 'uppercase',
+      }}>Founders Round</span>
+      <h3 className="price__title">Full access to the program. <span className="blue-em">$999.</span></h3>
 
       {windowState === 'before' && windowOpen && (
         <div style={{ marginBottom: 'var(--s-5)' }}>
@@ -1076,19 +1108,23 @@ function PricingCard({
       {windowState === 'open' ? (
         <>
           <div className="price__row">
-            <span className="price__strike">$1,998</span>
+            <span className="price__strike">$1,999</span>
             <span className="price__main">$999</span>
-            <span className="price__alt">or 2 &times; $599</span>
+            <span className="price__alt">or 2&times; $599</span>
           </div>
-          <p className="price__sub"><strong>Founders rate. 50% off every future version.</strong></p>
+          <p className="price__sub">
+            <strong>Founders keep 50% off every future version.</strong> When the price goes up, your renewal stays half off whatever it becomes.
+          </p>
 
+          <div className="price__rule" />
           <ul className="price__included">
-            <li><Icon name="check" size={16} /><span><strong>Personal review</strong> in your first week</span></li>
-            <li><Icon name="check" size={16} /><span><strong>Content checklist</strong> the same day</span></li>
-            <li><Icon name="check" size={16} /><span>Weekly 90-minute live session, Wednesdays 2pm EST</span></li>
+            <li><Icon name="check" size={16} /><span>Personal review of your channel, week one</span></li>
+            <li><Icon name="check" size={16} /><span>The content checklist I use every week</span></li>
+            <li><Icon name="check" size={16} /><span>Prototype course (9 documents, dripped + finalized with your feedback)</span></li>
+            <li><Icon name="check" size={16} /><span>Resource library (14 worksheets and systems)</span></li>
+            <li><Icon name="check" size={16} /><span>Weekly 60-min live Q&amp;A on Zoom (Wednesdays, 2pm EST &middot; recorded)</span></li>
             <li><Icon name="check" size={16} /><span>Direct access to me every day</span></li>
-            <li><Icon name="check" size={16} /><span>The full course as it drips week by week</span></li>
-            <li><Icon name="check" size={16} /><span>Full resource library and past cohort recaps</span></li>
+            <li><Icon name="check" size={16} /><span>Full program access &middot; renew or leave when you are ready</span></li>
           </ul>
 
           <div className="price__rule" />
@@ -1099,22 +1135,22 @@ function PricingCard({
             <button
               onClick={() => onCheckout('full')}
               disabled={isLoadingFull}
-              className="btn btn--primary btn--xl btn--block"
+              className="btn btn--primary btn--lg btn--block"
             >
-              {isLoadingFull ? 'Redirecting to Stripe...' : 'Join now — $999'}
+              <span className="price__btn-main">{isLoadingFull ? 'Redirecting to Stripe...' : 'Pay in full — $999'}</span>
             </button>
             <button
               onClick={() => onCheckout('installment')}
               disabled={isLoadingInstall}
-              className="btn btn--ghost btn--block price__btn-split"
+              className="btn btn--ghost btn--lg btn--block price__btn-split"
             >
-              {isLoadingInstall ? 'Redirecting...' : 'Or pay in two installments — $599'}
+              <span className="price__btn-main">{isLoadingInstall ? 'Redirecting...' : 'Split into 2 — $599 today, $599 in 30 days'}</span>
             </button>
           </div>
 
           <div className="price__guarantee">
             <Icon name="shield" size={18} />
-            <span><strong>30-day guarantee.</strong> No questions, no conditions. You walk away with your personal review either way.</span>
+            <span><strong style={{ color: 'var(--bc-text-100)' }}>30-day no-questions refund.</strong> Use the first month. Get the review, the checklist, and a live call. If it is not worth it, full refund.</span>
           </div>
         </>
       ) : (
@@ -1127,19 +1163,30 @@ function PricingCard({
 /* =====================================================================
    CTA BAND
    ===================================================================== */
-function CTABand({ title, sub, onClick, fineprint }: { title: string; sub?: string; onClick: () => void; fineprint?: string }) {
+function CTABand({
+  windowState, title, sub, onClick,
+}: {
+  windowState: WindowState;
+  title: React.ReactNode;
+  sub?: React.ReactNode;
+  onClick: () => void;
+}) {
+  const buttonCopy =
+    windowState === 'open' ? 'Join now — $999'
+    : windowState === 'before' ? 'Join the waitlist'
+    : 'Notify me when it reopens';
   return (
-    <div className="cta-band">
+    <section className="cta-band">
       <div className="cta-band__glow" />
-      <div className="cta-band__content container">
-        <h3 className="cta-band__title">{title}</h3>
+      <div className="container cta-band__content">
+        <h2 className="cta-band__title">{title}</h2>
         {sub && <p className="cta-band__sub">{sub}</p>}
-        <button onClick={onClick} className="btn btn--primary btn--xl">
-          Join now &mdash; $999
+        <button onClick={onClick} className="btn btn--primary btn--lg">
+          {buttonCopy}
         </button>
-        {fineprint && <p className="cta-band__fineprint">{fineprint}</p>}
+        <p className="cta-band__fineprint">30-day refund &middot; One-time payment or 2&times; split &middot; No subscription</p>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -1245,7 +1292,7 @@ export default function TestPage() {
           </div>
         </nav>
 
-        {/* 01 — HERO */}
+        {/* HERO (no number) */}
         <section id="top" className="hero">
           <div className="hero__glow" />
           <div className="container hero__inner">
@@ -1253,64 +1300,97 @@ export default function TestPage() {
               <WindowBadge state={windowState} />
             </div>
             <h1 className="hero__title">
-              Stop guessing what to fix on your channel. Get a <span className="blue-em">personal review</span> from me in your first week.
+              Stop <em className="blue-em">guessing</em> what to fix on your channel. Get a personal review from me in your first week.
             </h1>
             <p className="hero__sub">
-              Three months working with me. Weekly live calls. Direct access every day. The systems I use to grow channels, handed to you.
+              Working with me directly. The personal review of your channel. The content checklist I use every week. Weekly Q&amp;A on Zoom. Direct access every day.
             </p>
 
             <VSL />
 
             <div className="hero__cta-stack">
-              <button onClick={scrollToCheckout} className="btn btn--primary btn--xl">
-                Join now &mdash; $999
-              </button>
-              <p className="hero__price-line">
-                <span className="strike">$1,998</span>
-                <span><strong>$999</strong> founders rate</span>
-                <span className="dot-sep">&middot;</span>
-                <span>50% off every future version</span>
-              </p>
+              {windowState === 'open' ? (
+                <>
+                  <button onClick={scrollToCheckout} className="btn btn--primary btn--xl">
+                    Join now &mdash; $999
+                  </button>
+                  <p className="hero__price-line">
+                    <span className="strike">$1,999</span>
+                    <strong>$999 founders price</strong>
+                    <span className="dot-sep">&middot;</span>or 2&times; $599<span className="dot-sep">&middot;</span>30-day refund
+                  </p>
+                </>
+              ) : (
+                <>
+                  <button onClick={scrollToCheckout} className="btn btn--primary btn--xl">
+                    {windowState === 'before' ? 'Join the waitlist' : 'Notify me when it reopens'}
+                  </button>
+                  <p className="hero__price-line">
+                    {windowState === 'before'
+                      ? <>Waitlist members get <strong>first access</strong> and the <strong>$999 founders price</strong> before public enrollment.</>
+                      : <>I will email you when the next window opens.</>}
+                  </p>
+                </>
+              )}
             </div>
+
+            <figure className="hero-quote">
+              <span className="hero-quote__mark"><Icon name="quote" size={28} /></span>
+              <blockquote className="hero-quote__text">
+                My average view count tripled to around <span className="blue-em">15K</span>. My subscriber count is up over <span className="blue-em">45%</span>. I now have a clear roadmap.
+              </blockquote>
+              <figcaption className="hero-quote__cite">
+                <span className="hero-quote__name">Mark Young</span>
+                <span className="hero-quote__role">Artisan Woodworks</span>
+              </figcaption>
+            </figure>
 
             <div className="hero__trust">
               <div>
-                <div className="cred__num">15<span className="cred__sup">+</span></div>
-                <div className="cred__sub">years on YouTube</div>
+                <div className="cred__num">15</div>
+                <div className="cred__sub">years <strong>on YouTube</strong></div>
               </div>
               <div>
-                <div className="cred__num">65K</div>
-                <div className="cred__sub">subscribers</div>
+                <div className="cred__num">65<span className="cred__sup">K</span></div>
+                <div className="cred__sub"><strong>subscribers</strong> on my channel</div>
               </div>
               <div>
                 <div className="cred__num">100<span className="cred__sup">+</span></div>
-                <div className="cred__sub">creators coached</div>
-              </div>
-            </div>
-
-            <div className="hero-quote">
-              <span className="hero-quote__mark"><Icon name="quote" size={28} /></span>
-              <p className="hero-quote__text">
-                My average view count tripled to around 15K. My subscriber count is up over 45%. I now have a clear roadmap.
-              </p>
-              <div className="hero-quote__cite">
-                <span className="hero-quote__name">Mark Young</span>
-                <span className="hero-quote__role">Artisan Woodworks</span>
+                <div className="cred__sub">creators <strong>coached</strong> directly</div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* 02 — WEEK ONE (the wedge) */}
+        {/* 01 — THE PROBLEM */}
         <section className="alt">
           <div className="container">
             <div className="section-head">
-              <span className="section-num">02</span>
-              <span className="overline">Week one</span>
+              <span className="section-num">01 — The problem</span>
             </div>
-            <h2 className="section-h">What every founder gets in their first week.</h2>
+            <div className="grid-2 problem-grid">
+              <h2 className="problem-quote">
+                You are not guessing because you are new. You are guessing because <span className="blue-em">nobody has told you what is broken</span> on your channel.
+              </h2>
+              <ul className="problem-list">
+                <li>You have watched the <strong>thirty-hour curriculum</strong> from the big creator coach. None of it told you what to do <strong>tomorrow</strong>.</li>
+                <li>You have <strong>twelve drafts</strong> in a Google Doc and zero of them are published.</li>
+                <li>You watch creators on the same beat as you and quietly know <strong>your stuff is better</strong>.</li>
+                <li>You do not need another tutorial. You need someone <strong>reading your work</strong>, a system to follow, and people in the room with you.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* 02 — WEEK ONE (the wedge) */}
+        <section>
+          <div className="container">
+            <div className="section-head">
+              <span className="section-num">02 — Week one</span>
+            </div>
+            <h2 className="section-h">What every founder gets in their <span className="blue-em">first week</span>.</h2>
             <p className="section-sub">
-              Two artifacts. The personal review tells you what is broken on your specific channel. The checklist tells you what to do about it on every upload after that. <strong>You stop guessing.</strong>
+              Two things, both delivered in your own thread. The personal review tells you what is broken on your specific channel. The checklist tells you what to do about it every week. <strong>Together, you stop guessing on every upload.</strong>
             </p>
             <div className="wedge-grid">
               <ReviewArtifact />
@@ -1319,265 +1399,222 @@ export default function TestPage() {
           </div>
         </section>
 
-        {/* 03 — THE PROBLEM */}
-        <section>
-          <div className="container">
-            <div className="section-head">
-              <span className="section-num">03</span>
-              <span className="overline">The problem</span>
-            </div>
-            <div className="grid-2 problem-grid">
-              <p className="problem-quote">
-                You are not guessing because you are new. You are guessing because nobody has told you what is broken on your channel.
-              </p>
-              <ul className="problem-list">
-                <li>Most creators here have already <strong>watched the courses</strong> and read the threads.</li>
-                <li>Posted dozens of videos. Every upload still feels like a coin flip.</li>
-                <li>Information is free. <strong>That is not the problem.</strong></li>
-                <li>The problem is you do not have a clear read on your specific channel.</li>
-                <li>Generic advice cannot give you that. Most creators stay stuck here for years.</li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* 04 — REPEAT CTA */}
+        {/* CTA BAND 1 */}
         <CTABand
-          title="Get a personal read on your channel this week."
-          sub="Founders rate. 50% off every future version."
+          windowState={windowState}
+          title={<>Know the <span className="blue-em">one thing</span> to fix this week.</>}
+          sub="That is what the first week of the program gets you. Everything else is built on top."
           onClick={scrollToCheckout}
-          fineprint="30-day guarantee. No questions. You keep the review."
         />
 
-        {/* 05 — WHAT ELSE YOU GET */}
-        <section>
-          <div className="container">
-            <div className="section-head">
-              <span className="section-num">05</span>
-              <span className="overline">What else you get</span>
-            </div>
-            <h2 className="section-h">The rest of the program.</h2>
-            <p className="section-sub">
-              Week one hands you a personal read and a checklist. Here is what comes after.
-            </p>
-
-            <div className="grid-2" style={{ marginBottom: 'var(--s-9)' }}>
-              <div className="card card--raised">
-                <h3 className="card__title">Direct work with me</h3>
-                <p className="card__body">
-                  A <strong>90-minute live strategy session every week</strong>. Wednesdays at 2pm EST. Bring questions, videos, anything you are stuck on. I work through them live.
-                </p>
-                <p className="card__body" style={{ marginTop: 'var(--s-4)' }}>
-                  <strong>Direct access to me every day</strong> in the community between sessions. Drop your work and I give you a read on it.
-                </p>
-              </div>
-              <div className="card card--raised">
-                <h3 className="card__title">A real community</h3>
-                <p className="card__body">
-                  Other serious creators going through the same work at the same time. Public threads. <strong>Not a paid Discord with a content dump.</strong>
-                </p>
-                <p className="card__body" style={{ marginTop: 'var(--s-4)' }}>
-                  Every review I do is posted in a thread the rest of the cohort can read. You learn from your own review and from theirs.
-                </p>
-              </div>
-            </div>
-
-            <SystemMap />
-          </div>
-        </section>
-
-        {/* 06 — A WEEK IN THE PROGRAM */}
+        {/* 03 — FULL ACCESS */}
         <section className="alt">
           <div className="container">
             <div className="section-head">
-              <span className="section-num">06</span>
-              <span className="overline">A week in the program</span>
+              <span className="section-num">03 — Full access</span>
             </div>
-            <h2 className="section-h">What a normal week looks like.</h2>
+            <h2 className="section-h">You also get <span className="blue-em">all of this</span>.</h2>
             <p className="section-sub">
-              You do not need to live in the community. You need to use it where it actually moves your channel.
+              Renew or leave when you are ready. <strong>Founders keep 50% off every future version.</strong>
             </p>
-            <WeekStrip />
+            <div className="grid-2 perks-grid">
+              <div className="card card--raised">
+                <h3 className="card__title">Weekly <span className="blue-em">live Q&amp;A</span></h3>
+                <p className="card__body">
+                  Wednesdays, <strong>2pm EST</strong> on Zoom. 60 minutes. Anyone who shows up can ask whatever they like. <strong>Recorded</strong>, so missing one is not fatal.
+                </p>
+              </div>
+              <div className="card card--raised">
+                <h3 className="card__title"><span className="blue-em">Direct access</span>, every day</h3>
+                <p className="card__body">
+                  Only for people in the program. <strong>Drop a thumb, get a reaction</strong>. Drop a script, get notes. I am there daily helping you get unstuck.
+                </p>
+              </div>
+              <div className="card card--raised">
+                <h3 className="card__title">The <span className="blue-em">prototype course</span></h3>
+                <p className="card__body">
+                  Nine documents. Foundational, Strategy, Ideation, Titles, Thumbnails, Scripting, Hooks, Production, Mindset. Released as you go. You <strong>give feedback, I revise</strong>. Founders shape the final version.
+                </p>
+              </div>
+              <div className="card card--raised">
+                <h3 className="card__title">The <span className="blue-em">resource library</span></h3>
+                <p className="card__body">
+                  <strong>14 worksheets and systems</strong>: Audience Analysis, Title Frameworks, Title + Thumbnail Validation, Script Workflow, Hook Generation, 90-Day Action Plan, Niche Worksheet, Avatar Worksheet, Recommended Gear. The building blocks of the system.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 'var(--s-9)' }}>
+              <SystemMap />
+            </div>
+
+            <div style={{ marginTop: 'var(--s-9)' }}>
+              <h3 className="subsection-h">The rhythm of the program</h3>
+              <p className="subsection-sub">Not a 12-week schedule. A rhythm. Repeat as long as you are in.</p>
+              <RhythmStrip />
+            </div>
           </div>
         </section>
 
-        {/* 07 — WHO THIS IS FOR */}
+        {/* 04 — WHO THIS IS FOR */}
         <section>
           <div className="container">
             <div className="section-head">
-              <span className="section-num">07</span>
-              <span className="overline">Who this is for</span>
+              <span className="section-num">04 — Who this is for</span>
             </div>
-            <h2 className="section-h">Who this is for. Who it is not.</h2>
+            <h2 className="section-h"><span className="blue-em">No barriers.</span> If you want to grow your channel, you are welcome.</h2>
+            <p className="section-sub">But honesty about who this works best for and who it does not.</p>
             <div className="grid-2">
               <div className="card card--for">
                 <span className="is-for-tag">This is for</span>
                 <ul className="filter-list filter-list--for">
-                  <li><span className="ico ico--check"><Icon name="check" size={18} /></span><span><strong>YouTubers</strong> trying to make this their full-time job</span></li>
-                  <li><span className="ico ico--check"><Icon name="check" size={18} /></span><span><strong>Channel owners</strong> ready to ditch scattered tips for a real system</span></li>
-                  <li><span className="ico ico--check"><Icon name="check" size={18} /></span><span><strong>Niche experts</strong> who want a clear plan, not another upload-and-pray</span></li>
-                  <li><span className="ico ico--check"><Icon name="check" size={18} /></span><span><strong>Long-game thinkers</strong> who refuse to chase viral moments</span></li>
-                  <li><span className="ico ico--check"><Icon name="check" size={18} /></span><span>Anyone who wants <strong>my eyes on their work</strong></span></li>
+                  <li><span className="ico ico--check"><Icon name="check" size={20} /></span><span>YouTubers trying to make this their <strong>full-time job</strong>.</span></li>
+                  <li><span className="ico ico--check"><Icon name="check" size={20} /></span><span>Channel owners ready to ditch <strong>scattered tips</strong> for a real system.</span></li>
+                  <li><span className="ico ico--check"><Icon name="check" size={20} /></span><span>Niche experts who want a <strong>clear plan</strong>, not another upload-and-pray.</span></li>
+                  <li><span className="ico ico--check"><Icon name="check" size={20} /></span><span>Long-game thinkers who refuse to chase <strong>viral moments</strong>.</span></li>
+                  <li><span className="ico ico--check"><Icon name="check" size={20} /></span><span>Anyone who wants <strong>my eyes on their work</strong>.</span></li>
                 </ul>
               </div>
               <div className="card card--not">
                 <span className="is-not-tag">This is not for</span>
                 <ul className="filter-list filter-list--not">
-                  <li><span className="ico ico--ex"><Icon name="x" size={18} /></span><span><strong>Viral moment chasers</strong></span></li>
-                  <li><span className="ico ico--ex"><Icon name="x" size={18} /></span><span><strong>Get-rich-quick types</strong> with no love for the craft</span></li>
-                  <li><span className="ico ico--ex"><Icon name="x" size={18} /></span><span><strong>AI slop publishers</strong></span></li>
-                  <li><span className="ico ico--ex"><Icon name="x" size={18} /></span><span><strong>Know-it-alls</strong> who think they have nothing left to learn</span></li>
-                  <li><span className="ico ico--ex"><Icon name="x" size={18} /></span><span>People looking for <strong>someone else to do the work</strong></span></li>
+                  <li><span className="ico ico--ex"><Icon name="x" size={20} /></span><span><strong>Viral moment chasers.</strong></span></li>
+                  <li><span className="ico ico--ex"><Icon name="x" size={20} /></span><span><strong>Get-rich-quick types</strong> with no love for the craft.</span></li>
+                  <li><span className="ico ico--ex"><Icon name="x" size={20} /></span><span><strong>AI slop publishers.</strong></span></li>
+                  <li><span className="ico ico--ex"><Icon name="x" size={20} /></span><span><strong>Know-it-alls</strong> who think they have nothing left to learn.</span></li>
+                  <li><span className="ico ico--ex"><Icon name="x" size={20} /></span><span>People looking for someone else <strong>to do the work</strong>.</span></li>
                 </ul>
               </div>
             </div>
           </div>
         </section>
 
-        {/* 08 — TESTIMONIAL WALL */}
+        {/* CTA BAND 2 */}
+        <CTABand
+          windowState={windowState}
+          title={<>If this sounds like the room you have been <span className="blue-em">missing</span>, the door is open.</>}
+          onClick={scrollToCheckout}
+        />
+
+        {/* 05 — REASON TO BELIEVE */}
         <section className="alt">
           <div className="container">
             <div className="section-head">
-              <span className="section-num">08</span>
-              <span className="overline">What creators say</span>
+              <span className="section-num">05 — Reason to believe</span>
             </div>
-            <div className="tw__head">
-              <h2 className="section-h" style={{ marginLeft: 'auto', marginRight: 'auto', textAlign: 'center', maxWidth: '24ch' }}>
-                People who used to be exactly where you are.
-              </h2>
-              <p className="tw__sub">
-                Most of these creators came in stuck. They left with a clear read and a system. Same offer. Same promise.
-              </p>
+            <h2 className="section-h">Try it for <span className="blue-em">thirty days</span>. If it is not worth it, full refund.</h2>
+            <p className="section-sub">
+              Use the first month. Get the personal review of your channel. Read the checklist. Show up to a live call. Spend a week in the community. <strong>If it is not worth $999, I do not want your $999.</strong>
+            </p>
+            <div className="tw">
+              <div className="tw__head">
+                <p className="tw__sub">From founders and past clients. <strong>Every one of them real.</strong></p>
+              </div>
+              <TestimonialWall />
             </div>
-            <TestimonialWall />
           </div>
         </section>
 
-        {/* 09 — FOUNDER BLOCK */}
+        {/* 06 — FROM ME (founder block) */}
         <section>
           <div className="container narrow">
             <div className="section-head">
-              <span className="section-num">09</span>
-              <span className="overline">From me</span>
+              <span className="section-num">06 — From me</span>
             </div>
             <h2 className="founder__title">Why I built this.</h2>
             <div className="founder__body">
-              <p>
-                I launched my high-ticket program last year after about 35 conversations with creators. Almost every one of them said the same thing.
-              </p>
-              <p className="founder__pull">
-                &ldquo;I want to work with you. I am not at the spot where it makes sense to pay this much.&rdquo;
-              </p>
-              <p>
-                I have taken close to 200 applications since. Most of them are not the right fit for the high-ticket. For most of my audience, it is not the right offer.
-              </p>
-              <p>
-                <strong>This program is the bridge.</strong> For the creators who are not far in their journey yet, who want my systems, my attention, and my help, but who do not need the full one-on-one container.
-              </p>
-              <p>
-                There are no barriers here. If you want to grow your channel, you are welcome.
-              </p>
-              <p>
-                I think about YouTube all day. Constantly learning, reassessing, reverse-engineering content. Hours and hours every day. I enjoy helping. I can talk about this stuff all day long.
-              </p>
-              <p>
-                I think I can help somebody who wants to follow in my footsteps and treat YouTube seriously.
-              </p>
+              <p>I launched my high-ticket program last year after about <strong>35 conversations</strong> with creators. Almost every one of them said the same thing.</p>
+              <p className="founder__pull">&ldquo;I want to work with you. I am not at the spot where it makes sense to pay this much.&rdquo;</p>
+              <p>I have taken close to <strong>200 applications</strong> since. Most of them are not the right fit for the high-ticket. For most of my audience, it is not the right offer.</p>
+              <p><strong>This program is the bridge.</strong> For the creators who are not far in their journey yet, who want my systems, my attention, and my help, but who do not need the full one-on-one container.</p>
+              <p>There are no barriers here. If you want to grow your channel, you are welcome.</p>
+              <p>I think about YouTube all day. Constantly learning, reassessing, reverse-engineering content. <strong>Hours and hours every day.</strong> I enjoy helping. I can talk about this stuff all day long.</p>
+              <p>I think I can help somebody who wants to follow in my footsteps and treat YouTube seriously.</p>
               <p className="founder__sig">&mdash; Dave Jeltema</p>
             </div>
           </div>
         </section>
 
-        {/* 10 — FAQ */}
+        {/* 07 — FAQ */}
         <section className="alt">
-          <div className="container narrow">
-            <div className="section-head" style={{ borderBottom: 0, paddingBottom: 0 }}>
-              <span className="section-num">10</span>
-              <span className="overline">Common questions</span>
+          <div className="container">
+            <div className="section-head">
+              <span className="section-num">07 — FAQ</span>
             </div>
-            <h2 className="section-h faq__h">Common questions.</h2>
+            <h2 className="section-h faq__h">Questions, <span className="blue-em">answered straight</span>.</h2>
             <div className="faq">
-              <details className="faq__item">
-                <summary className="faq__q">Why is this $999?</summary>
+              <details className="faq__item" open>
+                <summary className="faq__q">Why is the founders price $999?</summary>
                 <div className="faq__a">
-                  It is intentionally low. The polished version targets a higher price. This is the founders edition. You get in early for 50% off, locked in for every future version. <strong>The personal review alone is the kind of work clients pay multiple thousands for in my high-ticket Boundless Creator Accelerator.</strong>
+                  It is intentionally low for the founders round. I want a <strong>small group of founders</strong> who are serious, and who will shape the final version of the course with their feedback. When the price goes up to $1,999, your renewal stays <strong>50% off every future version</strong>.
                 </div>
               </details>
               <details className="faq__item">
-                <summary className="faq__q">Is this just a paid community?</summary>
+                <summary className="faq__q">Is it a subscription?</summary>
                 <div className="faq__a">
-                  No. <strong>The personal review is the headline.</strong> The community is the container. The mentorship is the work.
+                  No. <strong>$999 once</strong> (or 2&times; $599) gets you three months of full access. After that, you renew or you leave. Nothing auto-charges.
                 </div>
               </details>
               <details className="faq__item">
-                <summary className="faq__q">What if I am brand new or already at 50K?</summary>
+                <summary className="faq__q">What if I cannot make Wednesday at 2pm EST?</summary>
                 <div className="faq__a">
-                  Same answer to both. The review is tailored to where you are. Any sub count. Any niche. <strong>I look at your specific channel and tell you the one bottleneck to fix first.</strong>
+                  Calls are recorded with AI summary and transcript. <strong>Daily access is where most of the back-and-forth happens.</strong>
                 </div>
               </details>
               <details className="faq__item">
-                <summary className="faq__q">How much time will it take?</summary>
+                <summary className="faq__q">How is this different from a course?</summary>
                 <div className="faq__a">
-                  The live session is <strong>90 minutes Wednesdays at 2pm EST</strong>. Recorded for VOD if you cannot make it. Everything else is at your own pace.
+                  A course is a vault you do not open. This is a <strong>relationship with a coach and a system</strong>. The course is half of what you pay for. The other half is the personal review of your channel and the community.
                 </div>
               </details>
               <details className="faq__item">
-                <summary className="faq__q">What if it is not for me?</summary>
+                <summary className="faq__q">Will this work if I have not published yet?</summary>
                 <div className="faq__a">
-                  <strong>30 days. No questions. No conditions. Full refund.</strong> You walk away with your personal review either way.
+                  Probably not yet. This is built for creators who have shipped videos and are <strong>treating YouTube seriously</strong>. If you have not started, the resources I have on YouTube and my newsletter are a better fit until you do.
                 </div>
               </details>
               <details className="faq__item">
-                <summary className="faq__q">Is this auto-renewing?</summary>
+                <summary className="faq__q">What if it is not working for me?</summary>
                 <div className="faq__a">
-                  No. It is a one-time payment for three months. After three months, you can renew at the founders rate (50% off whatever the going rate becomes) or walk. <strong>Your call.</strong>
+                  Inside thirty days, full refund, no questions. Get the review, read the checklist, show up to a live call, spend a week in the community. If you do not think it is worth $999, I do not want your $999.
                 </div>
               </details>
               <details className="faq__item">
-                <summary className="faq__q">What about the installment option?</summary>
+                <summary className="faq__q">How often does the door open?</summary>
                 <div className="faq__a">
-                  Two payments of $599, billed 30 days apart. Same program, same access, just split into two.
+                  I open the door in small windows for now. Small groups. Eventually it will stay open and you can join whenever. <strong>Founders lock in the founders price either way.</strong>
                 </div>
               </details>
             </div>
           </div>
         </section>
 
-        {/* 11 — P.S. (only when window open) */}
+        {/* P.S. (only when window open) */}
         {windowState === 'open' && (
           <section className="ps-section">
             <div className="container narrow">
               <div className="ps">
-                <span className="ps__label">P.S.</span>
-                <p>
-                  The window closes <strong>{closeDay && closeTime ? `${closeDay} at ${closeTime} EST` : 'soon'}</strong>. After that, the next round opens at the same founders price.
-                </p>
-                <p>
-                  Eventually I launch the polished version. That number could shift. Could be a month from now. Could be longer.
-                </p>
-                <p>
-                  Founders who join now lock in <strong>half off whatever the going rate becomes</strong>. Same dollars per month for as long as they stay.
-                </p>
-                <p>
-                  If you want the better price, come now. If you want to wait, come later. <strong>Both are fine.</strong>
-                </p>
-                <p style={{ marginTop: 'var(--s-3)', color: 'var(--bc-text-100)' }}>&mdash; Dave</p>
+                <span className="ps__label">P.S. &middot; From Dave</span>
+                <p>If you have read this far, you are the person I built it for.</p>
+                <p>The next founders round either has your name on it or it does not. Either way, three months pass.</p>
+                <p>If you want the systems, the attention, and the help, I will see you Monday.</p>
+                <p className="founder__sig">&mdash; Dave</p>
               </div>
             </div>
           </section>
         )}
 
-        {/* 12 — CHECKOUT (final) */}
-        <section id="checkout" className="checkout-section">
+        {/* 08 — CHECKOUT */}
+        <section className="checkout-section">
           <div className="container">
+            <div className="section-head">
+              <span className="section-num">08 — Checkout</span>
+            </div>
             <div className="checkout-stack">
               <div className="checkout-stack__head">
-                <span className="overline" style={{ position: 'relative', display: 'inline-flex' }}>Founders Round</span>
-                <h2 className="section-h" style={{ marginLeft: 'auto', marginRight: 'auto', textAlign: 'center', maxWidth: '24ch', marginTop: 'var(--s-3)' }}>
-                  Join the Founders Round.
-                </h2>
-                <p className="section-sub" style={{ marginLeft: 'auto', marginRight: 'auto', textAlign: 'center' }}>
-                  This price never goes up for you. Founders lock in 50% off every future version.
+                <h2 className="section-h checkout-stack__title">One price. <span className="blue-em">No upsells.</span> No subscription.</h2>
+                <p className="section-sub checkout-stack__sub">
+                  Three months of full access. The personal review, the checklist, the prototype course, the resource library, weekly Q&amp;A, and direct access every day. <strong>Renew or leave at month three.</strong>
                 </p>
               </div>
 
@@ -1593,14 +1630,9 @@ export default function TestPage() {
                 onWindowClosed={handleWindowClosed}
               />
 
-              <div className="checkout-fineprint-stack">
-                <p className="checkout-fineprint" style={{ margin: 0, color: 'var(--bc-green-400)' }}>
-                  Founders rate &middot; 50% off every future version
-                </p>
-                <p className="checkout-fineprint" style={{ marginTop: 'var(--s-2)' }}>
-                  Secure checkout via Stripe
-                </p>
-              </div>
+              <p className="checkout-fineprint">
+                Comparable programs run multiple thousands. The founders price stays locked in across every future version.
+              </p>
             </div>
           </div>
         </section>
