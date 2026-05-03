@@ -25,12 +25,25 @@ export default function TextInput({
     onChange(e.target.value);
   };
 
-  const baseClasses =
-    `w-full bg-slate-800 border-2 rounded-lg px-4 py-3 md:py-4 text-white text-base md:text-lg placeholder-slate-500 focus:outline-none transition-all ${
-      error
-        ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-        : 'border-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-    }`;
+  const baseStyle = {
+    width: '100%',
+    padding: '14px 16px',
+    borderRadius: '12px',
+    background: 'var(--bc-ink-900)',
+    border: `1px solid ${error ? '#ff6b6b' : 'var(--bc-ink-600)'}`,
+    color: 'var(--bc-text-100)',
+    font: 'inherit',
+    fontSize: '16px',
+    outline: 'none',
+    transition: 'border-color 150ms',
+  } as const;
+
+  const focusHandler = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    e.currentTarget.style.borderColor = error ? '#ff6b6b' : 'var(--bc-blue-400)';
+  };
+  const blurHandler = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    e.currentTarget.style.borderColor = error ? '#ff6b6b' : 'var(--bc-ink-600)';
+  };
 
   if (multiline) {
     return (
@@ -38,12 +51,14 @@ export default function TextInput({
         <textarea
           value={value || ''}
           onChange={handleChange}
+          onFocus={focusHandler}
+          onBlur={blurHandler}
           placeholder={placeholder}
           required={required}
           rows={5}
-          className={`${baseClasses} resize-none`}
+          style={{ ...baseStyle, resize: 'none' }}
         />
-        {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+        {error && <p className="text-sm mt-2" style={{ color: '#ff8a8a' }}>{error}</p>}
       </div>
     );
   }
@@ -54,11 +69,13 @@ export default function TextInput({
         type={type}
         value={value || ''}
         onChange={handleChange}
+        onFocus={focusHandler}
+        onBlur={blurHandler}
         placeholder={placeholder}
         required={required}
-        className={baseClasses}
+        style={baseStyle}
       />
-      {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+      {error && <p className="text-sm mt-2" style={{ color: '#ff8a8a' }}>{error}</p>}
     </div>
   );
 }

@@ -3,9 +3,52 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* BC design tokens — available across all pages */
+    --bc-ink-950: #070b14;
+    --bc-ink-900: #0b1220;
+    --bc-ink-850: #0f1729;
+    --bc-ink-800: #131c33;
+    --bc-ink-700: #1c273f;
+    --bc-ink-600: #2a3654;
+    --bc-ink-500: #3d4a6b;
+    --bc-text-100: #f4f6fb;
+    --bc-text-200: #d6dcea;
+    --bc-text-300: #9aa4be;
+    --bc-text-400: #6b7591;
+    --bc-text-500: #4a546d;
+    --bc-blue-200: #8fbcff;
+    --bc-blue-300: #5b9cff;
+    --bc-blue-400: #3a85ff;
+    --bc-blue-500: #1f6dff;
+    --bc-blue-glow: rgba(58, 133, 255, 0.32);
+    --bc-green-400: #5ce0a3;
+    --bc-green-500: #2fcb86;
+    --bc-green-glow: rgba(47, 203, 134, 0.22);
+  }
+
   body {
     @apply bg-slate-950 text-white antialiased;
+    background: var(--bc-ink-900);
   }
+
+  /* Background grid texture available on any page that wants the BC look */
+  .bc-bg-grid {
+    position: relative;
+    min-height: 100vh;
+  }
+  .bc-bg-grid::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+  .bc-bg-grid > * { position: relative; z-index: 1; }
 }
 
 @layer utilities {
