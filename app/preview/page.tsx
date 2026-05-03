@@ -20,6 +20,9 @@ export default function PreviewPage() {
   const [windowClose, setWindowClose] = useState<Date | null>(null);
   const [iframeKey, setIframeKey] = useState(0); // force iframe reload on tab change
 
+  // Questionnaire sub-tab — 'all' (stacked preview) or a 0-based question index
+  const [questionnaireSub, setQuestionnaireSub] = useState<'all' | number>('all');
+
   // Admin state
   const [adminSecret, setAdminSecret] = useState('');
   const [adminOpen, setAdminOpen] = useState('');
@@ -187,25 +190,74 @@ export default function PreviewPage() {
   );
 
   /* ─── Questionnaire Tab ─── */
-  const renderQuestionnaire = () => (
-    <div className="space-y-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 flex items-center justify-between">
-        <div>
-          <span className="text-slate-400 text-sm font-mono">/questionnaire</span>
-          <span className="text-slate-600 text-sm ml-2">—</span>
-          <span className="text-slate-400 text-sm ml-2">{questions.length} questions, multi-page flow</span>
+  const renderQuestionnaire = () => {
+    const src = questionnaireSub === 'all'
+      ? '/questionnaire?show=all'
+      : `/questionnaire?q=${questionnaireSub}`;
+
+    const subTabLabel = questionnaireSub === 'all'
+      ? 'All questions stacked (read-only preview)'
+      : `Question ${questionnaireSub + 1}: ${questions[questionnaireSub]?.question || ''}`;
+
+    return (
+      <div className="space-y-4">
+        {/* Info bar */}
+        <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div className="min-w-0 flex-1">
+            <span className="text-slate-400 text-sm font-mono">{src}</span>
+            <span className="text-slate-600 text-sm ml-2">—</span>
+            <span className="text-slate-400 text-sm ml-2 truncate">{subTabLabel}</span>
+          </div>
+          <a
+            href={src}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 text-xs underline flex-shrink-0 ml-4"
+          >
+            Open in new tab →
+          </a>
         </div>
-        <a href="/questionnaire" target="_blank" className="text-blue-400 hover:text-blue-300 text-xs underline">Open in new tab →</a>
+
+        {/* Sub-tabs: All + one button per question */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          <button
+            onClick={() => { setQuestionnaireSub('all'); setIframeKey(k => k + 1); }}
+            className={`px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors ${
+              questionnaireSub === 'all'
+                ? 'bg-slate-700 text-white'
+                : 'bg-slate-800/50 text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            📜 All
+          </button>
+          {questions.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => { setQuestionnaireSub(i); setIframeKey(k => k + 1); }}
+              className={`px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors ${
+                questionnaireSub === i
+                  ? 'bg-slate-700 text-white'
+                  : 'bg-slate-800/50 text-slate-500 hover:text-slate-300'
+              }`}
+              title={questions[i]?.question}
+            >
+              Q{i + 1}
+            </button>
+          ))}
+        </div>
+
+        {/* Iframe */}
+        <div className="border border-slate-700 rounded-lg overflow-hidden" style={{ height: 'calc(100vh - 280px)', minHeight: '600px' }}>
+          <iframe
+            key={`q-${questionnaireSub}-${iframeKey}`}
+            src={src}
+            className="w-full h-full border-0"
+            title={`Preview: Questionnaire ${questionnaireSub}`}
+          />
+        </div>
       </div>
-      <div className="border border-slate-700 rounded-lg overflow-hidden" style={{ height: 'calc(100vh - 220px)', minHeight: '600px' }}>
-        <iframe
-          src="/questionnaire"
-          className="w-full h-full border-0"
-          title="Preview: Questionnaire"
-        />
-      </div>
-    </div>
-  );
+    );
+  };
 
   /* ─── Insight Tab ─── */
   const renderInsight = () => (
