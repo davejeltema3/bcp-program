@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 
 type WindowState = 'before' | 'open' | 'after';
 
@@ -74,6 +74,11 @@ const STYLES = `
 }
 .bcp-page .bc-logo { font-size:24px; font-weight:700; color:var(--bc-blue-300); letter-spacing:-0.02em; }
 .bcp-page .nav__cta { padding:10px 16px; font-size:14px; flex-shrink:0; }
+.bcp-page .nav__timer { display:flex; flex:1; justify-content:center; min-width:0; }
+.bcp-page .nav__timer .countdown { padding:6px 12px; }
+.bcp-page .nav__timer .countdown__label { font-size:10px; }
+.bcp-page .nav__timer .countdown__value { font-size:14px; }
+@media(max-width:820px) { .bcp-page .nav__timer { display:none; } }
 @media(max-width:520px) { .bcp-page .bc-logo { font-size:20px; } }
 
 .bcp-page .btn {
@@ -106,7 +111,6 @@ const STYLES = `
   color:var(--bc-blue-300); letter-spacing:var(--bc-ls-overline);
   text-transform:uppercase;
 }
-.bcp-page .overline::before { content:""; width:24px; height:1px; background:currentColor; opacity:.5; }
 
 .bcp-page .section-num { font-family:var(--bc-font-mono); font-size:var(--bc-fs-caption); color:var(--bc-text-400); letter-spacing:var(--bc-ls-mono); }
 .bcp-page .section-h {
@@ -126,8 +130,17 @@ const STYLES = `
 .bcp-page .hero__glow {
   position:absolute; top:-260px; left:50%; width:1500px; height:780px;
   transform:translateX(-50%);
-  background:radial-gradient(closest-side,var(--bc-blue-glow),transparent 70%);
-  pointer-events:none; filter:blur(8px);
+  background:radial-gradient(
+    ellipse at center,
+    rgba(58,133,255,0.32) 0%,
+    rgba(58,133,255,0.24) 18%,
+    rgba(58,133,255,0.16) 32%,
+    rgba(58,133,255,0.10) 48%,
+    rgba(58,133,255,0.05) 64%,
+    rgba(58,133,255,0.02) 80%,
+    transparent 100%
+  );
+  pointer-events:none; filter:blur(40px); will-change:filter;
 }
 .bcp-page .hero__inner { position:relative; }
 .bcp-page .hero__top { display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:var(--s-5); }
@@ -179,6 +192,14 @@ const STYLES = `
 .bcp-page .vsl__glow { position:absolute; inset:-60px; background:radial-gradient(closest-side,var(--bc-blue-glow),transparent 70%); filter:blur(40px); pointer-events:none; z-index:0; }
 .bcp-page .vsl__inner { position:relative; z-index:1; width:100%; height:100%; }
 .bcp-page .vsl iframe { width:100%; height:100%; border:0; display:block; }
+.bcp-page wistia-player { display:block; width:100%; height:100%; }
+.bcp-page wistia-player[media-id='iypjgbm6ot']:not(:defined) {
+  display:block;
+  background: center / contain no-repeat url('https://fast.wistia.com/embed/medias/iypjgbm6ot/swatch');
+  filter: blur(5px);
+  padding-top: 56.25%;
+  width: 100%;
+}
 
 .bcp-page .window-badge {
   display:inline-flex; align-items:center; gap:10px;
@@ -332,7 +353,19 @@ const STYLES = `
   background:var(--bc-ink-850); border-top:1px solid var(--bc-ink-700); border-bottom:1px solid var(--bc-ink-700);
   padding:var(--s-10) 0; text-align:center; position:relative; overflow:hidden;
 }
-.bcp-page .cta-band__glow { position:absolute; inset:0; background:radial-gradient(ellipse at center,var(--bc-blue-glow) 0%,transparent 60%); filter:blur(20px); pointer-events:none; opacity:.6; }
+.bcp-page .cta-band__glow {
+  position:absolute; inset:0; pointer-events:none; opacity:.7;
+  background:radial-gradient(
+    ellipse 80% 100% at center,
+    rgba(58,133,255,0.30) 0%,
+    rgba(58,133,255,0.20) 22%,
+    rgba(58,133,255,0.12) 40%,
+    rgba(58,133,255,0.06) 58%,
+    rgba(58,133,255,0.02) 78%,
+    transparent 100%
+  );
+  filter:blur(48px); will-change:filter;
+}
 .bcp-page .cta-band__content { position:relative; }
 .bcp-page .cta-band__title { font-size:clamp(28px,3.5vw,42px); font-weight:600; letter-spacing:var(--bc-ls-heading); color:var(--bc-text-100); margin:0 auto var(--s-5); max-width:24ch; text-wrap:balance; }
 .bcp-page .cta-band__sub { color:var(--bc-text-300); font-size:17px; margin:0 auto var(--s-7); max-width:52ch; }
@@ -484,20 +517,40 @@ function Countdown({ target, label, onComplete }: { target: Date; label: string;
 }
 
 /* =====================================================================
-   VSL — Wistia iframe embed
+   VSL — Wistia web component with swatch placeholder (no load flash)
    ===================================================================== */
+const WISTIA_MEDIA_ID = 'iypjgbm6ot';
+
 function VSL() {
+  useEffect(() => {
+    // Load Wistia player runtime once
+    if (!document.querySelector('script[src*="fast.wistia.com/player.js"]')) {
+      const s1 = document.createElement('script');
+      s1.src = 'https://fast.wistia.com/player.js';
+      s1.async = true;
+      document.head.appendChild(s1);
+    }
+    // Load this media's embed script once
+    if (!document.querySelector(`script[src*="${WISTIA_MEDIA_ID}.js"]`)) {
+      const s2 = document.createElement('script');
+      s2.src = `https://fast.wistia.com/embed/${WISTIA_MEDIA_ID}.js`;
+      s2.async = true;
+      s2.type = 'module';
+      document.head.appendChild(s2);
+    }
+  }, []);
+
   return (
     <div className="hero__vsl-wrap">
       <div className="vsl">
         <div className="vsl__glow" />
         <div className="vsl__inner">
-          <iframe
-            src="https://fast.wistia.net/embed/iframe/iypjgbm6ot?seo=true&videoFoam=true"
-            title="Boundless Creator Program intro"
-            allow="autoplay; fullscreen"
-            allowFullScreen
-          />
+          {/* Wistia custom element. Rendered via createElement so TS does not
+              complain about the unknown intrinsic. */}
+          {React.createElement('wistia-player', {
+            'media-id': WISTIA_MEDIA_ID,
+            aspect: '1.7777777777777777',
+          })}
         </div>
       </div>
     </div>
@@ -634,9 +687,11 @@ type VideoTestimonialProps = {
   name: string;
   role: string;
   featured?: boolean;
+  /** CSS object-position value for the poster img. Defaults to 'center center'. */
+  posterPosition?: string;
 };
 
-function VideoTestimonial({ clips, poster, pull, name, role, featured }: VideoTestimonialProps) {
+function VideoTestimonial({ clips, poster, pull, name, role, featured, posterPosition }: VideoTestimonialProps) {
   const [playing, setPlaying] = useState(false);
   const [clipIdx, setClipIdx] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -676,7 +731,12 @@ function VideoTestimonial({ clips, poster, pull, name, role, featured }: VideoTe
         ) : (
           <>
             <div className="tw-video__poster">
-              <img src={poster} alt={`${name} testimonial`} loading="lazy" />
+              <img
+                src={poster}
+                alt={`${name} testimonial`}
+                loading="lazy"
+                style={posterPosition ? { objectPosition: posterPosition } : undefined}
+              />
             </div>
             <div className="tw-video__overlay" />
             <button type="button" className="tw-video__play" aria-label={`Play ${name} testimonial`}>
@@ -719,84 +779,19 @@ type AnyTestimonial =
   | { kind: 'text'; data: TextTestimonial }
   | { kind: 'video'; data: VideoTestimonialProps };
 
+// Mixed and interleaved video + text. Order tuned for 3-column masonry so each
+// column gets a mix of video and text instead of all video left, all text right.
 const TESTIMONIALS: AnyTestimonial[] = [
+  // Column 1 leads
   {
     kind: 'video',
     data: {
       clips: ['/testimonials/peter-byrne-1.mp4', '/testimonials/peter-byrne-2.mp4', '/testimonials/peter-byrne-3.mp4', '/testimonials/peter-byrne-4.mp4'],
       poster: '/testimonials/posters/peter-byrne-1.jpg',
-      pull: 'Dave is a very skilled YouTube coach. He understands the platform and the audience. I am very happy with his coaching.',
+      pull: 'In the space of three months, the information has been invaluable. My channel gained over 600 subscribers and broke past 5,000 total.',
       name: 'Peter Byrne',
-      role: 'YouTube Creator',
+      role: 'PSX Gaming Memories',
       featured: true,
-    },
-  },
-  {
-    kind: 'video',
-    data: {
-      clips: ['/testimonials/mark-young-1.mp4', '/testimonials/mark-young-2.mp4'],
-      poster: '/testimonials/posters/mark-young-1.jpg',
-      pull: 'Since joining the program my average view count has tripled to around 15K and my subscriber count has increased by over 45%.',
-      name: 'Mark Young',
-      role: 'Artisan Woodworks',
-    },
-  },
-  {
-    kind: 'video',
-    data: {
-      clips: ['/testimonials/chanelle-neilson-1.mp4', '/testimonials/chanelle-neilson-2.mp4'],
-      poster: '/testimonials/posters/chanelle-neilson-1.jpg',
-      pull: 'Dave gave me a clear roadmap. I stopped guessing and started shipping with intent.',
-      name: 'Chanelle Neilson',
-      role: 'YouTube Creator',
-    },
-  },
-  {
-    kind: 'video',
-    data: {
-      clips: ['/testimonials/daniel-bassett-1.mp4', '/testimonials/daniel-bassett-2.mp4'],
-      poster: '/testimonials/posters/daniel-bassett-1.jpg',
-      pull: 'Dave does not give you fluff. He looks at your channel and tells you what to fix.',
-      name: 'Daniel Bassett',
-      role: 'YouTube Creator',
-    },
-  },
-  {
-    kind: 'video',
-    data: {
-      clips: ['/testimonials/mireille-nicole-1.mp4', '/testimonials/mireille-nicole-2.mp4'],
-      poster: '/testimonials/posters/mireille-nicole-1.jpg',
-      pull: 'I left every session with concrete next steps. That changed everything.',
-      name: 'Mireille Nicole',
-      role: 'YouTube Creator',
-    },
-  },
-  {
-    kind: 'video',
-    data: {
-      clips: ['/testimonials/morgan-joan-kennedy.mp4'],
-      poster: '/testimonials/posters/morgan-joan-kennedy.jpg',
-      pull: 'Working with Dave was the highest leverage thing I did for my channel.',
-      name: 'Morgan Joan Kennedy',
-      role: 'YouTube Creator',
-    },
-  },
-  {
-    kind: 'video',
-    data: {
-      clips: ['/testimonials/tim-gardner.mp4'],
-      poster: '/testimonials/posters/tim-gardner.jpg',
-      pull: 'Direct, specific, no hype. Exactly the kind of feedback I needed.',
-      name: 'Tim Gardner',
-      role: 'YouTube Creator',
-    },
-  },
-  {
-    kind: 'text',
-    data: {
-      quote: 'He reviewed my channel, watched my videos, and took detailed notes on exactly where I could improve. He not only pointed out my weak spots, he gave concrete examples of how to fix them. People love to say "make a better title or thumbnail," but no one shows you how or why it works. Dave did both.',
-      name: 'Melissa Terzis',
-      role: 'DC Real Estate Mama',
     },
   },
   {
@@ -808,11 +803,59 @@ const TESTIMONIALS: AnyTestimonial[] = [
     },
   },
   {
+    kind: 'video',
+    data: {
+      clips: ['/testimonials/chanelle-neilson-1.mp4', '/testimonials/chanelle-neilson-2.mp4'],
+      poster: '/testimonials/posters/chanelle-neilson-1.jpg',
+      pull: 'I chose Dave because there was such a personalized approach. He was very invested in making sure I got the help I needed. Nothing was off limits.',
+      name: 'Chanelle Neilson',
+      role: 'YouTube Creator',
+    },
+  },
+  {
     kind: 'text',
     data: {
-      quote: 'Despite my best efforts, my YouTube channel had been stuck for a long time and I just couldn’t figure out what I was missing. In one coaching session, Dave helped me identify the main issues, demystified the whole process, and gave me clear, actionable next steps.',
-      name: 'Tara Malone',
-      role: 'My Catholic Homecoming',
+      quote: 'Dave was extremely generous with his time and tactical with his advice. Understands current constraints well and points to issues that need to be currently addressed.',
+      name: 'Jasim Eisa',
+      role: 'YouTube Creator',
+    },
+  },
+  {
+    kind: 'text',
+    data: {
+      quote: 'My channel was not growing. Talking with Dave was extremely eye-opening. He gave me new insights and a different way to view my channel and who I am making content for.',
+      name: 'Michael Dean',
+      role: 'YouTube Creator',
+    },
+  },
+  {
+    kind: 'video',
+    data: {
+      clips: ['/testimonials/tim-gardner.mp4'],
+      poster: '/testimonials/posters/tim-gardner.jpg',
+      pull: 'If you actually want to get serious about filling the top of the funnel and having a process, this would be a perfect system. Ten out of ten.',
+      name: 'Tim Gardner',
+      role: 'YouTube Creator',
+    },
+  },
+
+  // Column 2 mid
+  {
+    kind: 'text',
+    data: {
+      quote: 'He reviewed my channel, watched my videos, and took detailed notes on exactly where I could improve. He not only pointed out my weak spots, he gave concrete examples of how to fix them. People love to say "make a better title or thumbnail," but no one shows you how or why it works. Dave did both.',
+      name: 'Melissa Terzis',
+      role: 'DC Real Estate Mama',
+    },
+  },
+  {
+    kind: 'video',
+    data: {
+      clips: ['/testimonials/mark-young-1.mp4', '/testimonials/mark-young-2.mp4'],
+      poster: '/testimonials/posters/mark-young-1.jpg',
+      pull: 'My average view count tripled to around 15K and my subscriber count increased by over 45%. I now have a clear roadmap.',
+      name: 'Mark Young',
+      role: 'Artisan Woodworks',
     },
   },
   {
@@ -825,18 +868,91 @@ const TESTIMONIALS: AnyTestimonial[] = [
     },
   },
   {
+    kind: 'video',
+    data: {
+      clips: ['/testimonials/mireille-nicole-1.mp4', '/testimonials/mireille-nicole-2.mp4'],
+      poster: '/testimonials/posters/mireille-nicole-1.jpg',
+      pull: 'Information is not what we are missing. It is applying it and seeing my blind spots. Dave will tell you the truth and give you constructive feedback.',
+      name: 'Mireille Nicole',
+      role: '@mireillenicolecoaching',
+    },
+  },
+  {
     kind: 'text',
     data: {
-      quote: 'Dave is sharp. He saw the holes in my channel I had been missing for two years and pointed me at the one thing to fix this week.',
-      name: 'Jasim Eisa',
+      quote: 'Despite my best efforts, my YouTube channel had been stuck for a long time and I just could not figure out what I was missing. In one coaching session, Dave helped me identify the main issues, demystified the whole process, and gave me clear, actionable next steps.',
+      name: 'Tara Malone',
+      role: 'My Catholic Homecoming',
+    },
+  },
+  {
+    kind: 'text',
+    data: {
+      quote: 'Before the meeting, he rewrote every title for my shows and used that as a training example in the call. I left with great advice and a roadmap. If you are wondering if this is worth the investment, stop wondering.',
+      name: 'Brett Hill',
+      role: 'YouTube Creator',
+    },
+  },
+
+  // Column 3 trailing
+  {
+    kind: 'video',
+    data: {
+      clips: ['/testimonials/daniel-bassett-1.mp4', '/testimonials/daniel-bassett-2.mp4'],
+      poster: '/testimonials/posters/daniel-bassett-1.jpg',
+      pull: 'Thumbnails were the most concrete thing. They lifted my game from 2% CTR to 3 to 4%. That increased it massively.',
+      name: 'Daniel Bassett',
+      role: '@MyLifeByAI',
+    },
+  },
+  {
+    kind: 'text',
+    data: {
+      quote: 'My conversation with Dave was incredibly helpful and insightful. It was clear he took the time to understand my channel and tailor a personalized strategy that addressed my specific challenges.',
+      name: 'Xander Mason',
+      role: 'YouTube Creator',
+    },
+  },
+  {
+    kind: 'video',
+    data: {
+      clips: ['/testimonials/morgan-joan-kennedy.mp4'],
+      poster: '/testimonials/posters/morgan-joan-kennedy.jpg',
+      posterPosition: 'center 30%',
+      pull: 'What was really amazing was how deep of an analysis he did on my channel. Dave really helped me see my blind spots and re-energized me to restart.',
+      name: 'Morgan Joan Kennedy',
+      role: '@DearestJoanie',
+    },
+  },
+  {
+    kind: 'text',
+    data: {
+      quote: "Dave's input and advice was highly customised to my channel and my blind spots. I have tried other YouTube coaching services and none of them were as good.",
+      name: 'Andrew Gray',
       role: 'YouTube Creator',
     },
   },
   {
     kind: 'text',
     data: {
-      quote: 'I came in expecting generic tips. I left with a personal read on my channel I have not gotten anywhere else.',
+      quote: 'He really helped me a lot to structure the steps to take, to grow my YT business. He went way beyond what I would have expected and exceeded my expectations.',
       name: 'SBtrader82',
+      role: 'YouTube Creator',
+    },
+  },
+  {
+    kind: 'text',
+    data: {
+      quote: 'Dave is very knowledgeable. As someone who has walked the walk, it is clear he knows what he is talking about and is able to provide helpful and compassionate insight tailored to me.',
+      name: 'Charlie',
+      role: 'YouTube Creator',
+    },
+  },
+  {
+    kind: 'text',
+    data: {
+      quote: 'I am very impressed with Dave Jeltema’s professionalism and his honest feedback. He was very thoughtful and detailed in his audit of my YT channel.',
+      name: 'Jacob Eapen',
       role: 'YouTube Creator',
     },
   },
@@ -966,6 +1082,17 @@ function PricingCard({
           </div>
           <p className="price__sub"><strong>Founders rate. 50% off every future version.</strong></p>
 
+          <ul className="price__included">
+            <li><Icon name="check" size={16} /><span><strong>Personal review</strong> in your first week</span></li>
+            <li><Icon name="check" size={16} /><span><strong>Content checklist</strong> the same day</span></li>
+            <li><Icon name="check" size={16} /><span>Weekly 90-minute live session, Wednesdays 2pm EST</span></li>
+            <li><Icon name="check" size={16} /><span>Direct access to me every day</span></li>
+            <li><Icon name="check" size={16} /><span>The full course as it drips week by week</span></li>
+            <li><Icon name="check" size={16} /><span>Full resource library and past cohort recaps</span></li>
+          </ul>
+
+          <div className="price__rule" />
+
           {error && <p className="form-msg form-msg--error" style={{ marginBottom: 'var(--s-3)' }}>{error}</p>}
 
           <div className="price__buttons">
@@ -984,17 +1111,6 @@ function PricingCard({
               {isLoadingInstall ? 'Redirecting...' : 'Or pay in two installments — $599'}
             </button>
           </div>
-
-          <div className="price__rule" />
-
-          <ul className="price__included">
-            <li><Icon name="check" size={16} /><span><strong>Personal review</strong> in your first week</span></li>
-            <li><Icon name="check" size={16} /><span><strong>Content checklist</strong> the same day</span></li>
-            <li><Icon name="check" size={16} /><span>Weekly 90-minute live session, Wednesdays 2pm EST</span></li>
-            <li><Icon name="check" size={16} /><span>Direct access to me every day</span></li>
-            <li><Icon name="check" size={16} /><span>The full course as it drips week by week</span></li>
-            <li><Icon name="check" size={16} /><span>Full resource library and past cohort recaps</span></li>
-          </ul>
 
           <div className="price__guarantee">
             <Icon name="shield" size={18} />
@@ -1117,6 +1233,14 @@ export default function TestPage() {
         <nav className="nav">
           <div className="nav__inner">
             <a href="#top" className="nav__brand"><span className="bc-logo">Boundless Creator Program</span></a>
+            <div className="nav__timer">
+              {windowState === 'open' && windowClose && (
+                <Countdown target={windowClose} label="Closes in" onComplete={handleWindowClosed} />
+              )}
+              {windowState === 'before' && windowOpen && (
+                <Countdown target={windowOpen} label="Opens in" onComplete={handleWindowOpened} />
+              )}
+            </div>
             <button onClick={scrollToCheckout} className="btn btn--primary nav__cta">Join now</button>
           </div>
         </nav>
@@ -1364,42 +1488,11 @@ export default function TestPage() {
           </div>
         </section>
 
-        {/* 10 — CHECKOUT */}
-        <section id="checkout" className="checkout-section">
-          <div className="container">
-            <div className="checkout-stack">
-              <div className="checkout-stack__head">
-                <span className="overline" style={{ position: 'relative', display: 'inline-flex' }}>Founders Round</span>
-                <h2 className="section-h" style={{ marginLeft: 'auto', marginRight: 'auto', textAlign: 'center', maxWidth: '24ch', marginTop: 'var(--s-3)' }}>
-                  Join the Founders Round.
-                </h2>
-                <p className="section-sub" style={{ marginLeft: 'auto', marginRight: 'auto', textAlign: 'center' }}>
-                  This price never goes up for you. Founders lock in 50% off every future version.
-                </p>
-              </div>
-
-              <PricingCard
-                windowState={windowState}
-                isLoadingFull={isLoading}
-                isLoadingInstall={isLoadingInstallment}
-                error={error}
-                onCheckout={handleCheckout}
-                windowOpen={windowOpen}
-                windowClose={windowClose}
-                onWindowOpened={handleWindowOpened}
-                onWindowClosed={handleWindowClosed}
-              />
-
-              <p className="checkout-fineprint">Secure checkout via Stripe</p>
-            </div>
-          </div>
-        </section>
-
-        {/* 11 — FAQ */}
-        <section>
+        {/* 10 — FAQ */}
+        <section className="alt">
           <div className="container narrow">
             <div className="section-head" style={{ borderBottom: 0, paddingBottom: 0 }}>
-              <span className="section-num">11</span>
+              <span className="section-num">10</span>
               <span className="overline">Common questions</span>
             </div>
             <h2 className="section-h faq__h">Common questions.</h2>
@@ -1450,7 +1543,7 @@ export default function TestPage() {
           </div>
         </section>
 
-        {/* 12 — P.S. (only when window open) */}
+        {/* 11 — P.S. (only when window open) */}
         {windowState === 'open' && (
           <section className="ps-section">
             <div className="container narrow">
@@ -1468,10 +1561,49 @@ export default function TestPage() {
                 <p>
                   If you want the better price, come now. If you want to wait, come later. <strong>Both are fine.</strong>
                 </p>
+                <p style={{ marginTop: 'var(--s-3)', color: 'var(--bc-text-100)' }}>&mdash; Dave</p>
               </div>
             </div>
           </section>
         )}
+
+        {/* 12 — CHECKOUT (final) */}
+        <section id="checkout" className="checkout-section">
+          <div className="container">
+            <div className="checkout-stack">
+              <div className="checkout-stack__head">
+                <span className="overline" style={{ position: 'relative', display: 'inline-flex' }}>Founders Round</span>
+                <h2 className="section-h" style={{ marginLeft: 'auto', marginRight: 'auto', textAlign: 'center', maxWidth: '24ch', marginTop: 'var(--s-3)' }}>
+                  Join the Founders Round.
+                </h2>
+                <p className="section-sub" style={{ marginLeft: 'auto', marginRight: 'auto', textAlign: 'center' }}>
+                  This price never goes up for you. Founders lock in 50% off every future version.
+                </p>
+              </div>
+
+              <PricingCard
+                windowState={windowState}
+                isLoadingFull={isLoading}
+                isLoadingInstall={isLoadingInstallment}
+                error={error}
+                onCheckout={handleCheckout}
+                windowOpen={windowOpen}
+                windowClose={windowClose}
+                onWindowOpened={handleWindowOpened}
+                onWindowClosed={handleWindowClosed}
+              />
+
+              <div className="checkout-fineprint-stack">
+                <p className="checkout-fineprint" style={{ margin: 0, color: 'var(--bc-green-400)' }}>
+                  Founders rate &middot; 50% off every future version
+                </p>
+                <p className="checkout-fineprint" style={{ marginTop: 'var(--s-2)' }}>
+                  Secure checkout via Stripe
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* FOOTER */}
         <footer>
