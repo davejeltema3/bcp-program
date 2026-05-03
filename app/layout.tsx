@@ -15,6 +15,16 @@ export const metadata: Metadata = {
   title: 'Boundless Creator Program — Founders Edition',
   description:
     'Join the Boundless Creator Program. Personal channel reviews, weekly live sessions, and direct access to Dave Jeltema. $999 for 3 months.',
+  icons: {
+    // Light theme: light blue background with dark BC letters (Dave's default).
+    // Dark theme: dark blue background with white BC letters.
+    icon: [
+      { url: '/icon-light.png', media: '(prefers-color-scheme: light)' },
+      { url: '/icon-dark.png', media: '(prefers-color-scheme: dark)' },
+      { url: '/icon-light.png' }, // fallback for browsers that ignore the media query
+    ],
+    apple: '/icon-light.png',
+  },
   openGraph: {
     title: 'Boundless Creator Program — Founders Edition',
     description:
