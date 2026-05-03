@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Urbanist } from 'next/font/google';
+import Script from 'next/script';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -36,6 +37,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.className} ${urbanist.variable}`}>
+        {/* Kit (ConvertKit) visit tracking. Sets the _ck cookie so form
+            submissions get attributed back to the visitor for accurate
+            conversion rate in the Kit dashboard. Async, non-blocking. */}
+        <Script src="https://f.convertkit.com/ckjs/ck.5.js" strategy="afterInteractive" />
         {children}
       </body>
     </html>

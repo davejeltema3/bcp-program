@@ -228,8 +228,8 @@ export default function WelcomePage() {
               <ol className="space-y-4">
                 {[
                   {
-                    title: 'Fill out the quick questionnaire',
-                    body: 'About 5 minutes. This is how I write your personal channel review.',
+                    title: 'Tell me about your channel',
+                    body: 'About 5 minutes. This is how I write your review.',
                   },
                   {
                     title: 'Check your email',
@@ -240,8 +240,8 @@ export default function WelcomePage() {
                     body: 'I will drop it in your community thread when it is ready.',
                   },
                   {
-                    title: 'First live session: Wednesday at 2 PM EST',
-                    body: 'Recurring every Wednesday. Recorded if you cannot make it.',
+                    title: 'First live session',
+                    body: 'The next Wednesday at 2pm EST after you join. Recurring weekly. Recorded.',
                   },
                 ].map((step, i) => (
                   <li key={i} className="flex gap-3">
