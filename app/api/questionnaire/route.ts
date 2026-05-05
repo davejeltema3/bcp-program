@@ -34,12 +34,10 @@ export async function POST(request: NextRequest) {
       console.error('Google Sheets upsert error:', error);
     }
 
-    // Also submit to Google Form endpoint so Google's "Responses" tab tracks it
-    try {
-      await submitToGoogleForm(answers, email, name);
-    } catch (error) {
-      console.error('Google Form submission error:', error);
-    }
+    // Note: We no longer submit to the Google Form endpoint.
+    // The Sheets API manages the spreadsheet directly, which avoids
+    // duplicate rows that the form creates. Google's "Responses" tab
+    // won't show new entries, but the sheet data is the source of truth.
 
     // Tag in Kit to stop reminder emails
     if (process.env.KIT_API_KEY && email && process.env.KIT_TAG_QUESTIONNAIRE_SUBMITTED) {
