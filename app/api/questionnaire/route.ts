@@ -34,6 +34,13 @@ export async function POST(request: NextRequest) {
       console.error('Google Sheets upsert error:', error);
     }
 
+    // Also submit to Google Form endpoint so Google's "Responses" tab tracks it
+    try {
+      await submitToGoogleForm(answers, email, name);
+    } catch (error) {
+      console.error('Google Form submission error:', error);
+    }
+
     // Tag in Kit to stop reminder emails
     if (process.env.KIT_API_KEY && email && process.env.KIT_TAG_QUESTIONNAIRE_SUBMITTED) {
       try {
@@ -118,4 +125,61 @@ async function sendDiscordNotification(name?: string, email?: string, answers?: 
 function truncate(text: string, max: number): string {
   if (text.length <= max) return text;
   return text.substring(0, max - 3) + '...';
+}
+
+/**
+ * Submit to the Google Form endpoint so responses show up in
+ * Google's "Responses" tab (form-level tracking).
+ */
+async function submitToGoogleForm(answers: Record<string, string>, email?: string, name?: string) {
+  const formUrl = process.env.BCP_GOOGLE_FORM_ACTION_URL
+    || 'https://docs.google.com/forms/d/e/1FAIpQLSeChQcPaZNfogKDloLPdYk242-li3PQLkwkBk6hFAnA1jmVow/formResponse';
+
+  const formData = new URLSearchParams();
+
+  // Google Form entry IDs (from form HTML)
+  const ENTRY = {
+    first_name:        'entry.2097721795',
+    email:             'entry.1911423929',
+    channel_url:       'entry.2044768400',
+    questionnaire_sub: 'entry.1476304573',
+    monetized:         'entry.513173253',
+    ai_comfort:        'entry.231593935',
+    hours_per_week:    'entry.134149865',
+    best_video_theory: 'entry.1841833113',
+    challenge:         'entry.1322755048',
+    content_goals:     'entry.1587458703',
+    program_goals:     'entry.1252611344',
+    analytics_access:  'entry.610455116',
+    anything_else:     'entry.1026472512',
+    what_didnt_work:   'entry.1101230076',
+  } as const;
+
+  if (name) formData.append(ENTRY.first_name, name.split(' ')[0]);
+  if (email) formData.append(ENTRY.email, email);
+  formData.append(ENTRY.questionnaire_sub, 'Yes');
+
+  const fieldMap: Record<string, string> = {
+    channel_url:       ENTRY.channel_url,
+    monetized:         ENTRY.monetized,
+    ai_comfort:        ENTRY.ai_comfort,
+    hours_per_week:    ENTRY.hours_per_week,
+    best_video_theory: ENTRY.best_video_theory,
+    challenge:         ENTRY.challenge,
+    content_goals:     ENTRY.content_goals,
+    program_goals:     ENTRY.program_goals,
+    analytics_access:  ENTRY.analytics_access,
+    anything_else:     ENTRY.anything_else,
+    what_didnt_work:   ENTRY.what_didnt_work,
+  };
+
+  Object.entries(fieldMap).forEach(([key, entryId]) => {
+    if (answers[key]) formData.append(entryId, answers[key]);
+  });
+
+  await fetch(formUrl, {
+    method: 'POST',
+    body: formData,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
 }

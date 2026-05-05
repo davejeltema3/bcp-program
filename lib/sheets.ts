@@ -184,15 +184,36 @@ async function writeRow(rowNum: number, row: string[]): Promise<void> {
 
 /**
  * Append a new row to the sheet.
+ * Uses explicit row targeting instead of the append API to avoid issues
+ * with pre-formatted empty rows pushing data to the wrong position.
  */
-async function appendRow(row: string[]): Promise<void> {
+async function appendRow(row: string[]): Promise<number> {
   const sheets = await getSheets();
-  await sheets.spreadsheets.values.append({
+
+  // Find the actual next empty row by scanning the email column (C)
+  const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: RANGE_ALL,
+    range: `'${SHEET_NAME}'!C:C`,
+  });
+  const emailCol = res.data.values || [];
+
+  // Find first empty row after header (row 1). Start at index 1 (row 2).
+  let nextRow = emailCol.length + 1; // default: after all existing rows
+  for (let i = 1; i < emailCol.length; i++) {
+    if (!emailCol[i] || !emailCol[i][0] || emailCol[i][0].trim() === '') {
+      nextRow = i + 1; // 1-based row number
+      break;
+    }
+  }
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${SHEET_NAME}'!A${nextRow}:AP${nextRow}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [row] },
   });
+
+  return nextRow;
 }
 
 /**
@@ -313,21 +334,18 @@ export async function createPaymentRow(
     if (opts.stripeSessionId) row[COL.STRIPE_SESSION] = opts.stripeSessionId;
     if (opts.discordInviteUrl) row[COL.DISCORD_INVITE] = opts.discordInviteUrl;
 
-    await appendRow(row);
+    const newRowNum = await appendRow(row);
 
-    // Now find the row we just appended and set formulas
-    const newRowNum = await findRowByEmail(email);
-    if (newRowNum) {
-      const sheets = await getSheets();
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `'${SHEET_NAME}'!AE${newRowNum}:AF${newRowNum}`,
-        valueInputOption: 'USER_ENTERED',
-        requestBody: { values: [[statusFormula(newRowNum), daysRemainingFormula(newRowNum)]] },
-      });
-    }
+    // Set formulas for the row we just created
+    const sheets = await getSheets();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${SHEET_NAME}'!AE${newRowNum}:AF${newRowNum}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[statusFormula(newRowNum), daysRemainingFormula(newRowNum)]] },
+    });
 
-    console.log(`Created new row for ${email}`);
+    console.log(`Created new row ${newRowNum} for ${email}`);
   }
 }
 
@@ -376,18 +394,15 @@ export async function addCompMember(
     row[COL.TOTAL_REVENUE] = '0';
     row[COL.RENEWAL_COUNT] = '1';
 
-    await appendRow(row);
+    const newRowNum = await appendRow(row);
 
-    const newRowNum = await findRowByEmail(email);
-    if (newRowNum) {
-      const sheets = await getSheets();
-      await sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `'${SHEET_NAME}'!AE${newRowNum}:AF${newRowNum}`,
-        valueInputOption: 'USER_ENTERED',
-        requestBody: { values: [[statusFormula(newRowNum), daysRemainingFormula(newRowNum)]] },
-      });
-    }
+    const sheets = await getSheets();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${SHEET_NAME}'!AE${newRowNum}:AF${newRowNum}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[statusFormula(newRowNum), daysRemainingFormula(newRowNum)]] },
+    });
 
     return { isNew: true };
   }
