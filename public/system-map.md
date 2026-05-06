@@ -1,6 +1,6 @@
 # BCP + BCA — Full System Map
 
-_Last updated: 2026-05-02_
+_Last updated: 2026-05-05_
 
 ---
 
@@ -135,6 +135,21 @@ Stripe → POST bcp.boundlesscreator.com/api/webhooks/stripe
 
 **Key design:** Formulas calculate defaults. Any cell you manually edit becomes the truth.
 
+#### Waitlist Tab (separate from member rows)
+
+A second tab named `Waitlist` tracks waitlist signups separately from members.
+
+| Col | Name | Source |
+|-----|------|--------|
+| A | Timestamp | `/api/waitlist` (M/D/YYYY H:MM:SS) |
+| B | First Name | Form input |
+| C | Email | Form input (lowercased) |
+| D | Source | `before` / `after` / `invite` / `migrated` / `orphan-challenge` |
+| E | Challenge | `/api/waitlist-challenge` (fills on second-step submit) |
+| F | Notes | Manual / migration |
+
+The tab and its headers are auto-created on first write via `ensureWaitlistTabAndHeaders()` in `lib/sheets.ts`. Writes go through `appendWaitlistRow()` which scans column C for the first empty row and writes there explicitly. This works around the Sheets API quirk where the `append` method lands rows after all formatted rows — even empty ones — so a formatted but unused row 65 would push entries to row 66 instead of row 2. Same fix pattern is applied to the main member-tab `appendRow` helper.
+
 #### Data Flow
 ```
 Payment webhook → creates row (name, email, dates, Stripe IDs, "Questionnaire: No")
@@ -169,11 +184,43 @@ Dave on /preview → Admin tab → "Add Member"
 ```
 
 ### Waitlist Flow
+
+Two-step flow. Step 1 captures name + email and triggers the Kit incentive email. Step 2 collects their biggest YouTube challenge for context when the window opens.
+
 ```
-Visitor on / (window closed) → fills waitlist form
+Visitor on / (window before/closed) → fills waitlist form (name + email)
     │
-    POST /api/waitlist → Tag Kit "BCP Waitlist Member" (8231366)
+    POST /api/waitlist { email, firstName, source: 'before' | 'after' | 'invite' }
+    ├── Submits to Kit v3 form 8175003 (api.convertkit.com/v3/forms/.../subscribe)
+    │   └── Kit handles double opt-in + incentive email + form-level tagging
+    │       (this is where BCP Waitlist Member tag 8231366 gets applied)
+    ├── appendWaitlistEntry() writes a row to the Waitlist tab
+    │   └── Source = 'before' / 'after' / 'invite' depending on entry point
+    └── Returns { redirectTo: '/waitlist-question?email=...&name=...' }
+            │
+            ▼
+Browser redirects to /waitlist-question
+    │
+    User answers "What is your number one YouTube challenge?" (or skips)
+    │
+    POST /api/waitlist-challenge { email, challenge, name }
+    ├── Empty/skipped → returns success (no sheet write)
+    └── Real answer → updateWaitlistChallenge() writes to column E of matching row
+        └── If no row found, creates one with source: 'orphan-challenge' for follow-up
+            │
+            ▼
+"Check your email" success page reminds them they aren't on the list
+until they click the Kit confirmation link.
 ```
+
+**Why Kit v3 instead of v4:** the v3 form-submit endpoint triggers the form's incentive email + double opt-in flow automatically. The v4 API used elsewhere only handles direct subscribe + tag operations. The v3 key is stored in `KIT_V3_API_KEY` (different value from `KIT_API_KEY`).
+
+**Source field meanings:**
+- `before` — landing page form, window not yet open
+- `after` — landing page form, window closed
+- `invite` — `/join` page form (rare path)
+- `migrated` — backfilled from old Google Form on 2026-05-05 (one-time)
+- `orphan-challenge` — challenge submitted with no matching row (data quality flag)
 
 ### Waitlist Notification (when window opens)
 ```
@@ -201,7 +248,7 @@ Visitor on /insight → fills email form
 | Tag | ID | Applied By | Purpose |
 |---|---|---|---|
 | BCP Member | 8240961 | Stripe webhook + /api/admin/add-member | Trigger welcome email, Kit webhook |
-| BCP Waitlist Member | 8231366 | /api/waitlist | Notify when next window opens |
+| BCP Waitlist Member | 8231366 | Kit form 8175003 (v3 submit from /api/waitlist) | Notify when next window opens |
 | BCP Questionnaire Submitted | 19206526 | /api/questionnaire | Stop reminder emails |
 | BCP Window Open Notification | 19208524 | /api/admin/window (auto-notify) | Trigger "window is open" email |
 | Boundless Insight | — | Kit Form #9377397 | Kit handles tagging |
@@ -217,7 +264,8 @@ Visitor on /insight → fills email form
 - `STRIPE_WEBHOOK_SECRET_NOTIFICATIONS` — Checkout notification webhook
 
 ### Kit
-- `KIT_API_KEY` — Kit API key
+- `KIT_API_KEY` — Kit v4 API key (kit_xxx format, used for direct subscribe + tag operations)
+- `KIT_V3_API_KEY` — Kit v3 legacy API key (different value, used only by /api/waitlist for form 8175003 submission). Falls back to a hardcoded public value if unset.
 - `KIT_BCP_MEMBER_TAG_ID` — 8240961
 - `KIT_TAG_BCP_WAITLIST` — 8231366
 - `KIT_TAG_QUESTIONNAIRE_SUBMITTED` — 19206526
@@ -247,6 +295,7 @@ Visitor on /insight → fills email form
 |---|---|---|
 | `/` | Long-form sales page + checkout | Yes (checkout section only) |
 | `/join` | Invite page (bypass window) | No |
+| `/waitlist-question` | Step 2 of waitlist signup (challenge question) | No |
 | `/welcome` | Post-payment confirmation + questionnaire | No |
 | `/questionnaire` | Standalone questionnaire (email links) | No |
 | `/insight` | Boundless Insight lead magnet | No |
