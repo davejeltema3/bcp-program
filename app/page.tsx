@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { track } from '@vercel/analytics';
 
 type WindowState = 'before' | 'open' | 'after';
 
@@ -1082,6 +1083,7 @@ function WaitlistFormBC({ context }: { context: 'before' | 'after' }) {
       });
       const data = await res.json();
       if (!res.ok && !data.success) throw new Error('Failed');
+      track('waitlist_submit', { source: context });
       if (data.redirectTo) {
         window.location.href = data.redirectTo;
       } else {
@@ -1290,6 +1292,7 @@ export default function TestPage() {
     const setLoaderFn = mode === 'full' ? setIsLoading : setIsLoadingInstallment;
     setLoaderFn(true);
     setError(undefined);
+    track('checkout_start', { mode });
     try {
       const params = new URLSearchParams(window.location.search);
       const email = params.get('email') || undefined;

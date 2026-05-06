@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { track } from '@vercel/analytics';
 
 /**
  * Boundless Insight lead magnet landing page.
@@ -181,6 +182,7 @@ export default function InsightPage() {
         }),
       });
       if (!response.ok) throw new Error('Failed to subscribe');
+      track('insight_signup');
       setSubmitted(true);
     } catch {
       setError('Something went wrong. Please try again.');

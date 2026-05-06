@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { track } from '@vercel/analytics';
 import QuestionCard from '@/components/QuestionCard';
 import TextInput from '@/components/TextInput';
 
@@ -102,6 +103,7 @@ export default function WaitlistQuestionPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, challenge, name }),
       });
+      track('challenge_submit', { length: challenge.length });
     } catch (err) {
       console.error('Waitlist challenge submit error:', err);
     } finally {
@@ -112,6 +114,7 @@ export default function WaitlistQuestionPage() {
 
   const handleSkip = () => {
     // Send empty challenge (no-op on the API), still show confirmation
+    track('challenge_skip');
     setSubmitted(true);
   };
 
