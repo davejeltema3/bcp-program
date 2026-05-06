@@ -1060,14 +1060,12 @@ function TestimonialWall() {
 
 /* =====================================================================
    WAITLIST FORM (BC styled)
+   - Posts to /api/waitlist (server-side) which handles Kit + Google Sheet
+   - On success, redirects to /waitlist-question to capture the challenge
    ===================================================================== */
-const KIT_FORM_ID = '8175003';
-const KIT_API_KEY = '8r2gDZv9vgYKgeS4TAeKdw';
-
 function WaitlistFormBC({ context }: { context: 'before' | 'after' }) {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
-  const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
 
@@ -1077,27 +1075,25 @@ function WaitlistFormBC({ context }: { context: 'before' | 'after' }) {
     setLoading(true);
     setError(undefined);
     try {
-      const res = await fetch(`https://api.convertkit.com/v3/forms/${KIT_FORM_ID}/subscribe`, {
+      const res = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ api_key: KIT_API_KEY, email, first_name: firstName || undefined }),
+        body: JSON.stringify({ email, firstName: firstName || undefined, source: context }),
       });
-      if (!res.ok) throw new Error('Failed');
-      setSubmitted(true);
+      const data = await res.json();
+      if (!res.ok && !data.success) throw new Error('Failed');
+      if (data.redirectTo) {
+        window.location.href = data.redirectTo;
+      } else {
+        // Fallback: redirect to question page anyway with what we have
+        const params = new URLSearchParams({ email, ...(firstName ? { name: firstName } : {}) });
+        window.location.href = `/waitlist-question?${params.toString()}`;
+      }
     } catch {
       setError('Something went wrong. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
-
-  if (submitted) {
-    return (
-      <div className="form-msg form-msg--success" style={{ padding: '14px 0' }}>
-        Check your email. Confirm to get on the waitlist.
-      </div>
-    );
-  }
 
   const heads = {
     before: { title: 'The window opens soon', sub: 'Drop your email. I will let you know the moment it opens.', btn: 'Notify me' },

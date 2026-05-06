@@ -32,6 +32,7 @@
 
 const SPREADSHEET_ID = process.env.BCP_SHEET_ID || '1lpnkxlN21slJwdItDr9Q-fzMcS5tzRz1l4fpqT8Oa6c';
 const SHEET_NAME = 'Form Responses 1';
+const WAITLIST_SHEET_NAME = 'Waitlist';
 const TOTAL_COLS = 42; // A through AP
 const RANGE_ALL = `'${SHEET_NAME}'!A:AP`;
 
@@ -405,6 +406,166 @@ export async function addCompMember(
     });
 
     return { isNew: true };
+  }
+}
+
+// ─── Waitlist tab ───────────────────────────────────────────────────────
+//
+// Lives in the same spreadsheet as members, in a separate tab named "Waitlist".
+// Columns:
+//   A: Timestamp        B: First Name        C: Email
+//   D: Source           E: Challenge         F: Notes
+//
+// Source = 'before' | 'after' | 'invite' | 'migrated' (for old data brought over).
+
+const WAITLIST_HEADERS = ['Timestamp', 'First Name', 'Email', 'Source', 'Challenge', 'Notes'];
+
+async function findWaitlistRowByEmail(email: string): Promise<number | null> {
+  const sheets = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${WAITLIST_SHEET_NAME}'!C:C`,
+  });
+  const rows = res.data.values || [];
+  const normalizedEmail = email.toLowerCase().trim();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i]?.[0]?.toLowerCase().trim() === normalizedEmail) {
+      return i + 1;
+    }
+  }
+  return null;
+}
+
+async function ensureWaitlistTabAndHeaders(): Promise<void> {
+  const sheets = await getSheets();
+
+  // Check if the tab exists
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const sheetExists = meta.data.sheets?.some(
+    (s) => s.properties?.title === WAITLIST_SHEET_NAME,
+  );
+
+  if (!sheetExists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: {
+        requests: [
+          { addSheet: { properties: { title: WAITLIST_SHEET_NAME } } },
+        ],
+      },
+    });
+  }
+
+  // Ensure headers
+  const headerRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${WAITLIST_SHEET_NAME}'!A1:F1`,
+  });
+  const existing = headerRes.data.values?.[0] || [];
+  if (existing[0] !== WAITLIST_HEADERS[0]) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${WAITLIST_SHEET_NAME}'!A1:F1`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [WAITLIST_HEADERS] },
+    });
+  }
+}
+
+/**
+ * Append a row to the Waitlist tab using explicit row targeting instead of
+ * the append API. Mirrors the same fix used for the membership tab — protects
+ * against pre-formatted empty rows pushing data to the wrong position.
+ *
+ * Returns the 1-based row number that was written to.
+ */
+async function appendWaitlistRow(row: string[]): Promise<number> {
+  const sheets = await getSheets();
+
+  // Find the actual next empty row by scanning the email column (C).
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${WAITLIST_SHEET_NAME}'!C:C`,
+  });
+  const emailCol = res.data.values || [];
+
+  let nextRow = emailCol.length + 1; // default: after all existing rows
+  for (let i = 1; i < emailCol.length; i++) {
+    if (!emailCol[i] || !emailCol[i][0] || emailCol[i][0].trim() === '') {
+      nextRow = i + 1;
+      break;
+    }
+  }
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${WAITLIST_SHEET_NAME}'!A${nextRow}:F${nextRow}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [row] },
+  });
+
+  return nextRow;
+}
+
+/**
+ * Append a new waitlist entry. If the email already exists, updates the
+ * timestamp and name instead of creating a duplicate.
+ */
+export async function appendWaitlistEntry(
+  name: string,
+  email: string,
+  source: string = 'before',
+): Promise<void> {
+  await ensureWaitlistTabAndHeaders();
+  const sheets = await getSheets();
+
+  const existingRow = await findWaitlistRowByEmail(email);
+  const firstName = name.split(' ')[0];
+
+  if (existingRow) {
+    // Update timestamp and name on existing row, leave challenge alone
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${WAITLIST_SHEET_NAME}'!A${existingRow}:D${existingRow}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[nowEST(), firstName, email, source]] },
+    });
+  } else {
+    await appendWaitlistRow([nowEST(), firstName, email, source, '', '']);
+  }
+}
+
+/**
+ * Update the Challenge column for an existing waitlist entry.
+ * Creates the row if it doesn't exist (defensive — shouldn't happen in normal flow).
+ */
+export async function updateWaitlistChallenge(
+  email: string,
+  challenge: string,
+  name?: string,
+): Promise<void> {
+  await ensureWaitlistTabAndHeaders();
+  const sheets = await getSheets();
+
+  const existingRow = await findWaitlistRowByEmail(email);
+
+  if (existingRow) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${WAITLIST_SHEET_NAME}'!E${existingRow}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[challenge]] },
+    });
+  } else {
+    // No row found — create one with the challenge filled in
+    await appendWaitlistRow([
+      nowEST(),
+      name?.split(' ')[0] || '',
+      email,
+      'orphan-challenge',
+      challenge,
+      '',
+    ]);
   }
 }
 
