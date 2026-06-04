@@ -134,7 +134,7 @@ async function sendWaitlistSignupNotification(
       { name: 'Email', value: email, inline: true },
       { name: 'Source', value: source, inline: true },
     ],
-    footer: { text: 'They will answer the challenge question next (or skip).' },
+    footer: { text: 'Challenge answer (if any) lands in the Sheet, not in a follow-up post.' },
     timestamp: new Date().toISOString(),
   };
 
