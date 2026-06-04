@@ -9,7 +9,8 @@ import { appendWaitlistEntry } from '@/lib/sheets';
  *      double opt-in flow + incentive email + form-level tagging — the same
  *      behavior you get when someone fills out the form on Kit's hosted page.
  *   2. Writes a row to the Waitlist tab of the BCP Google Sheet.
- *   3. Returns success so the client can redirect the user to the
+ *   3. Sends a Discord notification so Dave knows to start outreach.
+ *   4. Returns success so the client can redirect the user to the
  *      /waitlist-question page where they answer the challenge.
  *
  * For Boundless Insight (source: insight): tags via the v4 API and short-circuits
@@ -89,7 +90,16 @@ export async function POST(request: NextRequest) {
       // Don't block the user. Kit submission was the priority.
     }
 
-    // 3. Return redirect target so the client can navigate to the question page
+    // 3. Discord notification — Dave sees this and starts outreach
+    if (process.env.DISCORD_WEBHOOK_URL) {
+      try {
+        await sendWaitlistSignupNotification(firstName, email, source);
+      } catch (error) {
+        console.error('Discord notification error:', error);
+      }
+    }
+
+    // 4. Return redirect target so the client can navigate to the question page
     const params = new URLSearchParams();
     params.set('email', email);
     if (firstName) params.set('name', firstName);
@@ -102,4 +112,35 @@ export async function POST(request: NextRequest) {
     // Graceful degradation — don't expose internal failures to the user
     return NextResponse.json({ success: true, redirectTo: null });
   }
+}
+
+async function sendWaitlistSignupNotification(
+  firstName: string | undefined,
+  email: string,
+  source: string,
+) {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) return;
+
+  const sheetId = process.env.BCP_SHEET_ID || '1lpnkxlN21slJwdItDr9Q-fzMcS5tzRz1l4fpqT8Oa6c';
+  const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit`;
+
+  const embed = {
+    title: '📋 New BCP Waitlist Signup',
+    description: `[Open Waitlist tab](${sheetUrl})`,
+    color: 0x3b82f6, // blue
+    fields: [
+      { name: 'Name', value: firstName || '_(not provided)_', inline: true },
+      { name: 'Email', value: email, inline: true },
+      { name: 'Source', value: source, inline: true },
+    ],
+    footer: { text: 'They will answer the challenge question next (or skip).' },
+    timestamp: new Date().toISOString(),
+  };
+
+  await fetch(webhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ embeds: [embed] }),
+  });
 }
