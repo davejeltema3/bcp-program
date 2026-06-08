@@ -1190,7 +1190,7 @@ function PricingCard({
               disabled={isLoadingInstall}
               className="btn btn--ghost btn--lg btn--block price__btn-split"
             >
-              <span className="price__btn-main">{isLoadingInstall ? 'Redirecting...' : 'Split into 2 — $599 now, $599 in 30 days'}</span>
+              <span className="price__btn-main">{isLoadingInstall ? 'Redirecting...' : 'Split into 3 — 3 monthly payments of $333'}</span>
             </button>
           </div>
 
@@ -1275,7 +1275,8 @@ export default function TestPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerEmail: email,
-          paymentMode: mode === 'installment' ? 'installment' : undefined,
+          bypassWindow: true,
+          paymentMode: mode === 'installment' ? 'installment3' : undefined,
         }),
       });
       const data = await res.json();
@@ -1587,7 +1588,7 @@ export default function TestPage() {
               <details className="faq__item">
                 <summary className="faq__q">Is it a subscription?</summary>
                 <div className="faq__a">
-                  No. <strong>$999 once</strong> (or 2&times; $599) gets you three months of full access. After that, you renew or you leave. Nothing auto-charges.
+                  No. <strong>$999 once</strong> (or 3&times; $333) gets you three months of full access. After that, you renew or you leave. Nothing auto-charges.
                 </div>
               </details>
               <details className="faq__item">

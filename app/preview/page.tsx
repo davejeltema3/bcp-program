@@ -146,7 +146,7 @@ export default function PreviewPage() {
               {landingSubTab === 'open' && 'Full sales page with checkout buttons'}
               {landingSubTab === 'before' && 'Countdown to open + waitlist at checkout'}
               {landingSubTab === 'after' && 'Waitlist form at checkout section'}
-              {landingSubTab === 'invite' && 'Bypasses window — checkout always available'}
+              {landingSubTab === 'invite' && 'Bypasses window — pay in full or 3× $333, always available'}
             </span>
           </div>
           <a
@@ -491,6 +491,8 @@ export default function PreviewPage() {
               { label: 'Welcome / Post-Payment', href: '/welcome?test=true' },
               { label: 'Boundless Insight', href: '/insight' },
               { label: 'Invite Page (bypasses window)', href: '/join' },
+              { label: 'Invite Pay — 3× $333 (direct)', href: '/invite/pay' },
+              { label: 'Invite Pay — $999 full (direct)', href: '/invite/pay?plan=full' },
               { label: 'Questionnaire', href: '/questionnaire' },
             ].map(link => (
               <a key={link.href} href={link.href} target="_blank" className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-4 py-3 text-sm text-blue-400 hover:text-blue-300 transition-colors">
@@ -510,8 +512,12 @@ export default function PreviewPage() {
             <p className="text-slate-400 text-sm">Stripe Checkout → payment mode → one-time charge → webhook → Kit tagged + Discord invite + Discord notification</p>
           </div>
           <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
-            <h4 className="text-white font-semibold text-sm mb-2">Installment — $599 × 2</h4>
-            <p className="text-slate-400 text-sm">Stripe Checkout → subscription mode → $599 charged immediately → webhook sets cancel_at (62 days) → $599 charged 30 days later → auto-cancels</p>
+            <h4 className="text-white font-semibold text-sm mb-2">Installment (public) — $599 × 2</h4>
+            <p className="text-slate-400 text-sm">Stripe Checkout → subscription mode → $599 now → webhook sets cancel_at from total_payments (~50 days) → $599 at day 30 → auto-cancels before a 3rd charge.</p>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
+            <h4 className="text-white font-semibold text-sm mb-2">Installment (invite) — $333 × 3</h4>
+            <p className="text-slate-400 text-sm">Used on /join and the /invite/pay links. Subscription mode → $333/mo → webhook sets cancel_at from total_payments (~80 days) → auto-cancels after the 3rd charge. Same $999 total, no upcharge.</p>
           </div>
         </div>
       </div>

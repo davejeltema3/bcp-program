@@ -185,14 +185,21 @@ export async function POST(request: NextRequest) {
             console.error('Discord invite generation failed:', err);
           }
 
-          // Auto-cancel installment subscriptions after 2 payments
-          // (cancel_at not available in checkout session subscription_data for this SDK version)
+          // Auto-cancel installment subscriptions after the final payment.
+          // (cancel_at not available in checkout session subscription_data for this SDK version,
+          //  so we set it here once the subscription exists.)
+          // Billing is monthly, so charges land at month 0, 1, ... (totalPayments - 1). The next,
+          // unwanted charge would land at month totalPayments. We cancel after the last wanted
+          // charge but before that next one, with a ~20-day buffer to stay mid-cycle across 28-31
+          // day months. 2 payments => ~50 days; 3 payments => ~80 days. Defaults to 2 for safety.
           if (session.mode === 'subscription' && session.metadata?.payment_type === 'installment' && session.subscription) {
             try {
               const subId = typeof session.subscription === 'string' ? session.subscription : (session.subscription as any).id;
-              const cancelAt = Math.floor(Date.now() / 1000) + (62 * 24 * 60 * 60); // ~62 days
+              const totalPayments = parseInt(session.metadata?.total_payments || '2', 10);
+              const daysUntilCancel = (totalPayments - 1) * 30 + 20;
+              const cancelAt = Math.floor(Date.now() / 1000) + (daysUntilCancel * 24 * 60 * 60);
               await stripe.subscriptions.update(subId, { cancel_at: cancelAt });
-              console.log(`Installment subscription ${subId} set to auto-cancel at ${new Date(cancelAt * 1000).toISOString()}`);
+              console.log(`Installment subscription ${subId} (${totalPayments} payments) set to auto-cancel at ${new Date(cancelAt * 1000).toISOString()}`);
             } catch (err) {
               console.error('Failed to set installment auto-cancel:', err);
             }

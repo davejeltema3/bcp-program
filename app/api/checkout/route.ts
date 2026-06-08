@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     // Installment is always allowed regardless of checkout mode (it's a payment split, not a mode)
     const checkoutMode = process.env.NEXT_PUBLIC_CHECKOUT_MODE || (process.env.NEXT_PUBLIC_ENABLE_SUBSCRIPTION === 'true' ? 'both' : 'one-time');
     let paymentMode = requestedMode;
-    if (requestedMode !== 'installment') {
+    if (requestedMode !== 'installment' && requestedMode !== 'installment3') {
       if (checkoutMode === 'subscription') {
         paymentMode = 'subscription';
       } else if (checkoutMode === 'one-time') {
@@ -119,6 +119,51 @@ export async function POST(request: NextRequest) {
           program: 'bcp-founders',
           duration: '3 months',
           payment_type: 'installment',
+          total_payments: '2',
+        },
+        success_url: `${origin}/welcome?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/`,
+        allow_promotion_codes: true,
+      });
+
+      return NextResponse.json({ url: session.url });
+    }
+
+    // Installment3 mode: 3 payments of $333, billed monthly (=$999, no upcharge)
+    if (paymentMode === 'installment3') {
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        ...(customerEmail ? { customer_email: customerEmail } : {}),
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: 'Boundless Creator Program — Founders Edition (3-Pay)',
+                description: '3 monthly payments of $333. Full 12-week program access.',
+              },
+              unit_amount: 33300, // $333.00
+              recurring: {
+                interval: 'month',
+                interval_count: 1,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        subscription_data: {
+          metadata: {
+            program: 'bcp-founders',
+            payment_type: 'installment',
+            total_payments: '3',
+          },
+        },
+        metadata: {
+          program: 'bcp-founders',
+          duration: '3 months',
+          payment_type: 'installment',
+          total_payments: '3',
         },
         success_url: `${origin}/welcome?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin}/`,
