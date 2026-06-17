@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { YOUTUBE_HANDLE, SUBSCRIBER_FALLBACK } from '@/lib/site-stats';
+import { YOUTUBE_HANDLE, SUBSCRIBER_FALLBACK, SUBSCRIBER_MIN_PLAUSIBLE } from '@/lib/site-stats';
 
 /**
  * Live subscriber count for the marketing pages.
@@ -27,7 +27,7 @@ export async function GET() {
     const data = await res.json();
     const count = Number(data?.items?.[0]?.statistics?.subscriberCount);
 
-    if (!count || isNaN(count)) {
+    if (!count || isNaN(count) || count < SUBSCRIBER_MIN_PLAUSIBLE) {
       return NextResponse.json({ subscriberCount: SUBSCRIBER_FALLBACK, live: false });
     }
     return NextResponse.json({ subscriberCount: count, live: true });

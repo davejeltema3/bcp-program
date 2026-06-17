@@ -25,12 +25,18 @@ export function yearsOnYouTube(now: Date = new Date()): number {
   return years;
 }
 
-// The channel the live subscriber count is read from.
-export const YOUTUBE_HANDLE = 'boundlesscreator';
+// The channel the live subscriber count is read from. This is Dave's main
+// channel. Note: @boundlesscreator is a different (tiny) channel someone took
+// before the brand existed, so do not use that handle here.
+export const YOUTUBE_HANDLE = 'davejeltema3';
 
 // Shown if the live count can't be fetched (e.g. API key missing or YouTube
 // down). Keep this roughly current so the page never looks stale.
 export const SUBSCRIBER_FALLBACK = 70000;
+
+// Safety floor. If the API ever returns a count below this (wrong channel,
+// parse glitch, etc.), the page uses the fallback instead of printing it.
+export const SUBSCRIBER_MIN_PLAUSIBLE = 1000;
 
 // 72345 -> { value: "72", suffix: "K" }; 1_500_000 -> { value: "1.5", suffix: "M" }.
 // Floors so the displayed number never overstates the real count.
