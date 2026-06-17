@@ -15,7 +15,7 @@
  *
  * COLUMNS AC-AP: Member management (auto-filled by webhook, manually editable)
  *   AC: Start Date           — Auto-set at payment. Edit to override.
- *   AD: End Date             — Start + 90 days default. Edit to extend/shorten.
+ *   AD: End Date             — Start + 180 days default. Edit to extend/shorten.
  *   AE: Status               — Formula: auto-calculates from End Date, or manual override.
  *   AF: Days Remaining       — Formula: MAX(0, End Date - TODAY())
  *   AG: Payment Type         — one-time / installment / comp
@@ -128,7 +128,7 @@ function todayEST(): string {
   return new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
 }
 
-function endDateFromStart(startDate: string, days: number = 90): string {
+function endDateFromStart(startDate: string, days: number = 180): string {
   const d = new Date(startDate);
   d.setDate(d.getDate() + days);
   return d.toLocaleDateString('en-US', { timeZone: 'America/New_York' });
@@ -278,7 +278,7 @@ export async function createPaymentRow(
 ): Promise<void> {
   const existingRowNum = await findRowByEmail(email);
   const startDate = todayEST();
-  const endDate = endDateFromStart(startDate, 90);
+  const endDate = endDateFromStart(startDate, 180);
 
   if (existingRowNum) {
     // Returning member — update existing row
@@ -325,7 +325,7 @@ export async function createPaymentRow(
     // Can't use formulas in append (don't know row number yet),
     // so set initial values directly
     row[COL.STATUS] = 'Active';
-    row[COL.DAYS_REMAINING] = '90';
+    row[COL.DAYS_REMAINING] = '180';
     row[COL.PAYMENT_TYPE] = opts.paymentType || 'one-time';
     row[COL.AMOUNT_PAID] = opts.amountPaid ? `${opts.amountPaid}` : '';
     row[COL.TOTAL_REVENUE] = opts.amountPaid ? `${opts.amountPaid}` : '';
@@ -357,7 +357,7 @@ export async function createPaymentRow(
 export async function addCompMember(
   name: string,
   email: string,
-  durationDays: number = 90,
+  durationDays: number = 180,
 ): Promise<{ isNew: boolean }> {
   const existingRowNum = await findRowByEmail(email);
   const startDate = todayEST();

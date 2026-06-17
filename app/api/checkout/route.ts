@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
               currency: 'usd',
               product_data: {
                 name: 'Boundless Creator Program — Founders Edition (Installment)',
-                description: '2 payments of $599, billed 30 days apart. Full 12-week program access.',
+                description: '2 payments of $599, billed 30 days apart. Full 6-month program access.',
               },
               unit_amount: 59900, // $599.00
               recurring: {
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
         },
         metadata: {
           program: 'bcp-founders',
-          duration: '3 months',
+          duration: '6 months',
           payment_type: 'installment',
           total_payments: '2',
         },
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
               currency: 'usd',
               product_data: {
                 name: 'Boundless Creator Program — Founders Edition (3-Pay)',
-                description: '3 monthly payments of $333. Full 12-week program access.',
+                description: '3 monthly payments of $333. Full 6-month program access.',
               },
               unit_amount: 33300, // $333.00
               recurring: {
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
         },
         metadata: {
           program: 'bcp-founders',
-          duration: '3 months',
+          duration: '6 months',
           payment_type: 'installment',
           total_payments: '3',
         },
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
             currency: 'usd',
             product_data: {
               name: 'Boundless Creator Program — Founders Edition',
-              description: '3 months: Personal channel review, weekly live sessions, resource library, Discord access, founders rate locked in.',
+              description: '6 months: Personal channel review, weekly live sessions, resource library, Discord access, founders rate locked in.',
             },
             unit_amount: 99900, // $999.00
           },

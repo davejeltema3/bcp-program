@@ -105,7 +105,7 @@ export const questions: QuestionItem[] = [
   {
     id: 'program_goals',
     question: 'What do you want to get out of this program?',
-    subtext: 'What does success look like for you at the end of 3 months?',
+    subtext: 'What does success look like for you at the end of 6 months?',
     type: 'textarea',
     placeholder: 'e.g. "A clear content strategy and someone who can tell me what I\'m doing wrong"...',
     required: true,

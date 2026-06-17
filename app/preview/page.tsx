@@ -28,6 +28,7 @@ export default function PreviewPage() {
   const [adminOpen, setAdminOpen] = useState('');
   const [adminClose, setAdminClose] = useState('');
   const [adminTz, setAdminTz] = useState('America/New_York');
+  const [adminPreOpenDays, setAdminPreOpenDays] = useState('3');
   const [adminResult, setAdminResult] = useState<string>();
   const [adminLoading, setAdminLoading] = useState(false);
   const [autoNotify, setAutoNotify] = useState(false);
@@ -87,6 +88,7 @@ export default function PreviewPage() {
           openDate: adminOpen,
           closeDate: adminClose,
           timezone: adminTz,
+          preOpenDays: Number(adminPreOpenDays),
           notifyWaitlist: autoNotify,
         }),
       });
@@ -340,6 +342,12 @@ export default function PreviewPage() {
             </div>
           </div>
 
+          <div>
+            <label className="block text-white text-sm font-medium mb-1">Show &quot;coming soon&quot; page this many days before open</label>
+            <input type="number" value={adminPreOpenDays} onChange={(e) => setAdminPreOpenDays(e.target.value)} min={0} step={0.5} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 max-w-[200px]" />
+            <p className="text-slate-500 text-xs mt-1">Before this, the site stays on the closed/waitlist page. Set 0 to skip the teaser and flip straight from closed to open.</p>
+          </div>
+
           <div className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-lg px-4 py-3">
             <div>
               <div className="text-white text-sm font-medium">Auto-notify waitlist when window opens</div>
@@ -375,7 +383,7 @@ export default function PreviewPage() {
           </div>
           <div>
             <label className="block text-white text-sm font-medium mb-1">Duration (days)</label>
-            <input type="number" id="add-member-duration" defaultValue={90} min={1} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 max-w-[200px]" />
+            <input type="number" id="add-member-duration" defaultValue={180} min={1} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 max-w-[200px]" />
           </div>
           <div id="add-member-result" className="hidden text-sm whitespace-pre-line" />
           <button

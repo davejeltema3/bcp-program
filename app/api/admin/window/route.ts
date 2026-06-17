@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   try {
-    const { secret, openDate, closeDate, timezone, notifyWaitlist } = await request.json();
+    const { secret, openDate, closeDate, timezone, notifyWaitlist, preOpenDays } = await request.json();
 
     // Auth check
     if (!process.env.ADMIN_SECRET || secret !== process.env.ADMIN_SECRET) {
@@ -34,10 +34,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid dates' }, { status: 400 });
     }
 
+    // Pre-open lead: how many days before open the "coming soon" page starts
+    // showing. Until then the site stays on the "after" (closed) page. 0 = no
+    // coming-soon teaser (site flips straight from closed to open). Defaults to 3.
+    const leadDays = Number.isFinite(Number(preOpenDays)) ? Math.max(0, Number(preOpenDays)) : 3;
+    const preOpenUTC = new Date(Date.parse(openUTC) - leadDays * 24 * 60 * 60 * 1000).toISOString();
+
     // Update env vars via Vercel API
     const envVars = [
       { key: 'NEXT_PUBLIC_WINDOW_OPEN', value: openUTC },
       { key: 'NEXT_PUBLIC_WINDOW_CLOSE', value: closeUTC },
+      { key: 'NEXT_PUBLIC_WINDOW_PREOPEN', value: preOpenUTC },
     ];
 
     for (const env of envVars) {

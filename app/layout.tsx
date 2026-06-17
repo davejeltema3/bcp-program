@@ -15,7 +15,7 @@ const urbanist = Urbanist({
 export const metadata: Metadata = {
   title: 'Boundless Creator Program — Founders Edition',
   description:
-    'Join the Boundless Creator Program. Personal channel reviews, weekly live sessions, and direct access to Dave Jeltema. $999 for 3 months.',
+    'Join the Boundless Creator Program. Personal channel reviews, weekly live sessions, and direct access to Dave Jeltema. $999 for 6 months.',
   icons: {
     // Light theme: light blue background with dark BC letters (Dave's default).
     // Dark theme: dark blue background with white BC letters.
@@ -29,14 +29,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Boundless Creator Program — Founders Edition',
     description:
-      'Personal channel reviews, weekly live sessions, and direct access to Dave Jeltema. Founders rate: $999 for 3 months.',
+      'Personal channel reviews, weekly live sessions, and direct access to Dave Jeltema. Founders rate: $999 for 6 months.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Boundless Creator Program — Founders Edition',
     description:
-      'Personal channel reviews, weekly live sessions, and direct access to Dave Jeltema. Founders rate: $999 for 3 months.',
+      'Personal channel reviews, weekly live sessions, and direct access to Dave Jeltema. Founders rate: $999 for 6 months.',
   },
 };
 

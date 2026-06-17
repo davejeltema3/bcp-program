@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { track } from '@vercel/analytics';
+import { yearsOnYouTube, formatSubscribers, SUBSCRIBER_FALLBACK } from '@/lib/site-stats';
 
 type WindowState = 'before' | 'open' | 'after';
 
@@ -196,6 +197,9 @@ const STYLES = `
 .bcp-page .hero__price-line strong { color:var(--bc-green-400); font-weight:700; }
 .bcp-page .hero__price-line .strike { text-decoration:line-through; text-decoration-color:var(--bc-strike); color:var(--bc-text-400); }
 .bcp-page .hero__price-line .dot-sep { color:var(--bc-text-500); }
+.bcp-page .price-pill { display:inline-flex; align-items:center; gap:8px; background:var(--bc-ink-800); border:1px solid var(--bc-ink-600); border-radius:999px; padding:7px 16px; font-size:14px; }
+.bcp-page .price-pill strong { color:var(--bc-green-400); font-weight:600; }
+.bcp-page .price-pill .strike { color:var(--bc-text-400); text-decoration:line-through; text-decoration-color:var(--bc-strike); font-family:var(--bc-font-mono); font-size:13px; }
 
 .bcp-page .hero-quote {
   max-width:680px; margin:var(--s-7) auto 0; padding:var(--s-5) var(--s-6);
@@ -1105,7 +1109,7 @@ function WaitlistFormBC({ context }: { context: 'before' | 'after' }) {
 
   return (
     <div>
-      <h3 className="price__title" style={{ marginTop: 0 }}>{h.title}</h3>
+      <h3 className="price__title" style={{ marginTop: 0, fontSize: '20px' }}>{h.title}</h3>
       <p className="price__sub" style={{ marginTop: 0 }}>{h.sub}</p>
       <form onSubmit={handleSubmit} className="price__waitlist-form">
         <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name (optional)" />
@@ -1149,30 +1153,30 @@ function PricingCard({
           <Countdown target={windowClose} label="Closes in" onComplete={onWindowClosed} />
         )}
       </div>
-      <h3 className="price__title">Full access to the program. <span className="blue-em">Three months.</span></h3>
+      <h3 className="price__title">Full access to the program. <span className="blue-em">Six months.</span></h3>
+
+      <div className="price__row">
+        <span className="price__strike">$1,999</span>
+        <span className="price__main">$999</span>
+      </div>
+      <p className="price__sub">
+        <strong>Founders keep 50% off every future version.</strong> When the price goes up, your renewal stays half off whatever it becomes.
+      </p>
+
+      <div className="price__rule" />
+      <ul className="price__included">
+        <li><Icon name="check" size={16} /><span>I review your channel &mdash; what is broken, what to fix first (week one)</span></li>
+        <li><Icon name="check" size={16} /><span>My weekly content system &mdash; the checklist I run before every upload</span></li>
+        <li><Icon name="check" size={16} /><span>All nine pillars of how I make content, broken down inside and out</span></li>
+        <li><Icon name="check" size={16} /><span>14 worksheets and guides &mdash; every framework I use</span></li>
+        <li><Icon name="check" size={16} /><span>Weekly 60-minute live session (Wednesdays at 2pm EST &middot; recorded)</span></li>
+        <li><Icon name="check" size={16} /><span>Direct access to me every day</span></li>
+      </ul>
+
+      <div className="price__rule" />
 
       {windowState === 'open' ? (
         <>
-          <div className="price__row">
-            <span className="price__strike">$1,999</span>
-            <span className="price__main">$999</span>
-          </div>
-          <p className="price__sub">
-            <strong>Founders keep 50% off every future version.</strong> When the price goes up, your renewal stays half off whatever it becomes.
-          </p>
-
-          <div className="price__rule" />
-          <ul className="price__included">
-            <li><Icon name="check" size={16} /><span>I review your channel &mdash; what is broken, what to fix first (week one)</span></li>
-            <li><Icon name="check" size={16} /><span>My weekly content system &mdash; the checklist I run before every upload</span></li>
-            <li><Icon name="check" size={16} /><span>All nine pillars of how I make content, broken down inside and out</span></li>
-            <li><Icon name="check" size={16} /><span>14 worksheets and guides &mdash; every framework I use</span></li>
-            <li><Icon name="check" size={16} /><span>Weekly 60-minute live session (Wednesdays at 2pm EST &middot; recorded)</span></li>
-            <li><Icon name="check" size={16} /><span>Direct access to me every day</span></li>
-          </ul>
-
-          <div className="price__rule" />
-
           {error && <p className="form-msg form-msg--error" style={{ marginBottom: 'var(--s-3)' }}>{error}</p>}
 
           <div className="price__buttons">
@@ -1210,6 +1214,18 @@ function PricingCard({
 }
 
 /* =====================================================================
+   PRICE PILL — founders price shown under CTAs in before/after states
+   ===================================================================== */
+function PricePill() {
+  return (
+    <span className="price-pill">
+      <strong>$999 founders price</strong>
+      <span className="strike">$1,999</span>
+    </span>
+  );
+}
+
+/* =====================================================================
    CTA BAND
    ===================================================================== */
 function CTABand({
@@ -1233,6 +1249,9 @@ function CTABand({
         <button onClick={onClick} className="btn btn--primary btn--lg">
           {buttonCopy}
         </button>
+        {windowState !== 'open' && (
+          <div style={{ marginTop: 'var(--s-4)' }}><PricePill /></div>
+        )}
         <p className="cta-band__fineprint">30-day refund &middot; One-time payment or 2&times; split &middot; No subscription</p>
       </div>
     </section>
@@ -1249,6 +1268,21 @@ export default function TestPage() {
   const [windowState, setWindowState] = useState<WindowState>('open');
   const [windowOpen, setWindowOpen] = useState<Date | null>(null);
   const [windowClose, setWindowClose] = useState<Date | null>(null);
+
+  // Auto-updating credibility numbers. Initialized to null so the server render
+  // and first client render match (avoids hydration mismatch), then filled in.
+  const [yearsCreating, setYearsCreating] = useState<number | null>(null);
+  const [subscriberCount, setSubscriberCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    setYearsCreating(yearsOnYouTube());
+    fetch('/api/channel-stats')
+      .then((r) => r.json())
+      .then((d) => { if (d?.subscriberCount) setSubscriberCount(d.subscriberCount); })
+      .catch(() => {});
+  }, []);
+
+  const subs = formatSubscribers(subscriberCount ?? SUBSCRIBER_FALLBACK);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1279,10 +1313,15 @@ export default function TestPage() {
     const close = new Date(closeStr);
     setWindowOpen(open);
     setWindowClose(close);
+
+    const preOpenStr = process.env.NEXT_PUBLIC_WINDOW_PREOPEN;
+    const preOpen = preOpenStr ? new Date(preOpenStr) : null;
+
     const now = new Date();
-    if (now < open) setWindowState('before');
-    else if (now > close) setWindowState('after');
-    else setWindowState('open');
+    if (now > close) setWindowState('after');
+    else if (now >= open) setWindowState('open');
+    else if (preOpen && !isNaN(preOpen.getTime()) && now < preOpen) setWindowState('after');
+    else setWindowState('before');
   }, []);
 
   const handleWindowOpened = useCallback(() => setWindowState('open'), []);
@@ -1384,10 +1423,11 @@ export default function TestPage() {
                   <button onClick={scrollToCheckout} className="btn btn--primary btn--xl">
                     {windowState === 'before' ? 'Join the waitlist' : 'Notify me when it reopens'}
                   </button>
+                  <PricePill />
                   <p className="hero__price-line">
                     {windowState === 'before'
-                      ? <>Waitlist members get <strong>first access</strong> and the <strong>$999 founders price</strong> before public enrollment.</>
-                      : <>I will email you when the next window opens.</>}
+                      ? <>Waitlist members get <strong>first access</strong> before public enrollment.</>
+                      : <>I will email you the moment the next window opens.</>}
                   </p>
                 </>
               )}
@@ -1406,11 +1446,11 @@ export default function TestPage() {
 
             <div className="hero__trust">
               <div>
-                <div className="cred__num">15</div>
+                <div className="cred__num">{yearsCreating ?? 15}</div>
                 <div className="cred__sub">years <strong>on YouTube</strong></div>
               </div>
               <div>
-                <div className="cred__num">65<span className="cred__sup">K</span></div>
+                <div className="cred__num">{subs.value}<span className="cred__sup">{subs.suffix}</span></div>
                 <div className="cred__sub"><strong>subscribers</strong> on my channel</div>
               </div>
               <div>
@@ -1510,7 +1550,7 @@ export default function TestPage() {
 
             <div style={{ marginTop: 'var(--s-9)' }}>
               <h3 className="subsection-h">The rhythm of the program</h3>
-              <p className="subsection-sub">Not a 12-week schedule. A rhythm. Repeat as long as you are in.</p>
+              <p className="subsection-sub">Not a rigid schedule. A rhythm that fits your life, how you learn, and how you want to work. Repeat as long as you are in.</p>
               <RhythmStrip />
             </div>
           </div>
@@ -1587,7 +1627,7 @@ export default function TestPage() {
               <p>If you have been doing the work for a year or two and the views still are not compounding, you are who I built this for.</p>
               <p>Last year I launched my one-on-one program. Out of about <strong>35 conversations</strong> I had with creators before launch, almost every one of them said some version of:</p>
               <p className="founder__pull">&ldquo;I want to work with you. I am not at the spot where it makes sense to pay this much.&rdquo;</p>
-              <p>I have taken close to <strong>200 applications</strong> since. Most are not the right fit for the high-ticket. For most of my audience, it is not the right offer.</p>
+              <p>I have taken more than <strong>300 applications</strong> since. Most are not the right fit for the high-ticket. For most of my audience, it is not the right offer.</p>
               <p>So I built this. The program for the creators who want my systems, my attention, and my help, but who <strong>do not need a year of one-on-one</strong>. The ones who are one or two decisions away from the channel actually working.</p>
               <p>I think about YouTube all day. Constantly reverse-engineering content, watching what is pulling and leaking on other channels, refining my own. <strong>Hours and hours every day.</strong> I am good at this. I enjoy it.</p>
               <p>If you want a clear read on your specific channel and a system to follow, I think I can help.</p>
@@ -1613,7 +1653,7 @@ export default function TestPage() {
               <details className="faq__item">
                 <summary className="faq__q">Is it a subscription?</summary>
                 <div className="faq__a">
-                  No. <strong>$999 once</strong> (or 2&times; $599) gets you three months of full access. After that, you renew or you leave. Nothing auto-charges.
+                  No. <strong>$999 once</strong> (or 2&times; $599) gets you six months of full access. After that, you renew or you leave. Nothing auto-charges.
                 </div>
               </details>
               <details className="faq__item">
@@ -1657,7 +1697,7 @@ export default function TestPage() {
               <div className="ps">
                 <span className="ps__label">P.S. &mdash; From Dave</span>
                 <p>If you have read this far, you are the person I built it for.</p>
-                <p>The next founders round either has your name on it or it does not. Either way, three months pass.</p>
+                <p>The next founders round either has your name on it or it does not. Either way, six months pass.</p>
                 <p>If you want the systems, the attention, and the help, I will see you Monday.</p>
                 <p className="founder__sig">&mdash; Dave</p>
               </div>
@@ -1675,7 +1715,7 @@ export default function TestPage() {
               <div className="checkout-stack__head">
                 <h2 className="section-h checkout-stack__title">One price. <span className="blue-em">No upsells.</span> No subscription.</h2>
                 <p className="section-sub checkout-stack__sub">
-                  Three months of full access. The personal review, the checklist, the prototype course, the resource library, weekly Q&amp;A, and direct access every day. <strong>Renew or leave at month three.</strong>
+                  Six months of full access. The personal review, the checklist, the prototype course, the resource library, weekly Q&amp;A, and direct access every day. <strong>Renew or leave at month six.</strong>
                 </p>
               </div>
 

@@ -35,10 +35,29 @@ DISCORD_INVITE_SECRET=(pick any password)
 ## Admin Panel (/preview page)
 ```
 ADMIN_SECRET=(pick a password you'll remember)
-VERCEL_TOKEN=(create at vercel.com/account/tokens)
-VERCEL_PROJECT_ID=(shown after Vercel import)
-VERCEL_GIT_REPO_ID=(from Vercel project settings → Git)
+VERCEL_TOKEN=(create at vercel.com/account/tokens, scope = Dave Jeltema's projects, no expiration)
+VERCEL_PROJECT_ID=prj_5AxKaJEUJViY6RujaCzCIEP782DX
+VERCEL_GIT_REPO_ID=1222997848
 ```
+
+> All four are required for the admin window-setter and checkout-mode routes.
+> If VERCEL_TOKEN or VERCEL_PROJECT_ID is missing, those routes return
+> "Vercel API not configured" (500). VERCEL_GIT_REPO_ID is only needed for the
+> auto-redeploy step; without it the env vars still update but you must redeploy
+> by hand. PROJECT_ID and REPO_ID above are the real values, filled in 2026-06-16.
+> If the token ever expires or is revoked, the error comes back — re-create it
+> with no expiration and these routes work again.
+
+## Live subscriber count (/api/channel-stats, hero stat)
+```
+YOUTUBE_API_KEY=(YouTube Data API v3 key)
+```
+> Create in the same Google Cloud project as the sheets service account
+> (davejeltemadotco-1699158105209) at console.cloud.google.com → APIs & Services
+> → Credentials → Create API key, then enable "YouTube Data API v3" and restrict
+> the key to it. Optional: if missing, the hero falls back to 70K (SUBSCRIBER_FALLBACK
+> in lib/site-stats.ts). The count is cached 6 hours, so it updates on its own with
+> no GitHub push. Years-on-YouTube is pure date math (no key, auto-bumps each Jan 25).
 
 ## Google Forms (set up later when form is created)
 ```

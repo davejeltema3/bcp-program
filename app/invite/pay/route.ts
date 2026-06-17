@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
               product_data: {
                 name: 'Boundless Creator Program — Founders Edition',
                 description:
-                  '3 months: personal channel review, weekly live sessions, resource library, Discord access, founders rate locked in.',
+                  '6 months: personal channel review, weekly live sessions, resource library, Discord access, founders rate locked in.',
               },
               unit_amount: 99900,
             },
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         ],
         metadata: {
           program: 'bcp-founders',
-          duration: '3 months',
+          duration: '6 months',
           payment_type: 'one-time',
         },
         success_url: `${origin}/welcome?session_id={CHECKOUT_SESSION_ID}`,
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
         },
         metadata: {
           program: 'bcp-founders',
-          duration: '3 months',
+          duration: '6 months',
           payment_type: 'installment',
           total_payments: '3',
         },

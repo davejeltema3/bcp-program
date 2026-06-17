@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { yearsOnYouTube, formatSubscribers, SUBSCRIBER_FALLBACK } from '@/lib/site-stats';
 
 type WindowState = 'before' | 'open' | 'after';
 
@@ -1151,7 +1152,7 @@ function PricingCard({
           <Countdown target={windowClose} label="Closes in" onComplete={onWindowClosed} />
         )}
       </div>
-      <h3 className="price__title">Full access to the program. <span className="blue-em">Three months.</span></h3>
+      <h3 className="price__title">Full access to the program. <span className="blue-em">Six months.</span></h3>
 
       {windowState === 'open' ? (
         <>
@@ -1252,12 +1253,24 @@ export default function TestPage() {
   const [windowOpen, setWindowOpen] = useState<Date | null>(null);
   const [windowClose, setWindowClose] = useState<Date | null>(null);
 
+  // Auto-updating credibility numbers (see lib/site-stats.ts). Null until the
+  // client fills them in, so server and first client render match.
+  const [yearsCreating, setYearsCreating] = useState<number | null>(null);
+  const [subscriberCount, setSubscriberCount] = useState<number | null>(null);
+  const subs = formatSubscribers(subscriberCount ?? SUBSCRIBER_FALLBACK);
+
   useEffect(() => {
     // /join is a direct invite URL. Always show the open state, bypass window
     // logic. windowOpen/windowClose stay null so no countdown UI renders.
     setWindowState('open');
     setWindowOpen(null);
     setWindowClose(null);
+
+    setYearsCreating(yearsOnYouTube());
+    fetch('/api/channel-stats')
+      .then((r) => r.json())
+      .then((d) => { if (d?.subscriberCount) setSubscriberCount(d.subscriberCount); })
+      .catch(() => {});
   }, []);
 
   const handleWindowOpened = useCallback(() => setWindowState('open'), []);
@@ -1381,11 +1394,11 @@ export default function TestPage() {
 
             <div className="hero__trust">
               <div>
-                <div className="cred__num">15</div>
+                <div className="cred__num">{yearsCreating ?? 15}</div>
                 <div className="cred__sub">years <strong>on YouTube</strong></div>
               </div>
               <div>
-                <div className="cred__num">65<span className="cred__sup">K</span></div>
+                <div className="cred__num">{subs.value}<span className="cred__sup">{subs.suffix}</span></div>
                 <div className="cred__sub"><strong>subscribers</strong> on my channel</div>
               </div>
               <div>
@@ -1485,7 +1498,7 @@ export default function TestPage() {
 
             <div style={{ marginTop: 'var(--s-9)' }}>
               <h3 className="subsection-h">The rhythm of the program</h3>
-              <p className="subsection-sub">Not a 12-week schedule. A rhythm. Repeat as long as you are in.</p>
+              <p className="subsection-sub">Not a rigid schedule. A rhythm that fits your life, how you learn, and how you want to work. Repeat as long as you are in.</p>
               <RhythmStrip />
             </div>
           </div>
@@ -1588,7 +1601,7 @@ export default function TestPage() {
               <details className="faq__item">
                 <summary className="faq__q">Is it a subscription?</summary>
                 <div className="faq__a">
-                  No. <strong>$999 once</strong> (or 3&times; $333) gets you three months of full access. After that, you renew or you leave. Nothing auto-charges.
+                  No. <strong>$999 once</strong> (or 3&times; $333) gets you six months of full access. After that, you renew or you leave. Nothing auto-charges.
                 </div>
               </details>
               <details className="faq__item">
@@ -1637,7 +1650,7 @@ export default function TestPage() {
               <div className="checkout-stack__head">
                 <h2 className="section-h checkout-stack__title">One price. <span className="blue-em">No upsells.</span> No subscription.</h2>
                 <p className="section-sub checkout-stack__sub">
-                  Three months of full access. The personal review, the checklist, the prototype course, the resource library, weekly Q&amp;A, and direct access every day. <strong>Renew or leave at month three.</strong>
+                  Six months of full access. The personal review, the checklist, the prototype course, the resource library, weekly Q&amp;A, and direct access every day. <strong>Renew or leave at month six.</strong>
                 </p>
               </div>
 
