@@ -216,17 +216,24 @@ const STYLES = `
 .bcp-page .hero-quote__name { color:var(--bc-text-100); font-weight:600; }
 .bcp-page .hero-quote__role { color:var(--bc-text-400); }
 
-.bcp-page .hero__vsl-wrap { max-width:880px; margin:0 auto var(--s-5); position:relative; }
-.bcp-page .hero__vsl-wrap .vsl { aspect-ratio:16/9; max-height:520px; }
+.bcp-page .hero__vsl-wrap { max-width:920px; margin:0 auto var(--s-5); position:relative; }
+/* Soft blue halo around the player, same family as the hero glow. Inset is a
+   percentage so the glow scales with the player (looks right on mobile too). */
+.bcp-page .hero__vsl-wrap::before {
+  content:''; position:absolute; inset:-7%; z-index:0; pointer-events:none;
+  background:radial-gradient(ellipse at center, rgba(58,133,255,0.22) 0%, rgba(58,133,255,0.10) 45%, rgba(58,133,255,0) 72%);
+  filter:blur(38px);
+}
+.bcp-page .hero__vsl-wrap .vsl { aspect-ratio:16/9; max-height:520px; position:relative; z-index:1; }
 .bcp-page .vsl { position:relative; border-radius:var(--r-4); overflow:hidden; aspect-ratio:16/9; background:var(--bc-ink-900); }
 .bcp-page .vsl__glow { position:absolute; inset:-60px; background:radial-gradient(closest-side,var(--bc-blue-glow),transparent 70%); filter:blur(40px); pointer-events:none; z-index:0; }
 .bcp-page .vsl__inner { position:relative; z-index:1; width:100%; height:100%; }
 /* Persistent blurred poster behind the player. Stays put while Wistia loads,
    so the placeholder hands off to the video with no dark flash. */
 .bcp-page .vsl__inner::before {
-  content:''; position:absolute; inset:0; z-index:0;
+  content:''; position:absolute; inset:-12px; z-index:0;
   background: center / cover no-repeat url('https://fast.wistia.com/embed/medias/jy79qz36k3/swatch');
-  filter: blur(12px); transform: scale(1.06);
+  filter: blur(12px);
 }
 .bcp-page .vsl iframe { width:100%; height:100%; border:0; display:block; position:relative; z-index:1; }
 .bcp-page wistia-player { display:block; width:100%; height:100%; position:relative; z-index:1; }
@@ -1424,11 +1431,9 @@ export default function TestPage() {
                     {windowState === 'before' ? 'Join the waitlist' : 'Notify me when it reopens'}
                   </button>
                   <PricePill />
-                  <p className="hero__price-line">
-                    {windowState === 'before'
-                      ? <>Waitlist members get <strong>first access</strong> before public enrollment.</>
-                      : <>I will email you the moment the next window opens.</>}
-                  </p>
+                  {windowState === 'after' && (
+                    <p className="hero__price-line">I will email you the moment the next window opens.</p>
+                  )}
                 </>
               )}
             </div>
