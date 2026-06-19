@@ -218,7 +218,7 @@ const STYLES = `
 .bcp-page .hero__vsl-wrap::before {
   content:''; position:absolute; inset:-3%; z-index:0; pointer-events:none;
   border-radius:var(--r-4);
-  background:rgba(58,133,255,0.32);
+  background:rgba(58,133,255,0.26);
   filter:blur(42px);
 }
 .bcp-page .hero__vsl-wrap .vsl { aspect-ratio:16/9; max-height:520px; position:relative; z-index:1; }
