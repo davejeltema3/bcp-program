@@ -648,6 +648,36 @@ export async function appendApplicationEntry(a: ApplicationRecord): Promise<numb
 }
 
 /**
+ * Fill the AI research + verdict columns (Q:Y) on an application row:
+ * Q Subscribers, R Total Videos, S Avg Views, T Upload Cadence, U Content Type,
+ * V Shorts, W AI Route, X AI Evaluation, Y AI Confidence.
+ */
+export async function updateApplicationAI(rowNum: number, ai: {
+  subscribers?: number; totalVideos?: number; avgViews?: number;
+  cadence?: string; contentType?: string; shorts?: string;
+  route?: string; evaluation?: string; confidence?: string;
+}): Promise<void> {
+  const sheets = await getSheets();
+  const row = [
+    ai.subscribers != null ? String(ai.subscribers) : '',
+    ai.totalVideos != null ? String(ai.totalVideos) : '',
+    ai.avgViews != null ? String(ai.avgViews) : '',
+    ai.cadence || '',
+    ai.contentType || '',
+    ai.shorts || '',
+    ai.route || '',
+    ai.evaluation || '',
+    ai.confidence || '',
+  ];
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${APPLICATIONS_SHEET_NAME}'!Q${rowNum}:Y${rowNum}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [row] },
+  });
+}
+
+/**
  * Update the Challenge column for an existing waitlist entry.
  * Creates the row if it doesn't exist (defensive — shouldn't happen in normal flow).
  */

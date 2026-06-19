@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { appendApplicationEntry, type ApplicationRecord } from '@/lib/sheets';
+import { appendApplicationEntry, updateApplicationAI, type ApplicationRecord } from '@/lib/sheets';
+import { researchChannel, type ChannelResearch } from '@/lib/youtube-research';
+import { routeApplicant, type RoutingVerdict } from '@/lib/ai-qualify';
 
 /**
  * Application submit endpoint (waitlist-to-application shift).
@@ -86,10 +88,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Discord notification — full payload
+    // 3. AI research + routing verdict, written back to the row (best-effort).
+    let research: ChannelResearch | undefined;
+    let verdict: RoutingVerdict | undefined;
+    try {
+      research = await researchChannel(record.channel_url || '');
+      verdict = await routeApplicant(record, research);
+      if (rowNum) {
+        await updateApplicationAI(rowNum, {
+          subscribers: research.subscriberCount,
+          totalVideos: research.videoCount,
+          avgViews: research.averageViews,
+          cadence: research.uploadCadence,
+          contentType: verdict.contentType,
+          shorts: research.shortsLabel,
+          route: verdict.route,
+          evaluation: verdict.reasoning,
+          confidence: verdict.confidence,
+        });
+      }
+    } catch (err) {
+      console.error('AI research/verdict failed:', err);
+    }
+
+    // 4. Discord notification — full payload + AI verdict
     if (process.env.DISCORD_WEBHOOK_URL) {
       try {
-        await sendApplicationNotification(record, rowNum);
+        await sendApplicationNotification(record, rowNum, research, verdict);
       } catch (err) {
         console.error('Discord application notification failed:', err);
       }
@@ -107,22 +132,41 @@ function field(name: string, value?: string, inline = false) {
   return { name, value: v, inline };
 }
 
-async function sendApplicationNotification(a: ApplicationRecord, rowNum: number | null) {
+const ROUTE_META: Record<string, { label: string; emoji: string; color: number }> = {
+  'sales-call': { label: 'Sales call (BCA)', emoji: '🟢', color: 0x2fcb86 },
+  bcp: { label: 'BCP', emoji: '🔵', color: 0x3a85ff },
+  neither: { label: 'Neither', emoji: '⚪', color: 0x6b7591 },
+};
+
+async function sendApplicationNotification(
+  a: ApplicationRecord,
+  rowNum: number | null,
+  research?: ChannelResearch,
+  verdict?: RoutingVerdict,
+) {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) return;
 
   const sheetId = process.env.BCP_SHEET_ID || '1lpnkxlN21slJwdItDr9Q-fzMcS5tzRz1l4fpqT8Oa6c';
   const sheetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/edit`;
 
+  const rm = (verdict && ROUTE_META[verdict.route]) || { label: 'Pending', emoji: '📝', color: 0x3a85ff };
+
+  const statsLine = research?.resolved
+    ? `${(research.subscriberCount ?? 0).toLocaleString()} subs · ${research.videoCount ?? '?'} videos · ${(research.averageViews ?? 0).toLocaleString()} avg views · ${research.uploadCadence || '?'} · ${research.shortsLabel || '?'}`
+    : `Channel not resolved (${research?.reason || 'n/a'})`;
+
   const embed = {
-    title: '📝 New application',
+    title: `${rm.emoji} New application — ${rm.label}`,
     description: rowNum ? `[Open Applications tab](${sheetUrl}) · row ${rowNum}` : `[Open Applications tab](${sheetUrl})`,
-    color: 0x3a85ff,
+    color: rm.color,
     fields: [
+      { name: 'Verdict', value: verdict ? `**${rm.label}** · ${verdict.confidence} confidence` : '_pending_', inline: false },
+      { name: 'Channel', value: statsLine, inline: false },
       field('Name', a.first_name, true),
       field('Email', a.email, true),
       field('Phone', a.phone, true),
-      field('Channel', a.channel_url, false),
+      field('Link', a.channel_url, false),
       field('Goal', GOAL_LABELS[a.primary_goal || ''] || a.primary_goal, true),
       field('Monetized', MONETIZED_LABELS[a.monetized || ''] || a.monetized, true),
       field('Readiness', READINESS_LABELS[a.readiness || ''] || a.readiness, true),
@@ -131,8 +175,8 @@ async function sendApplicationNotification(a: ApplicationRecord, rowNum: number 
       field('Challenge', a.challenge, false),
       field('Wants from me', a.program_goals, false),
       field('Anything else', a.anything_else, false),
+      ...(verdict?.reasoning ? [{ name: 'AI read', value: verdict.reasoning.slice(0, 1024), inline: false }] : []),
     ],
-    footer: { text: 'AI research + routing verdict land on the row shortly.' },
     timestamp: new Date().toISOString(),
   };
 

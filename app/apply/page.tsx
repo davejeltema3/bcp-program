@@ -95,7 +95,7 @@ export default function ApplyPage() {
   const [index, setIndex] = useState(0);
   const [data, setData] = useState<ApplicationData>({});
   const [submitting, setSubmitting] = useState(false);
-  const [channelUrlError, setChannelUrlError] = useState<string>();
+  const [fieldError, setFieldError] = useState<string>();
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
@@ -103,6 +103,7 @@ export default function ApplyPage() {
     if (params.get('show') === 'all') setShowAll(true);
     setData(prev => ({
       ...prev,
+      channel_url: prev.channel_url || 'https://youtube.com/@',
       utm_source: params.get('utm_source') || undefined,
       utm_medium: params.get('utm_medium') || undefined,
       utm_campaign: params.get('utm_campaign') || undefined,
@@ -111,21 +112,40 @@ export default function ApplyPage() {
 
   const set = (id: string, value: string) => {
     setData(prev => ({ ...prev, [id]: value }));
-    if (id === 'channel_url') setChannelUrlError(undefined);
+    setFieldError(undefined);
   };
 
   const validateChannelUrl = (url: string) => {
-    if (!url) return false;
-    const t = url.trim().toLowerCase();
-    return t.includes('youtube.com') || t.includes('youtu.be') || t.startsWith('@') || t.includes('youtube');
+    const t = (url || '').trim();
+    const low = t.toLowerCase();
+    if (!(low.includes('youtube.com') || low.includes('youtu.be') || low.startsWith('@'))) return false;
+    if (low.includes('/channel/') || low.includes('/c/') || low.includes('/user/')) return true;
+    const at = t.lastIndexOf('@');
+    if (at === -1) return false;
+    return t.slice(at + 1).trim().length >= 2; // a real handle, not just the prefix
+  };
+
+  const validateText = (value: string, min: number) => {
+    const t = (value || '').trim();
+    if (t.length < min) return false;
+    if (!/[a-zA-Z]/.test(t)) return false;        // must contain letters
+    if (/^(.)\1*$/.test(t)) return false;          // one repeated character (aaaa, ....)
+    return true;
   };
 
   const handleNext = () => {
     const q = questions[index];
-    const answer = data[q.id as keyof ApplicationData];
-    if (q.id === 'channel_url' && answer && !validateChannelUrl(answer)) {
-      setChannelUrlError('Please enter a valid YouTube channel URL');
-      return;
+    const answer = (data[q.id as keyof ApplicationData] || '') as string;
+    if (q.id === 'channel_url') {
+      if (!validateChannelUrl(answer)) {
+        setFieldError('Add your @handle so I get a working link to your channel.');
+        return;
+      }
+    } else if (q.required && (q.type === 'text' || q.type === 'textarea')) {
+      if (!validateText(answer, q.type === 'textarea' ? 12 : 8)) {
+        setFieldError('Please give a real answer so I can actually help.');
+        return;
+      }
     }
     if (index < questions.length - 1) {
       setIndex(index + 1);
@@ -359,7 +379,7 @@ export default function ApplyPage() {
                   type={q.type === 'url' ? 'url' : 'text'}
                   multiline={q.type === 'textarea'}
                   required={q.required}
-                  error={q.id === 'channel_url' ? channelUrlError : undefined}
+                  error={fieldError}
                 />
                 <div className="flex gap-4 mt-6">
                   {index > 0 && <button onClick={handleBack} style={GHOST_BTN}>← Back</button>}
