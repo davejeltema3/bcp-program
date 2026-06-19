@@ -224,19 +224,15 @@ const STYLES = `
 .bcp-page .hero__vsl-wrap .vsl { aspect-ratio:16/9; max-height:520px; position:relative; z-index:1; }
 .bcp-page .vsl { position:relative; border-radius:var(--r-4); overflow:hidden; aspect-ratio:16/9; background:var(--bc-ink-900); }
 .bcp-page .vsl__inner { position:relative; z-index:1; width:100%; height:100%; }
-/* Blurred placeholder ON TOP of the player. The cover box matches the video
-   exactly (inset:0) so there is no size jump on reveal; the blurred image lives
-   in ::after, scaled just past the edges and clipped, so the blur never feathers
-   onto what is behind. Solid base color so nothing shows through before load. */
+/* Blurred placeholder ON TOP of the player. We use a LOW-RES first frame that
+   the browser upscales into a soft blur — no CSS filter:blur, so no faded
+   fringe and no oversize/zoom. Framing matches the video exactly (inset:0).
+   Solid base color so nothing shows through before the image loads.
+   Blurriness is set by the resolution below: lower = blurrier. */
 .bcp-page .vsl__cover {
-  position:absolute; inset:0; z-index:2; overflow:hidden;
-  background:var(--bc-ink-900);
+  position:absolute; inset:0; z-index:2;
+  background: var(--bc-ink-900) center / cover no-repeat url('https://embed-ssl.wistia.com/deliveries/23337017c19c9c9d72ecd157759c9a24.jpg?image_crop_resized=128x72');
   transition: opacity 0.12s ease;
-}
-.bcp-page .vsl__cover::after {
-  content:''; position:absolute; inset:-12px;
-  background: center / cover no-repeat url('https://embed-ssl.wistia.com/deliveries/23337017c19c9c9d72ecd157759c9a24.jpg?image_crop_resized=1280x720');
-  filter: blur(8px);
 }
 .bcp-page .vsl__cover--gone { opacity:0; pointer-events:none; }
 .bcp-page .vsl iframe { width:100%; height:100%; border:0; display:block; position:relative; z-index:1; }
