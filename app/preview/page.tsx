@@ -9,7 +9,7 @@ import TextInput from '@/components/TextInput';
 import MultipleChoice from '@/components/MultipleChoice';
 import AnalyticsAccessGuide from '@/components/AnalyticsAccessGuide';
 
-type Section = 'landing' | 'post-payment' | 'questionnaire' | 'insight' | 'admin';
+type Section = 'landing' | 'post-payment' | 'questionnaire' | 'application' | 'insight' | 'admin';
 type WindowState = 'before' | 'open' | 'after' | 'none';
 
 export default function PreviewPage() {
@@ -39,6 +39,7 @@ export default function PreviewPage() {
     if (!hash) return;
     if (hash === 'post-payment') setActiveSection('post-payment');
     else if (hash === 'questionnaire') setActiveSection('questionnaire');
+    else if (hash === 'application') setActiveSection('application');
     else if (hash === 'insight') setActiveSection('insight');
     else if (hash === 'admin') setActiveSection('admin');
     else if (hash.startsWith('landing/')) {
@@ -115,6 +116,7 @@ export default function PreviewPage() {
     { id: 'landing', label: 'Landing Page' },
     { id: 'post-payment', label: 'Post-Payment' },
     { id: 'questionnaire', label: 'Questionnaire' },
+    { id: 'application', label: 'Application' },
     { id: 'insight', label: 'Boundless Insight' },
     { id: 'admin', label: 'Admin' },
   ];
@@ -260,6 +262,25 @@ export default function PreviewPage() {
       </div>
     );
   };
+
+  /* ─── Application Tab ─── */
+  const renderApplication = () => (
+    <div className="space-y-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 flex items-center justify-between">
+        <span className="text-slate-400 text-sm font-mono">/apply?show=all</span>
+        <a href="/apply?show=all" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-xs underline">Open in new tab →</a>
+      </div>
+      <div className="text-slate-500 text-xs px-1">Full application stacked: welcome, all questions, contact, thank-you. The live form is at <span className="font-mono text-slate-400">/apply</span>.</div>
+      <div className="border border-slate-700 rounded-lg overflow-hidden" style={{ height: 'calc(100vh - 250px)', minHeight: '600px' }}>
+        <iframe
+          key={`apply-${iframeKey}`}
+          src="/apply?show=all"
+          className="w-full h-full border-0"
+          title="Preview: Application"
+        />
+      </div>
+    </div>
+  );
 
   /* ─── Insight Tab ─── */
   const renderInsight = () => (
@@ -570,6 +591,7 @@ export default function PreviewPage() {
   const content = activeSection === 'landing' ? renderLanding()
     : activeSection === 'post-payment' ? renderPostPayment()
     : activeSection === 'questionnaire' ? renderQuestionnaire()
+    : activeSection === 'application' ? renderApplication()
     : activeSection === 'insight' ? renderInsight()
     : renderAdmin();
 

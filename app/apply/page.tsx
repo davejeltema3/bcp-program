@@ -96,9 +96,11 @@ export default function ApplyPage() {
   const [data, setData] = useState<ApplicationData>({});
   const [submitting, setSubmitting] = useState(false);
   const [channelUrlError, setChannelUrlError] = useState<string>();
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get('show') === 'all') setShowAll(true);
     setData(prev => ({
       ...prev,
       utm_source: params.get('utm_source') || undefined,
@@ -172,6 +174,65 @@ export default function ApplyPage() {
       setSubmitting(false);
     }
   };
+
+  // ── Preview: every screen stacked, read-only (admin /preview) ──
+  if (showAll) {
+    const readonlyInput = (q: (typeof questions)[number]) => {
+      if (q.type === 'multiple-choice' && q.choices) {
+        return (
+          <div className="space-y-3 opacity-60 pointer-events-none">
+            {q.choices.map((c) => (
+              <div key={c.value} style={{ padding: '14px 18px', borderRadius: 12, background: 'var(--bc-ink-700)', border: '1px solid var(--bc-ink-600)', color: 'var(--bc-text-200)' }}>{c.text}</div>
+            ))}
+          </div>
+        );
+      }
+      if (q.type === 'textarea') {
+        return <textarea disabled rows={3} placeholder={q.placeholder} style={{ ...INPUT_STYLE, color: 'var(--bc-text-400)', opacity: 0.6, resize: 'none' }} />;
+      }
+      return <input disabled placeholder={q.placeholder} style={{ ...INPUT_STYLE, color: 'var(--bc-text-400)', opacity: 0.6 }} />;
+    };
+    return (
+      <div className="bc-bg-grid min-h-screen pb-12">
+        <BrandStrip />
+        <div className="text-center pt-4 pb-6">
+          <span style={{ display: 'inline-block', padding: '6px 14px', borderRadius: 9999, background: 'rgba(245,184,107,0.12)', border: '1px solid rgba(245,184,107,0.3)', color: '#f5b86b', fontSize: 12, fontFamily: 'monospace', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            Preview · Full application
+          </span>
+        </div>
+        <div className="space-y-6 px-4 pt-2 w-full max-w-2xl mx-auto">
+          <div className="rounded-2xl p-6 text-center" style={{ background: 'var(--bc-ink-800)', border: '1px solid var(--bc-ink-600)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center' }}><Eyebrow label="Welcome screen" /></div>
+            <h2 style={{ fontSize: 24, fontWeight: 600, color: 'var(--bc-text-100)', marginBottom: 8 }}>Apply to work with me</h2>
+            <p style={{ color: 'var(--bc-text-300)', fontSize: 15 }}>A few quick questions about your channel and what you want. I read every application myself and reach out personally.</p>
+          </div>
+          {questions.map((q, i) => (
+            <div key={q.id}>
+              <Eyebrow label={`Question ${String(i + 1).padStart(2, '0')} of ${String(questions.length).padStart(2, '0')}${q.required ? '' : ' · optional'}`} />
+              <QuestionCard question={q.question} subtext={q.subtext}>
+                {readonlyInput(q)}
+              </QuestionCard>
+            </div>
+          ))}
+          <div>
+            <Eyebrow label="Last step · contact" />
+            <QuestionCard question="Where can I reach you?" subtext="So I can follow up about your channel personally.">
+              <div className="space-y-3 opacity-60 pointer-events-none">
+                <input disabled placeholder="First name" style={{ ...INPUT_STYLE, opacity: 0.6 }} />
+                <input disabled placeholder="Email address" style={{ ...INPUT_STYLE, opacity: 0.6 }} />
+                <input disabled placeholder="Phone / WhatsApp (optional)" style={{ ...INPUT_STYLE, opacity: 0.6 }} />
+              </div>
+            </QuestionCard>
+          </div>
+          <div className="rounded-2xl p-6 text-center" style={{ background: 'var(--bc-ink-800)', border: '1px solid var(--bc-ink-600)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center' }}><Eyebrow label="Thank-you screen" /></div>
+            <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--bc-text-100)', marginBottom: 8 }}>Application received</h2>
+            <p style={{ color: 'var(--bc-text-200)', fontSize: 15 }}>I read every one of these myself. You&apos;ll hear from me directly within a few days, usually by email.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Welcome ──
   if (screen === 'welcome') {
