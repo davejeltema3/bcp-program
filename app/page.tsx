@@ -224,7 +224,7 @@ const STYLES = `
 .bcp-page .vsl__inner { position:relative; z-index:1; width:100%; height:100%; }
 /* Crisp first-frame placeholder at exact framing. No blur, so no faded rim and
    no zoom; the reveal lands on the same frame the video starts on. To go back
-   to a blurred look, add `filter: blur(8px)` to the ::after below. */
+   to a blurred look, add a blur filter to the ::after below. */
 .bcp-page .vsl__cover {
   position:absolute; inset:0; z-index:2; overflow:hidden;
   background:var(--bc-ink-900);
