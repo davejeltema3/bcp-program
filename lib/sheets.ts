@@ -535,6 +535,118 @@ export async function appendWaitlistEntry(
   }
 }
 
+// ── Applications tab (waitlist-to-application shift) ──
+
+const APPLICATIONS_SHEET_NAME = 'Applications';
+
+const APPLICATION_HEADERS = [
+  'Timestamp', 'First Name', 'Email', 'Phone', 'Channel URL',
+  'Primary Goal', 'Monetized', 'Channel About', 'Target Audience',
+  'Challenge', 'Program Goals', 'Readiness', 'Anything Else',
+  'UTM Source', 'UTM Medium', 'UTM Campaign',
+  // AI research + verdict (filled post-submission in Phase 2)
+  'Subscribers', 'Total Videos', 'Avg Views', 'Upload Cadence', 'Content Type', 'Shorts',
+  'AI Route', 'AI Evaluation', 'AI Confidence',
+  // Outreach tracking (mirrors the Waitlist tab habit)
+  'Contacted', 'Method', 'Loom URL', 'Opener Variant', 'Response', 'Response Date', 'Outreach', 'Notes',
+];
+const APPLICATION_LAST_COL = 'AG'; // 33 columns, A through AG
+
+async function findApplicationRowByEmail(email: string): Promise<number | null> {
+  const sheets = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${APPLICATIONS_SHEET_NAME}'!C:C`,
+  });
+  const rows = res.data.values || [];
+  const norm = email.toLowerCase().trim();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i]?.[0]?.toLowerCase().trim() === norm) return i + 1;
+  }
+  return null;
+}
+
+async function ensureApplicationsTabAndHeaders(): Promise<void> {
+  const sheets = await getSheets();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const exists = meta.data.sheets?.some((s) => s.properties?.title === APPLICATIONS_SHEET_NAME);
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: { requests: [{ addSheet: { properties: { title: APPLICATIONS_SHEET_NAME } } }] },
+    });
+  }
+  const headerRes = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${APPLICATIONS_SHEET_NAME}'!A1:${APPLICATION_LAST_COL}1`,
+  });
+  const existing = headerRes.data.values?.[0] || [];
+  if (existing[0] !== APPLICATION_HEADERS[0]) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${APPLICATIONS_SHEET_NAME}'!A1:${APPLICATION_LAST_COL}1`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [APPLICATION_HEADERS] },
+    });
+  }
+}
+
+async function appendApplicationRow(row: string[]): Promise<number> {
+  const sheets = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${APPLICATIONS_SHEET_NAME}'!C:C`,
+  });
+  const emailCol = res.data.values || [];
+  let nextRow = emailCol.length + 1;
+  for (let i = 1; i < emailCol.length; i++) {
+    if (!emailCol[i] || !emailCol[i][0] || emailCol[i][0].trim() === '') { nextRow = i + 1; break; }
+  }
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${APPLICATIONS_SHEET_NAME}'!A${nextRow}:${APPLICATION_LAST_COL}${nextRow}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [row] },
+  });
+  return nextRow;
+}
+
+export interface ApplicationRecord {
+  first_name?: string; email: string; phone?: string; channel_url?: string;
+  primary_goal?: string; monetized?: string; channel_about?: string; target_audience?: string;
+  challenge?: string; program_goals?: string; readiness?: string; anything_else?: string;
+  utm_source?: string; utm_medium?: string; utm_campaign?: string;
+}
+
+/**
+ * Append a new application. If the email already exists, overwrites the answer
+ * columns (A:P) on the existing row and leaves the AI + outreach columns alone.
+ * Returns the 1-based row number written to.
+ */
+export async function appendApplicationEntry(a: ApplicationRecord): Promise<number> {
+  await ensureApplicationsTabAndHeaders();
+  const sheets = await getSheets();
+  const firstName = (a.first_name || '').split(' ')[0];
+  const answerCols = [
+    nowEST(), firstName, a.email, a.phone || '', a.channel_url || '',
+    a.primary_goal || '', a.monetized || '', a.channel_about || '', a.target_audience || '',
+    a.challenge || '', a.program_goals || '', a.readiness || '', a.anything_else || '',
+    a.utm_source || '', a.utm_medium || '', a.utm_campaign || '',
+  ];
+  const existingRow = await findApplicationRowByEmail(a.email);
+  if (existingRow) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${APPLICATIONS_SHEET_NAME}'!A${existingRow}:P${existingRow}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [answerCols] },
+    });
+    return existingRow;
+  }
+  const fullRow = [...answerCols, ...new Array(APPLICATION_HEADERS.length - answerCols.length).fill('')];
+  return appendApplicationRow(fullRow);
+}
+
 /**
  * Update the Challenge column for an existing waitlist entry.
  * Creates the row if it doesn't exist (defensive — shouldn't happen in normal flow).
