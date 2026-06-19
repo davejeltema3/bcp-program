@@ -227,22 +227,20 @@ const STYLES = `
 }
 .bcp-page .hero__vsl-wrap .vsl { aspect-ratio:16/9; max-height:520px; position:relative; z-index:1; }
 .bcp-page .vsl { position:relative; border-radius:var(--r-4); overflow:hidden; aspect-ratio:16/9; background:var(--bc-ink-900); }
-.bcp-page .vsl__glow { position:absolute; inset:-60px; background:radial-gradient(closest-side,var(--bc-blue-glow),transparent 70%); filter:blur(40px); pointer-events:none; z-index:0; }
 .bcp-page .vsl__inner { position:relative; z-index:1; width:100%; height:100%; }
-/* Persistent blurred poster behind the player. Stays put while Wistia loads,
-   so the placeholder hands off to the video with no dark flash. */
-.bcp-page .vsl__inner::before {
-  content:''; position:absolute; inset:-8px; z-index:0;
-  background: center / cover no-repeat url('https://embed-ssl.wistia.com/deliveries/23337017c19c9c9d72ecd157759c9a24.jpg?image_crop_resized=1280x720');
-  filter: blur(8px);
-}
-/* Blurred cover that sits ON TOP of the player and fades out when the video
-   actually starts, hiding Wistia's two-pass poster/video reveal (the pop). */
+/* Blurred placeholder ON TOP of the player. The cover box matches the video
+   exactly (inset:0) so there is no size jump on reveal; the blurred image lives
+   in ::after, scaled just past the edges and clipped, so the blur never feathers
+   onto what is behind. Solid base color so nothing shows through before load. */
 .bcp-page .vsl__cover {
-  position:absolute; inset:-8px; z-index:2;
+  position:absolute; inset:0; z-index:2; overflow:hidden;
+  background:var(--bc-ink-900);
+  transition: opacity 0.12s ease;
+}
+.bcp-page .vsl__cover::after {
+  content:''; position:absolute; inset:-12px;
   background: center / cover no-repeat url('https://embed-ssl.wistia.com/deliveries/23337017c19c9c9d72ecd157759c9a24.jpg?image_crop_resized=1280x720');
   filter: blur(8px);
-  transition: opacity 0.12s ease;
 }
 .bcp-page .vsl__cover--gone { opacity:0; pointer-events:none; }
 .bcp-page .vsl iframe { width:100%; height:100%; border:0; display:block; position:relative; z-index:1; }
@@ -662,7 +660,6 @@ function VSL() {
   return (
     <div className="hero__vsl-wrap">
       <div className="vsl">
-        <div className="vsl__glow" />
         <div className="vsl__inner">
           {/* Wistia custom element. Rendered via createElement so TS does not
               complain about the unknown intrinsic. */}
