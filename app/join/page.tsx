@@ -632,23 +632,26 @@ function VSL() {
     let done = false;
     let videoEl: HTMLVideoElement | null = null;
     const reveal = () => { if (!done) { done = true; setRevealed(true); } };
-    const onTime = () => { if (videoEl && videoEl.currentTime > 0) reveal(); };
+    // Reveal only once the video can actually PAINT a frame (readyState >= 3,
+    // HAVE_FUTURE_DATA) and its clock has started. Revealing earlier just
+    // exposes Wistia's still poster while the video is still buffering.
+    const check = () => { if (videoEl && videoEl.currentTime > 0 && videoEl.readyState >= 3) reveal(); };
     const poll = setInterval(() => {
       const wp = document.querySelector('wistia-player') as (HTMLElement & { shadowRoot: ShadowRoot | null }) | null;
       const v = wp && wp.shadowRoot ? wp.shadowRoot.querySelector('video') : null;
       if (v) {
         clearInterval(poll);
         videoEl = v as HTMLVideoElement;
-        if (!videoEl.paused && videoEl.currentTime > 0) reveal();
-        videoEl.addEventListener('playing', reveal);
-        videoEl.addEventListener('timeupdate', onTime);
+        check();
+        videoEl.addEventListener('timeupdate', check);
+        videoEl.addEventListener('canplay', check);
       }
     }, 80);
-    const fallback = setTimeout(reveal, 3000);
+    const fallback = setTimeout(reveal, 4000);
     return () => {
       clearInterval(poll);
       clearTimeout(fallback);
-      if (videoEl) { videoEl.removeEventListener('playing', reveal); videoEl.removeEventListener('timeupdate', onTime); }
+      if (videoEl) { videoEl.removeEventListener('timeupdate', check); videoEl.removeEventListener('canplay', check); }
     };
   }, []);
 
@@ -662,6 +665,7 @@ function VSL() {
           {React.createElement('wistia-player', {
             'media-id': WISTIA_MEDIA_ID,
             aspect: '1.7777777777777777',
+            preload: 'auto',
           })}
           <div className={`vsl__cover${revealed ? ' vsl__cover--gone' : ''}`} aria-hidden="true" />
         </div>
