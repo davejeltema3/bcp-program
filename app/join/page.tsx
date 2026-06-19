@@ -228,17 +228,17 @@ const STYLES = `
 /* Persistent blurred poster behind the player. Stays put while Wistia loads,
    so the placeholder hands off to the video with no dark flash. */
 .bcp-page .vsl__inner::before {
-  content:''; position:absolute; inset:-12px; z-index:0;
+  content:''; position:absolute; inset:-8px; z-index:0;
   background: center / cover no-repeat url('https://fast.wistia.com/embed/medias/jy79qz36k3/swatch');
-  filter: blur(12px);
+  filter: blur(8px);
 }
 /* Blurred cover that sits ON TOP of the player and fades out when the video
    actually starts, hiding Wistia's two-pass poster/video reveal (the pop). */
 .bcp-page .vsl__cover {
-  position:absolute; inset:-12px; z-index:2;
+  position:absolute; inset:-8px; z-index:2;
   background: center / cover no-repeat url('https://fast.wistia.com/embed/medias/jy79qz36k3/swatch');
-  filter: blur(12px);
-  transition: opacity 0.45s ease;
+  filter: blur(8px);
+  transition: opacity 0.3s ease;
 }
 .bcp-page .vsl__cover--gone { opacity:0; pointer-events:none; }
 .bcp-page .vsl iframe { width:100%; height:100%; border:0; display:block; position:relative; z-index:1; }
@@ -634,10 +634,16 @@ function VSL() {
     w._wq.push({
       id: WISTIA_MEDIA_ID,
       onReady: (video: any) => {
-        try { video.bind('play', () => setRevealed(true)); } catch {}
+        const reveal = () => setRevealed(true);
+        try {
+          video.bind('play', reveal);
+          // Autoplay can fire 'play' before this binds, so also reveal on the
+          // first time update — the video is showing real frames by then.
+          video.bind('timechange', (t: number) => { if (t > 0.05) { reveal(); return video.unbind; } });
+        } catch {}
       },
     });
-    const fallback = setTimeout(() => setRevealed(true), 2500);
+    const fallback = setTimeout(() => setRevealed(true), 1500);
     return () => clearTimeout(fallback);
   }, []);
 
