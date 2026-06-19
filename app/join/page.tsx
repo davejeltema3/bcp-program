@@ -232,6 +232,15 @@ const STYLES = `
   background: center / cover no-repeat url('https://fast.wistia.com/embed/medias/jy79qz36k3/swatch');
   filter: blur(12px);
 }
+/* Blurred cover that sits ON TOP of the player and fades out when the video
+   actually starts, hiding Wistia's two-pass poster/video reveal (the pop). */
+.bcp-page .vsl__cover {
+  position:absolute; inset:-12px; z-index:2;
+  background: center / cover no-repeat url('https://fast.wistia.com/embed/medias/jy79qz36k3/swatch');
+  filter: blur(12px);
+  transition: opacity 0.45s ease;
+}
+.bcp-page .vsl__cover--gone { opacity:0; pointer-events:none; }
 .bcp-page .vsl iframe { width:100%; height:100%; border:0; display:block; position:relative; z-index:1; }
 .bcp-page wistia-player { display:block; width:100%; height:100%; position:relative; z-index:1; }
 
@@ -597,6 +606,8 @@ function Countdown({ target, label, onComplete }: { target: Date; label: string;
 const WISTIA_MEDIA_ID = 'jy79qz36k3';
 
 function VSL() {
+  const [revealed, setRevealed] = useState(false);
+
   useEffect(() => {
     // Load Wistia player runtime once
     if (!document.querySelector('script[src*="fast.wistia.com/player.js"]')) {
@@ -613,6 +624,21 @@ function VSL() {
       s2.type = 'module';
       document.head.appendChild(s2);
     }
+
+    // Hold our blurred cover over the player until it actually starts playing.
+    // Wistia draws its poster and then the video in two passes (the "pop"), and
+    // those passes happen behind the cover, out of sight. Reveal on the play
+    // event, with a timed fallback so the video is never left hidden.
+    const w = window as unknown as { _wq?: any[] };
+    w._wq = w._wq || [];
+    w._wq.push({
+      id: WISTIA_MEDIA_ID,
+      onReady: (video: any) => {
+        try { video.bind('play', () => setRevealed(true)); } catch {}
+      },
+    });
+    const fallback = setTimeout(() => setRevealed(true), 2500);
+    return () => clearTimeout(fallback);
   }, []);
 
   return (
@@ -626,6 +652,7 @@ function VSL() {
             'media-id': WISTIA_MEDIA_ID,
             aspect: '1.7777777777777777',
           })}
+          <div className={`vsl__cover${revealed ? ' vsl__cover--gone' : ''}`} aria-hidden="true" />
         </div>
       </div>
     </div>
