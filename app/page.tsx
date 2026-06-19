@@ -176,7 +176,7 @@ const STYLES = `
 @media(max-width:760px) {
   .bcp-page .hero__title { max-width:36ch; }
 }
-.bcp-page .hero__sub { font-size:16px; color:var(--bc-text-300); max-width:58ch; margin:0 auto var(--s-5); line-height:1.5; }
+.bcp-page .hero__sub { font-size:16px; color:var(--bc-text-300); max-width:58ch; margin:0 auto var(--s-5); line-height:1.5; text-wrap:pretty; }
 .bcp-page .hero__sub strong { color:var(--bc-text-100); font-weight:600; }
 
 .bcp-page .hero__trust {
@@ -220,9 +220,10 @@ const STYLES = `
 /* Soft blue halo around the player, same family as the hero glow. Inset is a
    percentage so the glow scales with the player (looks right on mobile too). */
 .bcp-page .hero__vsl-wrap::before {
-  content:''; position:absolute; inset:-7%; z-index:0; pointer-events:none;
-  background:radial-gradient(ellipse at center, rgba(58,133,255,0.22) 0%, rgba(58,133,255,0.10) 45%, rgba(58,133,255,0) 72%);
-  filter:blur(38px);
+  content:''; position:absolute; inset:-3%; z-index:0; pointer-events:none;
+  border-radius:var(--r-4);
+  background:rgba(58,133,255,0.32);
+  filter:blur(42px);
 }
 .bcp-page .hero__vsl-wrap .vsl { aspect-ratio:16/9; max-height:520px; position:relative; z-index:1; }
 .bcp-page .vsl { position:relative; border-radius:var(--r-4); overflow:hidden; aspect-ratio:16/9; background:var(--bc-ink-900); }
@@ -1406,7 +1407,7 @@ export default function TestPage() {
               Stop <span className="blue-em">guessing</span> what to fix on your channel. Get a personal review from me in your first week.
             </h1>
             <p className="hero__sub">
-              Working with me directly. A deep-dive on your specific channel. The content checklist I use every week. Weekly Q&amp;A on Zoom. Direct access every day.
+              Working with me directly. A deep-dive on your specific channel. The systems I use to make content. Weekly Q&amp;A on Zoom. Direct access every day.
             </p>
 
             {SHOW_VSL && <VSL />}
