@@ -7,7 +7,7 @@ import { yearsOnYouTube, formatSubscribers, SUBSCRIBER_FALLBACK } from '@/lib/si
 type WindowState = 'before' | 'open' | 'after';
 
 // Toggle to show/hide the hero VSL embed. Flip to true to bring it back.
-const SHOW_VSL = false;
+const SHOW_VSL = true;
 
 /* =====================================================================
    STYLES — BC design system inlined
@@ -223,9 +223,9 @@ const STYLES = `
 .bcp-page .vsl__inner { position:relative; z-index:1; width:100%; height:100%; }
 .bcp-page .vsl iframe { width:100%; height:100%; border:0; display:block; }
 .bcp-page wistia-player { display:block; width:100%; height:100%; }
-.bcp-page wistia-player[media-id='iypjgbm6ot']:not(:defined) {
+.bcp-page wistia-player[media-id='jy79qz36k3']:not(:defined) {
   display:block;
-  background: center / contain no-repeat url('https://fast.wistia.com/embed/medias/iypjgbm6ot/swatch');
+  background: center / contain no-repeat url('https://fast.wistia.com/embed/medias/jy79qz36k3/swatch');
   filter: blur(5px);
   padding-top: 56.25%;
   width: 100%;
@@ -590,7 +590,7 @@ function Countdown({ target, label, onComplete }: { target: Date; label: string;
 /* =====================================================================
    VSL — Wistia web component with swatch placeholder (no load flash)
    ===================================================================== */
-const WISTIA_MEDIA_ID = 'iypjgbm6ot';
+const WISTIA_MEDIA_ID = 'jy79qz36k3';
 
 function VSL() {
   useEffect(() => {
