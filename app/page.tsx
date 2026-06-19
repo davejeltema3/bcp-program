@@ -242,8 +242,8 @@ const STYLES = `
   position:absolute; inset:-8px; z-index:2;
   background: center / cover no-repeat url('https://embed-ssl.wistia.com/deliveries/23337017c19c9c9d72ecd157759c9a24.jpg?image_crop_resized=1280x720');
   filter: blur(8px);
+  transition: opacity 0.12s ease;
 }
-/* No transition: a hard cut to the video the instant it starts. */
 .bcp-page .vsl__cover--gone { opacity:0; pointer-events:none; }
 .bcp-page .vsl iframe { width:100%; height:100%; border:0; display:block; position:relative; z-index:1; }
 .bcp-page wistia-player { display:block; width:100%; height:100%; position:relative; z-index:1; }
@@ -629,26 +629,31 @@ function VSL() {
       document.head.appendChild(s2);
     }
 
-    // Hold our blurred cover over the player until it actually starts playing.
-    // Wistia draws its poster and then the video in two passes (the "pop"), and
-    // those passes happen behind the cover, out of sight. Reveal on the play
-    // event, with a timed fallback so the video is never left hidden.
-    const w = window as unknown as { _wq?: any[] };
-    w._wq = w._wq || [];
-    w._wq.push({
-      id: WISTIA_MEDIA_ID,
-      onReady: (video: any) => {
-        const reveal = () => setRevealed(true);
-        try {
-          // Reveal the moment the video starts, so the first words aren't missed.
-          // The blurred cover masks the brief poster-to-video handoff underneath.
-          video.bind('play', reveal);
-          video.bind('timechange', (t: number) => { if (t > 0) { reveal(); return video.unbind; } });
-        } catch {}
-      },
-    });
-    const fallback = setTimeout(() => setRevealed(true), 3000);
-    return () => clearTimeout(fallback);
+    // The Wistia web component renders a native <video> inside its (open)
+    // shadow DOM. Watch that element directly and reveal the instant it is
+    // actually playing — far more reliable than Wistia's _wq event API, which
+    // never fired here. The blurred cover masks the brief poster handoff under it.
+    let done = false;
+    let videoEl: HTMLVideoElement | null = null;
+    const reveal = () => { if (!done) { done = true; setRevealed(true); } };
+    const onTime = () => { if (videoEl && videoEl.currentTime > 0) reveal(); };
+    const poll = setInterval(() => {
+      const wp = document.querySelector('wistia-player') as (HTMLElement & { shadowRoot: ShadowRoot | null }) | null;
+      const v = wp && wp.shadowRoot ? wp.shadowRoot.querySelector('video') : null;
+      if (v) {
+        clearInterval(poll);
+        videoEl = v as HTMLVideoElement;
+        if (!videoEl.paused && videoEl.currentTime > 0) reveal();
+        videoEl.addEventListener('playing', reveal);
+        videoEl.addEventListener('timeupdate', onTime);
+      }
+    }, 80);
+    const fallback = setTimeout(reveal, 3000);
+    return () => {
+      clearInterval(poll);
+      clearTimeout(fallback);
+      if (videoEl) { videoEl.removeEventListener('playing', reveal); videoEl.removeEventListener('timeupdate', onTime); }
+    };
   }, []);
 
   return (
