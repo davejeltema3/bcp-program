@@ -677,6 +677,50 @@ export async function updateApplicationAI(rowNum: number, ai: {
   });
 }
 
+export interface ApplicationBackfillRow {
+  rowNum: number;
+  record: ApplicationRecord;
+}
+
+/**
+ * Find application rows that still need the AI pass: a channel URL is present
+ * (col E) but the AI Route (col W) is empty. Used by the daily backfill to
+ * fill the verdict on migrated rows a batch at a time. Returns up to `limit`.
+ */
+export async function findApplicationsNeedingAI(limit: number): Promise<ApplicationBackfillRow[]> {
+  const sheets = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${APPLICATIONS_SHEET_NAME}'!A2:W`,
+  });
+  const rows = res.data.values || [];
+  const out: ApplicationBackfillRow[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i] || [];
+    const channelUrl = (r[4] || '').trim();
+    const aiRoute = (r[22] || '').trim();
+    if (!channelUrl || aiRoute) continue;
+    out.push({
+      rowNum: i + 2,
+      record: {
+        first_name: r[1] || '',
+        email: (r[2] || '').trim(),
+        channel_url: channelUrl,
+        primary_goal: r[5] || '',
+        monetized: r[6] || '',
+        channel_about: r[7] || '',
+        target_audience: r[8] || '',
+        challenge: r[9] || '',
+        program_goals: r[10] || '',
+        readiness: r[11] || '',
+        anything_else: r[12] || '',
+      },
+    });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
 /**
  * Update the Challenge column for an existing waitlist entry.
  * Creates the row if it doesn't exist (defensive — shouldn't happen in normal flow).
