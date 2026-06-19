@@ -634,10 +634,10 @@ function VSL() {
       onReady: (video: any) => {
         const reveal = () => setRevealed(true);
         try {
-          video.bind('play', reveal);
-          // Autoplay can fire 'play' before this binds, so also reveal on the
-          // first time update — the video is showing real frames by then.
-          video.bind('timechange', (t: number) => { if (t > 0.05) { reveal(); return video.unbind; } });
+          // Reveal only after the video has actually been playing for a beat,
+          // so Wistia's own blurred poster and scale-in (inside its player,
+          // which we can't style) finishes hidden behind our sharp cover.
+          video.bind('timechange', (t: number) => { if (t > 0.3) { reveal(); return video.unbind; } });
         } catch {}
       },
     });
