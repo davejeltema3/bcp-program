@@ -228,16 +228,14 @@ const STYLES = `
 /* Persistent blurred poster behind the player. Stays put while Wistia loads,
    so the placeholder hands off to the video with no dark flash. */
 .bcp-page .vsl__inner::before {
-  content:''; position:absolute; inset:-8px; z-index:0;
-  background: center / cover no-repeat url('https://fast.wistia.com/embed/medias/jy79qz36k3/swatch');
-  filter: blur(8px);
+  content:''; position:absolute; inset:0; z-index:0;
+  background: center / cover no-repeat url('https://embed-ssl.wistia.com/deliveries/23337017c19c9c9d72ecd157759c9a24.jpg?image_crop_resized=1280x720');
 }
 /* Blurred cover that sits ON TOP of the player and fades out when the video
    actually starts, hiding Wistia's two-pass poster/video reveal (the pop). */
 .bcp-page .vsl__cover {
-  position:absolute; inset:-8px; z-index:2;
-  background: center / cover no-repeat url('https://fast.wistia.com/embed/medias/jy79qz36k3/swatch');
-  filter: blur(8px);
+  position:absolute; inset:0; z-index:2;
+  background: center / cover no-repeat url('https://embed-ssl.wistia.com/deliveries/23337017c19c9c9d72ecd157759c9a24.jpg?image_crop_resized=1280x720');
   transition: opacity 0.3s ease;
 }
 .bcp-page .vsl__cover--gone { opacity:0; pointer-events:none; }
