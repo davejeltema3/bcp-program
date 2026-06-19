@@ -222,10 +222,9 @@ const STYLES = `
    the edges with a clean hole where the player sits, never behind it. */
 .bcp-page .vsl { position:relative; border-radius:var(--r-4); overflow:hidden; aspect-ratio:16/9; background:var(--bc-ink-900); box-shadow:0 0 60px 0 rgba(58,133,255,0.32); }
 .bcp-page .vsl__inner { position:relative; z-index:1; width:100%; height:100%; }
-/* Blurred placeholder ON TOP of the player. Real CSS blur on a full-res first
-   frame at exact framing (inset:0, no oversize, no zoom). The cover has a solid
-   dark base, so the blur's soft edges fade into that base instead of showing
-   what is behind. overflow:hidden keeps the blur inside the rounded box. */
+/* Crisp first-frame placeholder at exact framing. No blur, so no faded rim and
+   no zoom; the reveal lands on the same frame the video starts on. To go back
+   to a blurred look, add `filter: blur(8px)` to the ::after below. */
 .bcp-page .vsl__cover {
   position:absolute; inset:0; z-index:2; overflow:hidden;
   background:var(--bc-ink-900);
@@ -234,7 +233,6 @@ const STYLES = `
 .bcp-page .vsl__cover::after {
   content:''; position:absolute; inset:0;
   background: center / cover no-repeat url('https://embed-ssl.wistia.com/deliveries/23337017c19c9c9d72ecd157759c9a24.jpg?image_crop_resized=1280x720');
-  filter: blur(8px);
 }
 .bcp-page .vsl__cover--gone { opacity:0; pointer-events:none; }
 .bcp-page .vsl iframe { width:100%; height:100%; border:0; display:block; position:relative; z-index:1; }
