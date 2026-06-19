@@ -6,7 +6,7 @@ import { yearsOnYouTube, formatSubscribers, SUBSCRIBER_FALLBACK } from '@/lib/si
 type WindowState = 'before' | 'open' | 'after';
 
 // Toggle to show/hide the hero VSL embed. Flip to true to bring it back.
-const SHOW_VSL = false;
+const SHOW_VSL = true;
 
 /* =====================================================================
    STYLES — BC design system inlined
@@ -147,7 +147,7 @@ const STYLES = `
 .bcp-page .subsection-h { font-size:24px; font-weight:600; letter-spacing:var(--bc-ls-heading); color:var(--bc-text-100); margin:0 0 8px; }
 .bcp-page .subsection-sub { color:var(--bc-text-300); margin:0 0 var(--s-7); font-size:16px; }
 
-.bcp-page .hero { padding:var(--s-9) 0 var(--s-9); position:relative; overflow:hidden; text-align:center; }
+.bcp-page .hero { padding:var(--s-5) 0 var(--s-8); position:relative; overflow:hidden; text-align:center; }
 .bcp-page .hero__glow {
   position:absolute; top:-180px; left:50%; width:1000px; height:520px;
   transform:translateX(-50%);
@@ -175,12 +175,12 @@ const STYLES = `
 @media(max-width:760px) {
   .bcp-page .hero__title { max-width:36ch; }
 }
-.bcp-page .hero__sub { font-size:16px; color:var(--bc-text-300); max-width:58ch; margin:0 auto var(--s-6); line-height:1.5; }
+.bcp-page .hero__sub { font-size:16px; color:var(--bc-text-300); max-width:58ch; margin:0 auto var(--s-5); line-height:1.5; }
 .bcp-page .hero__sub strong { color:var(--bc-text-100); font-weight:600; }
 
 .bcp-page .hero__trust {
   display:grid; grid-template-columns:repeat(3,1fr);
-  margin:var(--s-7) auto 0; padding:var(--s-5) 0;
+  margin:var(--s-5) auto 0; padding:var(--s-4) 0;
   border-top:1px solid var(--bc-ink-700); border-bottom:1px solid var(--bc-ink-700);
   max-width:760px;
 }
@@ -198,7 +198,7 @@ const STYLES = `
 .bcp-page .hero__price-line .dot-sep { color:var(--bc-text-500); }
 
 .bcp-page .hero-quote {
-  max-width:680px; margin:var(--s-7) auto 0; padding:var(--s-5) var(--s-6);
+  max-width:680px; margin:var(--s-5) auto 0; padding:var(--s-5) var(--s-6);
   background:linear-gradient(180deg,rgba(58,133,255,.06),rgba(58,133,255,.02));
   border:1px solid rgba(58,133,255,.2); border-radius:var(--r-4);
   position:relative; text-align:left;
@@ -217,15 +217,15 @@ const STYLES = `
 .bcp-page .vsl { position:relative; border-radius:var(--r-4); overflow:hidden; aspect-ratio:16/9; background:var(--bc-ink-900); }
 .bcp-page .vsl__glow { position:absolute; inset:-60px; background:radial-gradient(closest-side,var(--bc-blue-glow),transparent 70%); filter:blur(40px); pointer-events:none; z-index:0; }
 .bcp-page .vsl__inner { position:relative; z-index:1; width:100%; height:100%; }
-.bcp-page .vsl iframe { width:100%; height:100%; border:0; display:block; }
-.bcp-page wistia-player { display:block; width:100%; height:100%; }
-.bcp-page wistia-player[media-id='jy79qz36k3']:not(:defined) {
-  display:block;
-  background: center / contain no-repeat url('https://fast.wistia.com/embed/medias/jy79qz36k3/swatch');
-  filter: blur(5px);
-  padding-top: 56.25%;
-  width: 100%;
+/* Persistent blurred poster behind the player. Stays put while Wistia loads,
+   so the placeholder hands off to the video with no dark flash. */
+.bcp-page .vsl__inner::before {
+  content:''; position:absolute; inset:0; z-index:0;
+  background: center / cover no-repeat url('https://fast.wistia.com/embed/medias/jy79qz36k3/swatch');
+  filter: blur(12px); transform: scale(1.06);
 }
+.bcp-page .vsl iframe { width:100%; height:100%; border:0; display:block; position:relative; z-index:1; }
+.bcp-page wistia-player { display:block; width:100%; height:100%; position:relative; z-index:1; }
 
 .bcp-page .window-badge {
   display:inline-flex; align-items:center; gap:10px;
@@ -1341,9 +1341,6 @@ export default function TestPage() {
         <section id="top" className="hero">
           <div className="hero__glow" />
           <div className="container hero__inner">
-            <div className="hero__top">
-              <span className="window-badge"><span className="dot" />Direct Invite &middot; Welcome</span>
-            </div>
             <h1 className="hero__title">
               Stop <span className="blue-em">guessing</span> what to fix on your channel. Get a personal review from me in your first week.
             </h1>
