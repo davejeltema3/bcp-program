@@ -228,16 +228,18 @@ const STYLES = `
 /* Persistent blurred poster behind the player. Stays put while Wistia loads,
    so the placeholder hands off to the video with no dark flash. */
 .bcp-page .vsl__inner::before {
-  content:''; position:absolute; inset:0; z-index:0;
+  content:''; position:absolute; inset:-8px; z-index:0;
   background: center / cover no-repeat url('https://embed-ssl.wistia.com/deliveries/23337017c19c9c9d72ecd157759c9a24.jpg?image_crop_resized=1280x720');
+  filter: blur(8px);
 }
 /* Blurred cover that sits ON TOP of the player and fades out when the video
    actually starts, hiding Wistia's two-pass poster/video reveal (the pop). */
 .bcp-page .vsl__cover {
-  position:absolute; inset:0; z-index:2;
+  position:absolute; inset:-8px; z-index:2;
   background: center / cover no-repeat url('https://embed-ssl.wistia.com/deliveries/23337017c19c9c9d72ecd157759c9a24.jpg?image_crop_resized=1280x720');
-  transition: opacity 0.3s ease;
+  filter: blur(8px);
 }
+/* No transition: a hard cut to the video the instant it starts. */
 .bcp-page .vsl__cover--gone { opacity:0; pointer-events:none; }
 .bcp-page .vsl iframe { width:100%; height:100%; border:0; display:block; position:relative; z-index:1; }
 .bcp-page wistia-player { display:block; width:100%; height:100%; position:relative; z-index:1; }
@@ -634,14 +636,14 @@ function VSL() {
       onReady: (video: any) => {
         const reveal = () => setRevealed(true);
         try {
-          // Reveal only after the video has actually been playing for a beat,
-          // so Wistia's own blurred poster and scale-in (inside its player,
-          // which we can't style) finishes hidden behind our sharp cover.
-          video.bind('timechange', (t: number) => { if (t > 0.3) { reveal(); return video.unbind; } });
+          // Reveal the moment the video starts, so the first words aren't missed.
+          // The blurred cover masks the brief poster-to-video handoff underneath.
+          video.bind('play', reveal);
+          video.bind('timechange', (t: number) => { if (t > 0) { reveal(); return video.unbind; } });
         } catch {}
       },
     });
-    const fallback = setTimeout(() => setRevealed(true), 1500);
+    const fallback = setTimeout(() => setRevealed(true), 3000);
     return () => clearTimeout(fallback);
   }, []);
 
