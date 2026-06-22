@@ -1784,7 +1784,7 @@ export default function TestPage() {
             <div className="footer__links">
               <a href="https://docs.google.com/document/d/1s6-4kCsW94o9FM-nNoFPxJkGMwgjpqCPLmcxWEtNxTs" target="_blank" rel="noopener noreferrer">Full program details</a>
               <a href="mailto:hello@boundlesscreator.com">Contact</a>
-              <a href="https://www.youtube.com/@boundlesscreator" target="_blank" rel="noopener noreferrer">YouTube</a>
+              <a href="https://www.youtube.com/@davejeltema3" target="_blank" rel="noopener noreferrer">YouTube</a>
             </div>
             <div style={{ color: 'var(--bc-text-500)' }}>&copy; {new Date().getFullYear()} Boundless Creator</div>
           </div>
