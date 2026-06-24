@@ -1174,12 +1174,12 @@ type PricingCardProps = {
   windowClose: Date | null;
   onWindowOpened: () => void;
   onWindowClosed: () => void;
-  showInstallment: boolean;
+  installmentPlan: '2' | '3';
 };
 
 function PricingCard({
   windowState, isLoadingFull, isLoadingInstall, error, onCheckout,
-  windowOpen, windowClose, onWindowOpened, onWindowClosed, showInstallment,
+  windowOpen, windowClose, onWindowOpened, onWindowClosed, installmentPlan,
 }: PricingCardProps) {
   return (
     <div className="price" id="checkout">
@@ -1226,15 +1226,13 @@ function PricingCard({
             >
               <span className="price__btn-main">{isLoadingFull ? 'Redirecting to Stripe...' : 'Pay in full — $999'}</span>
             </button>
-            {showInstallment && (
-              <button
-                onClick={() => onCheckout('installment')}
-                disabled={isLoadingInstall}
-                className="btn btn--ghost btn--lg btn--block price__btn-split"
-              >
-                <span className="price__btn-main">{isLoadingInstall ? 'Redirecting...' : 'Split it — 2 payments of $600'}</span>
-              </button>
-            )}
+            <button
+              onClick={() => onCheckout('installment')}
+              disabled={isLoadingInstall}
+              className="btn btn--ghost btn--lg btn--block price__btn-split"
+            >
+              <span className="price__btn-main">{isLoadingInstall ? 'Redirecting...' : (installmentPlan === '3' ? 'Split it — 3 payments of $333' : 'Split it — 2 payments of $600')}</span>
+            </button>
           </div>
 
           <ul className="price__assurances">
@@ -1278,7 +1276,7 @@ function CTABand({
         <button onClick={onClick} className="btn btn--primary btn--lg">
           {buttonCopy}
         </button>
-        <p className="cta-band__fineprint">30-day refund &middot; One-time payment &middot; No subscription</p>
+        <p className="cta-band__fineprint">30-day refund &middot; Pay once or split it &middot; No subscription</p>
       </div>
     </section>
   );
@@ -1294,10 +1292,10 @@ export default function TestPage() {
   const [windowState, setWindowState] = useState<WindowState>('open');
   const [windowOpen, setWindowOpen] = useState<Date | null>(null);
   const [windowClose, setWindowClose] = useState<Date | null>(null);
-  // The payment-plan option is hidden by default. It only appears when the URL
-  // carries ?plan=split, so Dave can send that link privately to people who
-  // need to split the cost. The public /join shows pay-in-full only.
-  const [showInstallment, setShowInstallment] = useState(false);
+  // The split-payment button is always shown on /join. By default it is the
+  // 2-payment plan ($600 x 2). The separate link ?plan=three swaps it to the
+  // 3-payment plan ($333 x 3) for people who need to spread it further.
+  const [installmentPlan, setInstallmentPlan] = useState<'2' | '3'>('2');
 
   // Auto-updating credibility numbers (see lib/site-stats.ts). Null until the
   // client fills them in, so server and first client render match.
@@ -1313,7 +1311,7 @@ export default function TestPage() {
     setWindowClose(null);
 
     const params = new URLSearchParams(window.location.search);
-    setShowInstallment(params.get('plan') === 'split');
+    if (params.get('plan') === 'three') setInstallmentPlan('3');
 
     setYearsCreating(yearsOnYouTube());
     fetch('/api/channel-stats')
@@ -1332,13 +1330,14 @@ export default function TestPage() {
     try {
       const params = new URLSearchParams(window.location.search);
       const email = params.get('email') || undefined;
+      const threePay = params.get('plan') === 'three';
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerEmail: email,
           bypassWindow: true,
-          paymentMode: mode === 'installment' ? 'installment' : undefined,
+          paymentMode: mode === 'installment' ? (threePay ? 'installment3' : 'installment') : undefined,
         }),
       });
       const data = await res.json();
@@ -1710,7 +1709,7 @@ export default function TestPage() {
                 windowClose={windowClose}
                 onWindowOpened={handleWindowOpened}
                 onWindowClosed={handleWindowClosed}
-                showInstallment={showInstallment}
+                installmentPlan={installmentPlan}
               />
 
               <p className="checkout-fineprint">
