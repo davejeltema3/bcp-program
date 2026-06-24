@@ -1174,11 +1174,12 @@ type PricingCardProps = {
   windowClose: Date | null;
   onWindowOpened: () => void;
   onWindowClosed: () => void;
+  showInstallment: boolean;
 };
 
 function PricingCard({
   windowState, isLoadingFull, isLoadingInstall, error, onCheckout,
-  windowOpen, windowClose, onWindowOpened, onWindowClosed,
+  windowOpen, windowClose, onWindowOpened, onWindowClosed, showInstallment,
 }: PricingCardProps) {
   return (
     <div className="price" id="checkout">
@@ -1225,13 +1226,15 @@ function PricingCard({
             >
               <span className="price__btn-main">{isLoadingFull ? 'Redirecting to Stripe...' : 'Pay in full — $999'}</span>
             </button>
-            <button
-              onClick={() => onCheckout('installment')}
-              disabled={isLoadingInstall}
-              className="btn btn--ghost btn--lg btn--block price__btn-split"
-            >
-              <span className="price__btn-main">{isLoadingInstall ? 'Redirecting...' : 'Split into 3 — 3 monthly payments of $333'}</span>
-            </button>
+            {showInstallment && (
+              <button
+                onClick={() => onCheckout('installment')}
+                disabled={isLoadingInstall}
+                className="btn btn--ghost btn--lg btn--block price__btn-split"
+              >
+                <span className="price__btn-main">{isLoadingInstall ? 'Redirecting...' : 'Split it — 2 payments of $600'}</span>
+              </button>
+            )}
           </div>
 
           <ul className="price__assurances">
@@ -1275,7 +1278,7 @@ function CTABand({
         <button onClick={onClick} className="btn btn--primary btn--lg">
           {buttonCopy}
         </button>
-        <p className="cta-band__fineprint">30-day refund &middot; One-time payment or 2&times; split &middot; No subscription</p>
+        <p className="cta-band__fineprint">30-day refund &middot; One-time payment &middot; No subscription</p>
       </div>
     </section>
   );
@@ -1291,6 +1294,10 @@ export default function TestPage() {
   const [windowState, setWindowState] = useState<WindowState>('open');
   const [windowOpen, setWindowOpen] = useState<Date | null>(null);
   const [windowClose, setWindowClose] = useState<Date | null>(null);
+  // The payment-plan option is hidden by default. It only appears when the URL
+  // carries ?plan=split, so Dave can send that link privately to people who
+  // need to split the cost. The public /join shows pay-in-full only.
+  const [showInstallment, setShowInstallment] = useState(false);
 
   // Auto-updating credibility numbers (see lib/site-stats.ts). Null until the
   // client fills them in, so server and first client render match.
@@ -1304,6 +1311,9 @@ export default function TestPage() {
     setWindowState('open');
     setWindowOpen(null);
     setWindowClose(null);
+
+    const params = new URLSearchParams(window.location.search);
+    setShowInstallment(params.get('plan') === 'split');
 
     setYearsCreating(yearsOnYouTube());
     fetch('/api/channel-stats')
@@ -1328,7 +1338,7 @@ export default function TestPage() {
         body: JSON.stringify({
           customerEmail: email,
           bypassWindow: true,
-          paymentMode: mode === 'installment' ? 'installment3' : undefined,
+          paymentMode: mode === 'installment' ? 'installment' : undefined,
         }),
       });
       const data = await res.json();
@@ -1637,7 +1647,7 @@ export default function TestPage() {
               <details className="faq__item">
                 <summary className="faq__q">Is it a subscription?</summary>
                 <div className="faq__a">
-                  No. <strong>$999 once</strong> (or 3&times; $333) gets you six months of full access. After that, you renew or you leave. Nothing auto-charges.
+                  No. <strong>$999 once</strong> gets you six months of full access. After that, you renew or you leave. Nothing auto-charges.
                 </div>
               </details>
               <details className="faq__item">
@@ -1700,6 +1710,7 @@ export default function TestPage() {
                 windowClose={windowClose}
                 onWindowOpened={handleWindowOpened}
                 onWindowClosed={handleWindowClosed}
+                showInstallment={showInstallment}
               />
 
               <p className="checkout-fineprint">
