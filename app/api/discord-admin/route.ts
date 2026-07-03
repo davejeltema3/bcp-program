@@ -119,5 +119,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'create failed', status: r.status, message: r.body?.message }, { status: 500 });
   }
 
+  if (action === 'del') {
+    const code = req.nextUrl.searchParams.get('code');
+    if (!code) return NextResponse.json({ error: 'code required' }, { status: 400 });
+    const d = await dfetch(`/invites/${code}`, botToken, { method: 'DELETE' });
+    return NextResponse.json({ code, status: d.status, ok: d.status === 200 || d.status === 204, message: d.body?.message });
+  }
+
   return NextResponse.json({ error: 'unknown action' }, { status: 400 });
 }

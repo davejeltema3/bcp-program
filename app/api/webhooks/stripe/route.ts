@@ -92,7 +92,7 @@ async function generateDiscordInvite(): Promise<string | null> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        max_age: 604800, // 7 days
+        max_age: 0, // never expires — single-use still keeps it non-shareable
         max_uses: 1,
         unique: true,
       }),
