@@ -33,11 +33,12 @@
 const SPREADSHEET_ID = process.env.BCP_SHEET_ID || '1lpnkxlN21slJwdItDr9Q-fzMcS5tzRz1l4fpqT8Oa6c';
 const SHEET_NAME = 'Form Responses 1';
 const WAITLIST_SHEET_NAME = 'Waitlist';
-const TOTAL_COLS = 42; // A through AP
-const RANGE_ALL = `'${SHEET_NAME}'!A:AP`;
 
-// Column indices (0-based)
-const COL = {
+// Default column indices (0-based). Used only as a fallback when a header
+// name is not found on the live sheet. The real indices are resolved at
+// runtime from the header row (see resolveMemberSheet), so inserting or
+// moving columns no longer breaks member writes.
+const DEFAULT_COL = {
   // Questionnaire columns (A-AB)
   TIMESTAMP: 0,         // A
   FIRST_NAME: 1,        // B
@@ -103,6 +104,94 @@ const MGMT_HEADERS = [
   'Notes',
 ];
 
+// Exact sheet header text for each column key. Resolution is by this name,
+// so audit columns can be inserted/moved without breaking member writes.
+const HEADER_OF: Record<keyof typeof DEFAULT_COL, string> = {
+  TIMESTAMP: 'Timestamp',
+  FIRST_NAME: 'First Name',
+  EMAIL: 'Email',
+  CHANNEL_URL: 'Channel URL',
+  QUESTIONNAIRE_SUB: 'Questionnaire Submitted?',
+  ACTIVE_CREATOR: 'Active Creator',
+  DURATION: 'Duration',
+  SUBSCRIBERS: 'Subscribers',
+  TOTAL_VIDEOS: 'Total Videos',
+  CHANNEL_AGE: 'Channel Age',
+  UPLOAD_CADENCE: 'Upload Cadence',
+  CONTENT_TYPE: 'Content Type',
+  TARGET_AUDIENCE: 'Target Audience',
+  TOP_VIDEOS: 'Top Videos',
+  BOTTOM_VIDEOS: 'Bottom Videos',
+  AVG_VIEWS_30D: 'Average Views (30 Days)',
+  SHORTS_EVAL: 'Shorts Evaluation',
+  MONETIZED: 'Monetized?',
+  AI_COMFORT: 'Comfortable with AI?',
+  HOURS_PER_WEEK: 'Hours per Week',
+  BEST_VIDEO_THEORY: 'Best Video Theory',
+  WHAT_DIDNT_WORK: "Hasn't worked?",
+  CONTENT_GOALS: 'Content Goals',
+  PROGRAM_GOALS: 'Program Goals',
+  CHALLENGE: 'Challenge',
+  ANALYTICS_ACCESS: 'Analytics Access',
+  ANYTHING_ELSE: 'Anything Else?',
+  AI_EVALUATION: 'AI Evaluation',
+  START_DATE: 'Start Date',
+  END_DATE: 'End Date',
+  STATUS: 'Status',
+  DAYS_REMAINING: 'Days Remaining',
+  PAYMENT_TYPE: 'Payment Type',
+  AMOUNT_PAID: 'Amount Paid',
+  TOTAL_REVENUE: 'Total Revenue',
+  STRIPE_CUSTOMER: 'Stripe Customer ID',
+  STRIPE_SESSION: 'Stripe Session ID',
+  DISCORD_INVITE: 'Discord Invite URL',
+  DISCORD_USER_ID: 'Discord User ID',
+  RENEWAL_COUNT: 'Renewal Count',
+  CANCELLED_DATE: 'Cancelled Date',
+  NOTES: 'Notes',
+};
+
+type ColMap = Record<keyof typeof DEFAULT_COL, number>;
+
+interface MemberSheetLayout {
+  COL: ColMap;
+  width: number; // number of columns spanned (for full-row read/write/pad)
+  lastCol: string; // A1 letter of the last column
+}
+
+// Convert a 0-based column index to its A1 letter (0 -> A, 26 -> AA).
+function colLetter(n: number): string {
+  let s = '';
+  n += 1;
+  while (n > 0) {
+    const m = (n - 1) % 26;
+    s = String.fromCharCode(65 + m) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+/**
+ * Resolve the live column positions from the header row. Falls back to the
+ * default index for any header not found. This is what makes member writes
+ * survive column inserts/moves on the sheet.
+ */
+async function resolveMemberSheet(sheets: any): Promise<MemberSheetLayout> {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${SHEET_NAME}'!1:1`,
+  });
+  const headers: string[] = res.data.values?.[0] || [];
+  const COL = { ...DEFAULT_COL } as ColMap;
+  for (const key of Object.keys(HEADER_OF) as (keyof typeof DEFAULT_COL)[]) {
+    const idx = headers.indexOf(HEADER_OF[key]);
+    if (idx >= 0) COL[key] = idx;
+  }
+  // Span at least through the furthest mapped column and the actual header row.
+  const maxIdx = Math.max(headers.length - 1, ...Object.values(COL));
+  return { COL, width: maxIdx + 1, lastCol: colLetter(maxIdx) };
+}
+
 async function getSheets() {
   const { google } = await import('googleapis');
 
@@ -158,26 +247,26 @@ async function findRowByEmail(email: string): Promise<number | null> {
 /**
  * Get the full row data for a given row number.
  */
-async function getRowData(rowNum: number): Promise<string[]> {
+async function getRowData(rowNum: number, lastCol: string, width: number): Promise<string[]> {
   const sheets = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `'${SHEET_NAME}'!A${rowNum}:AP${rowNum}`,
+    range: `'${SHEET_NAME}'!A${rowNum}:${lastCol}${rowNum}`,
   });
   const values = res.data.values?.[0] || [];
   // Pad to full width
-  while (values.length < TOTAL_COLS) values.push('');
+  while (values.length < width) values.push('');
   return values;
 }
 
 /**
  * Write a full row back to the sheet.
  */
-async function writeRow(rowNum: number, row: string[]): Promise<void> {
+async function writeRow(rowNum: number, row: string[], lastCol: string): Promise<void> {
   const sheets = await getSheets();
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
-    range: `'${SHEET_NAME}'!A${rowNum}:AP${rowNum}`,
+    range: `'${SHEET_NAME}'!A${rowNum}:${lastCol}${rowNum}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [row] },
   });
@@ -188,7 +277,7 @@ async function writeRow(rowNum: number, row: string[]): Promise<void> {
  * Uses explicit row targeting instead of the append API to avoid issues
  * with pre-formatted empty rows pushing data to the wrong position.
  */
-async function appendRow(row: string[]): Promise<number> {
+async function appendRow(row: string[], lastCol: string): Promise<number> {
   const sheets = await getSheets();
 
   // Find the actual next empty row by scanning the email column (C)
@@ -209,7 +298,7 @@ async function appendRow(row: string[]): Promise<number> {
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
-    range: `'${SHEET_NAME}'!A${nextRow}:AP${nextRow}`,
+    range: `'${SHEET_NAME}'!A${nextRow}:${lastCol}${nextRow}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [row] },
   });
@@ -225,16 +314,15 @@ async function appendRow(row: string[]): Promise<number> {
  * Since we can't detect "manual vs formula" easily, we use a simpler approach:
  * just set it as a formula. If Dave types over it, his value sticks.
  */
-function statusFormula(rowNum: number): string {
-  // AD = End Date column
-  return `=IF(AD${rowNum}="","—",IF(TODAY()>AD${rowNum},"Expired","Active"))`;
+function statusFormula(rowNum: number, endCol: string): string {
+  return `=IF(${endCol}${rowNum}="","—",IF(TODAY()>${endCol}${rowNum},"Expired","Active"))`;
 }
 
 /**
  * Build the Days Remaining formula for a given row.
  */
-function daysRemainingFormula(rowNum: number): string {
-  return `=IF(AD${rowNum}="","—",MAX(0,AD${rowNum}-TODAY()))`;
+function daysRemainingFormula(rowNum: number, endCol: string): string {
+  return `=IF(${endCol}${rowNum}="","—",MAX(0,${endCol}${rowNum}-TODAY()))`;
 }
 
 // ─── Public API ───
@@ -246,16 +334,20 @@ export async function ensureHeaders(): Promise<void> {
   const sheets = await getSheets();
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `'${SHEET_NAME}'!AC1:AP1`,
+    range: `'${SHEET_NAME}'!1:1`,
   });
-  const existing = res.data.values?.[0] || [];
-  if (existing.length >= MGMT_HEADERS.length && existing[0] === MGMT_HEADERS[0]) {
-    return; // Headers already set
-  }
+  const headers: string[] = res.data.values?.[0] || [];
+  // If the management block already exists (by name), nothing to do.
+  if (headers.includes('Start Date')) return;
 
+  // Otherwise append the management headers to the right of the current
+  // header row. Never overwrite a fixed column range, so a shifted layout
+  // can't be clobbered.
+  const startCol = colLetter(headers.length);
+  const endCol = colLetter(headers.length + MGMT_HEADERS.length - 1);
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
-    range: `'${SHEET_NAME}'!AC1:AP1`,
+    range: `'${SHEET_NAME}'!${startCol}1:${endCol}1`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [MGMT_HEADERS] },
   });
@@ -276,13 +368,19 @@ export async function createPaymentRow(
     discordInviteUrl?: string;
   } = {},
 ): Promise<void> {
+  const sheetsClient = await getSheets();
+  const { COL, width, lastCol } = await resolveMemberSheet(sheetsClient);
+  const endCol = colLetter(COL.END_DATE);
+  const statusCol = colLetter(COL.STATUS);
+  const daysCol = colLetter(COL.DAYS_REMAINING);
+
   const existingRowNum = await findRowByEmail(email);
   const startDate = todayEST();
   const endDate = endDateFromStart(startDate, 180);
 
   if (existingRowNum) {
     // Returning member — update existing row
-    const row = await getRowData(existingRowNum);
+    const row = await getRowData(existingRowNum, lastCol, width);
 
     // Update timestamp
     row[COL.TIMESTAMP] = nowEST();
@@ -290,8 +388,8 @@ export async function createPaymentRow(
     // Update management columns
     row[COL.START_DATE] = startDate;
     row[COL.END_DATE] = endDate;
-    row[COL.STATUS] = statusFormula(existingRowNum);
-    row[COL.DAYS_REMAINING] = daysRemainingFormula(existingRowNum);
+    row[COL.STATUS] = statusFormula(existingRowNum, endCol);
+    row[COL.DAYS_REMAINING] = daysRemainingFormula(existingRowNum, endCol);
     row[COL.PAYMENT_TYPE] = opts.paymentType || 'one-time';
     row[COL.AMOUNT_PAID] = opts.amountPaid ? `${opts.amountPaid}` : '';
     row[COL.CANCELLED_DATE] = ''; // Clear cancelled date on rejoin
@@ -310,11 +408,11 @@ export async function createPaymentRow(
     if (opts.stripeSessionId) row[COL.STRIPE_SESSION] = opts.stripeSessionId;
     if (opts.discordInviteUrl) row[COL.DISCORD_INVITE] = opts.discordInviteUrl;
 
-    await writeRow(existingRowNum, row);
+    await writeRow(existingRowNum, row, lastCol);
     console.log(`Updated existing row ${existingRowNum} for returning member ${email}`);
   } else {
     // New member — create row
-    const row = new Array(TOTAL_COLS).fill('');
+    const row = new Array(width).fill('');
     row[COL.TIMESTAMP] = nowEST();
     row[COL.FIRST_NAME] = name.split(' ')[0];
     row[COL.EMAIL] = email;
@@ -335,15 +433,14 @@ export async function createPaymentRow(
     if (opts.stripeSessionId) row[COL.STRIPE_SESSION] = opts.stripeSessionId;
     if (opts.discordInviteUrl) row[COL.DISCORD_INVITE] = opts.discordInviteUrl;
 
-    const newRowNum = await appendRow(row);
+    const newRowNum = await appendRow(row, lastCol);
 
     // Set formulas for the row we just created
-    const sheets = await getSheets();
-    await sheets.spreadsheets.values.update({
+    await sheetsClient.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `'${SHEET_NAME}'!AE${newRowNum}:AF${newRowNum}`,
+      range: `'${SHEET_NAME}'!${statusCol}${newRowNum}:${daysCol}${newRowNum}`,
       valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [[statusFormula(newRowNum), daysRemainingFormula(newRowNum)]] },
+      requestBody: { values: [[statusFormula(newRowNum, endCol), daysRemainingFormula(newRowNum, endCol)]] },
     });
 
     console.log(`Created new row ${newRowNum} for ${email}`);
@@ -359,29 +456,35 @@ export async function addCompMember(
   email: string,
   durationDays: number = 180,
 ): Promise<{ isNew: boolean }> {
+  const sheetsClient = await getSheets();
+  const { COL, width, lastCol } = await resolveMemberSheet(sheetsClient);
+  const endCol = colLetter(COL.END_DATE);
+  const statusCol = colLetter(COL.STATUS);
+  const daysCol = colLetter(COL.DAYS_REMAINING);
+
   const existingRowNum = await findRowByEmail(email);
   const startDate = todayEST();
   const endDate = endDateFromStart(startDate, durationDays);
 
   if (existingRowNum) {
-    const row = await getRowData(existingRowNum);
+    const row = await getRowData(existingRowNum, lastCol, width);
 
     row[COL.TIMESTAMP] = nowEST();
     if (name) row[COL.FIRST_NAME] = name.split(' ')[0];
     row[COL.START_DATE] = startDate;
     row[COL.END_DATE] = endDate;
-    row[COL.STATUS] = statusFormula(existingRowNum);
-    row[COL.DAYS_REMAINING] = daysRemainingFormula(existingRowNum);
+    row[COL.STATUS] = statusFormula(existingRowNum, endCol);
+    row[COL.DAYS_REMAINING] = daysRemainingFormula(existingRowNum, endCol);
     row[COL.PAYMENT_TYPE] = 'comp';
     row[COL.CANCELLED_DATE] = '';
 
     const prevRenewals = parseInt(row[COL.RENEWAL_COUNT]) || 0;
     row[COL.RENEWAL_COUNT] = `${prevRenewals + 1}`;
 
-    await writeRow(existingRowNum, row);
+    await writeRow(existingRowNum, row, lastCol);
     return { isNew: false };
   } else {
-    const row = new Array(TOTAL_COLS).fill('');
+    const row = new Array(width).fill('');
     row[COL.TIMESTAMP] = nowEST();
     row[COL.FIRST_NAME] = name.split(' ')[0];
     row[COL.EMAIL] = email;
@@ -395,14 +498,13 @@ export async function addCompMember(
     row[COL.TOTAL_REVENUE] = '0';
     row[COL.RENEWAL_COUNT] = '1';
 
-    const newRowNum = await appendRow(row);
+    const newRowNum = await appendRow(row, lastCol);
 
-    const sheets = await getSheets();
-    await sheets.spreadsheets.values.update({
+    await sheetsClient.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `'${SHEET_NAME}'!AE${newRowNum}:AF${newRowNum}`,
+      range: `'${SHEET_NAME}'!${statusCol}${newRowNum}:${daysCol}${newRowNum}`,
       valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [[statusFormula(newRowNum), daysRemainingFormula(newRowNum)]] },
+      requestBody: { values: [[statusFormula(newRowNum, endCol), daysRemainingFormula(newRowNum, endCol)]] },
     });
 
     return { isNew: true };
@@ -764,7 +866,8 @@ export async function upsertQuestionnaireAnswers(
   name: string | undefined,
   answers: Record<string, string>,
 ): Promise<void> {
-  const sheets = await getSheets();
+  const sheetsClient = await getSheets();
+  const { COL, width, lastCol } = await resolveMemberSheet(sheetsClient);
   const existingRow = await findRowByEmail(email);
 
   const answerMap: Record<string, number> = {
@@ -781,7 +884,7 @@ export async function upsertQuestionnaireAnswers(
   };
 
   if (existingRow) {
-    const row = await getRowData(existingRow);
+    const row = await getRowData(existingRow, lastCol, width);
 
     // Update questionnaire timestamp (keep original payment timestamp in notes if needed)
     if (name) row[COL.FIRST_NAME] = name.split(' ')[0];
@@ -791,10 +894,10 @@ export async function upsertQuestionnaireAnswers(
       if (answers[key]) row[colIdx] = answers[key];
     }
 
-    await writeRow(existingRow, row);
+    await writeRow(existingRow, row, lastCol);
   } else {
     // No existing row — create one (shouldn't normally happen if payment came first)
-    const row = new Array(TOTAL_COLS).fill('');
+    const row = new Array(width).fill('');
     row[COL.TIMESTAMP] = nowEST();
     if (name) row[COL.FIRST_NAME] = name.split(' ')[0];
     row[COL.EMAIL] = email;
@@ -804,6 +907,6 @@ export async function upsertQuestionnaireAnswers(
       if (answers[key]) row[colIdx] = answers[key];
     }
 
-    await appendRow(row);
+    await appendRow(row, lastCol);
   }
 }
