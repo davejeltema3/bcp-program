@@ -274,7 +274,7 @@ export async function POST(request: NextRequest) {
           if (session.mode === 'subscription' && isInstallment && session.subscription) {
             try {
               const subId = typeof session.subscription === 'string' ? session.subscription : (session.subscription as any).id;
-              const totalPayments = parseInt(session.metadata?.total_payments || '12', 10);
+              const totalPayments = parseInt(session.metadata?.total_payments || '6', 10);
               const daysUntilCancel = (totalPayments - 1) * 30 + 20;
               const cancelAt = Math.floor(Date.now() / 1000) + (daysUntilCancel * 24 * 60 * 60);
               await stripe.subscriptions.update(subId, { cancel_at: cancelAt });

@@ -10,14 +10,14 @@ function getStripe() {
 /**
  * Bespoke checkout links for Bill "Pop" Sugarek (high-ticket / BCA).
  *
- *   /invite/pop              -> one-time $3,000
- *   /invite/pop?plan=12mo    -> 12 monthly payments of $950 ($11,400 total)
+ *   /invite/pop            -> one-time $3,000
+ *   /invite/pop?plan=6mo   -> 6 monthly payments of $1,900 ($11,400 total)
  *
  * Metadata program is 'bca-pop' ON PURPOSE, not 'bcp-founders'. The Stripe
  * webhook treats 'bca-pop' specially: it does NOT generate a Discord invite,
  * tag Kit, or write a Members Sheet row (Bill is onboarded manually — see
  * Boundless Research call-day-prep). It DOES notify Dave and, for the plan,
- * auto-cancels the subscription after the 12th payment so it never over-bills.
+ * auto-cancels the subscription after the 6th payment so it never over-bills.
  *
  * success_url points at the homepage, not /welcome, to avoid the welcome page's
  * BCP Member Kit tagging. Plain GET links Dave can paste anywhere; each visit
@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
   try {
     let session: Stripe.Checkout.Session;
 
-    if (plan === '12mo') {
-      // 12 monthly payments of $950 = $11,400. Auto-cancels after the 12th
-      // charge via the webhook (payment_type installment, total_payments 12).
+    if (plan === '6mo') {
+      // 6 monthly payments of $1,900 = $11,400. Auto-cancels after the 6th
+      // charge via the webhook (payment_type installment, total_payments 6).
       session = await stripe.checkout.sessions.create({
         mode: 'subscription',
         payment_method_types: ['card'],
@@ -42,10 +42,10 @@ export async function GET(request: NextRequest) {
             price_data: {
               currency: 'usd',
               product_data: {
-                name: 'Boundless Creator Accelerator — 1-on-1 Coaching (12-Pay)',
-                description: '12 monthly payments of $950 ($11,400 total). 6 months of weekly 1-on-1 calls.',
+                name: 'Boundless Creator Accelerator — 1-on-1 Coaching (6-Pay)',
+                description: '6 monthly payments of $1,900 ($11,400 total). 6 months of weekly 1-on-1 calls.',
               },
-              unit_amount: 95000, // $950.00
+              unit_amount: 190000, // $1,900.00
               recurring: {
                 interval: 'month',
                 interval_count: 1,
@@ -58,13 +58,13 @@ export async function GET(request: NextRequest) {
           metadata: {
             program: 'bca-pop',
             payment_type: 'installment',
-            total_payments: '12',
+            total_payments: '6',
           },
         },
         metadata: {
           program: 'bca-pop',
           payment_type: 'installment',
-          total_payments: '12',
+          total_payments: '6',
         },
         success_url: `${origin}/?paid=1`,
         cancel_url: `${origin}/`,
