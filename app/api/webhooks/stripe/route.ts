@@ -239,6 +239,51 @@ export async function POST(request: NextRequest) {
             }
           }
         }
+
+        /* ─── HIGH-TICKET CUSTOM PLAN (e.g. Pop / BCA) ─── */
+        // program 'bca-pop' intentionally skips the founders onboarding (no
+        // Discord invite, no Kit tag, no Sheet row — those are handled manually
+        // for high-ticket members). We only (a) notify Dave so he knows to
+        // onboard by hand, and (b) auto-cancel the installment after its final
+        // payment so the subscription doesn't keep billing past the plan.
+        if (session.metadata?.program === 'bca-pop') {
+          const name = session.customer_details?.name || 'Unknown';
+          const email = session.customer_details?.email || 'N/A';
+          const amount = session.amount_total ? `$${(session.amount_total / 100).toFixed(0)}` : 'N/A';
+          const isInstallment = session.metadata?.payment_type === 'installment';
+
+          try {
+            await discordNotify({
+              title: '💎 High-Ticket Payment (BCA)',
+              color: 0x8b5cf6,
+              fields: [
+                { name: 'Name', value: name, inline: true },
+                { name: 'Email', value: email, inline: true },
+                { name: 'Amount', value: amount, inline: true },
+                { name: 'Type', value: isInstallment ? `🔄 Installment (${session.metadata?.total_payments || '?'} payments)` : '💵 One-Time', inline: true },
+                { name: 'Onboarding', value: '⚠️ Manual — add to Discord + Members Sheet by hand.', inline: false },
+                { name: 'Stripe', value: `[View](https://dashboard.stripe.com/payments/${session.payment_intent || session.subscription})`, inline: false },
+              ],
+              timestamp: new Date().toISOString(),
+            });
+          } catch (err) {
+            console.error('Discord high-ticket notification failed:', err);
+          }
+
+          // Auto-cancel the installment after the final payment (same math as founders).
+          if (session.mode === 'subscription' && isInstallment && session.subscription) {
+            try {
+              const subId = typeof session.subscription === 'string' ? session.subscription : (session.subscription as any).id;
+              const totalPayments = parseInt(session.metadata?.total_payments || '12', 10);
+              const daysUntilCancel = (totalPayments - 1) * 30 + 20;
+              const cancelAt = Math.floor(Date.now() / 1000) + (daysUntilCancel * 24 * 60 * 60);
+              await stripe.subscriptions.update(subId, { cancel_at: cancelAt });
+              console.log(`bca-pop installment ${subId} (${totalPayments} payments) set to auto-cancel at ${new Date(cancelAt * 1000).toISOString()}`);
+            } catch (err) {
+              console.error('Failed to set bca-pop installment auto-cancel:', err);
+            }
+          }
+        }
         break;
       }
 
