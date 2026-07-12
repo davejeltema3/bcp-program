@@ -13,6 +13,9 @@ function getStripe() {
  *   /invite/pop            -> one-time $3,000
  *   /invite/pop?plan=6mo   -> 6 monthly payments of $1,900 ($11,400 total)
  *
+ * Any other plan value (e.g. the retired ?plan=12mo link) is intentionally dead
+ * and returns 410 — it never mints a checkout.
+ *
  * Metadata program is 'bca-pop' ON PURPOSE, not 'bcp-founders'. The Stripe
  * webhook treats 'bca-pop' specially: it does NOT generate a Discord invite,
  * tag Kit, or write a Members Sheet row (Bill is onboarded manually — see
@@ -70,8 +73,8 @@ export async function GET(request: NextRequest) {
         cancel_url: `${origin}/`,
         allow_promotion_codes: true,
       });
-    } else {
-      // Default: one-time $3,000
+    } else if (!plan) {
+      // No plan param: one-time $3,000
       session = await stripe.checkout.sessions.create({
         mode: 'payment',
         payment_method_types: ['card'],
@@ -96,6 +99,13 @@ export async function GET(request: NextRequest) {
         cancel_url: `${origin}/`,
         allow_promotion_codes: true,
       });
+    } else {
+      // Any other plan value (e.g. the retired ?plan=12mo link) is dead.
+      // No checkout is created.
+      return NextResponse.json(
+        { error: 'This link is no longer available.' },
+        { status: 410 }
+      );
     }
 
     if (!session.url) {
