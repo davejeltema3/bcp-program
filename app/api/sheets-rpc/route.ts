@@ -194,6 +194,24 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true });
       }
 
+      case "getSheetId": {
+        // params: { sheet } -> numeric sheetId for the tab (needed by batchUpdate formatting)
+        const ws = await getWorksheetMeta(sheets, spreadsheetId, params.sheet);
+        if (!ws) return NextResponse.json({ ok: false, error: "sheet not found" }, { status: 404 });
+        return NextResponse.json({ ok: true, sheetId: ws.sheetId });
+      }
+
+      case "batchUpdate": {
+        // params: { requests: [...] } -> raw Sheets API spreadsheets.batchUpdate requests.
+        // Enables formatting: freeze panes, column widths, wrap, basic filter (sorting),
+        // tab colors, header fills, cell notes, etc. Look up numeric sheetIds via getSheetId.
+        const r = await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: { requests: params.requests || [] },
+        });
+        return NextResponse.json({ ok: true, replies: r.data.replies || [] });
+      }
+
       default:
         return NextResponse.json({ ok: false, error: `unknown action: ${action}` }, { status: 400 });
     }
