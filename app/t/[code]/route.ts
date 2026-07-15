@@ -19,11 +19,9 @@ export async function GET(
   const code = (params.code || '').toLowerCase().trim();
   const link = resolveCode(code);
 
-  // Append UTM params to the destination (any existing query is preserved).
+  // Redirect to a clean destination URL. The source rides in the bt_src cookie
+  // and the click is logged server-side, so no UTM params are exposed in the URL.
   const dest = new URL(link.destination);
-  dest.searchParams.set('utm_source', 'youtube');
-  dest.searchParams.set('utm_medium', 'video');
-  dest.searchParams.set('utm_campaign', code);
 
   // Best-effort click log. Never let a logging failure break the redirect.
   try {
