@@ -6,7 +6,7 @@ import type { CSSProperties } from 'react';
 /**
  * Boundless Tracking — revenue calculator.
  * Pure math, no data. Shows how views turn into clicks, sales, and revenue,
- * with the conversion percentage at each funnel stage.
+ * with the conversion percentage at each funnel stage. BC dark theme.
  */
 export default function TrackingCalculator() {
   const [views, setViews] = useState(10000);
@@ -23,13 +23,13 @@ export default function TrackingCalculator() {
   const n = (x: number) => x.toLocaleString('en-US', { maximumFractionDigits: 1 });
   const money = (x: number) => '$' + x.toLocaleString('en-US', { maximumFractionDigits: 0 });
 
-  const wrap: CSSProperties = { maxWidth: 720, margin: '48px auto', padding: 24, fontFamily: 'system-ui, sans-serif', color: '#0f172a' };
-  const label: CSSProperties = { display: 'block', fontSize: 13, color: '#475569', marginBottom: 6 };
-  const input: CSSProperties = { width: '100%', padding: '10px 12px', fontSize: 15, border: '1px solid #cbd5e1', borderRadius: 8, boxSizing: 'border-box' };
-  const cell: CSSProperties = { padding: '14px 16px', borderBottom: '1px solid #f1f5f9' };
-  const stageName: CSSProperties = { ...cell, fontWeight: 600 };
-  const stageNum: CSSProperties = { ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums' };
-  const stagePct: CSSProperties = { ...cell, textAlign: 'right', color: '#2563eb', fontSize: 13, fontVariantNumeric: 'tabular-nums' };
+  const wrap: CSSProperties = { maxWidth: 720, margin: '48px auto', padding: 24, fontFamily: 'Inter, system-ui, sans-serif', color: 'var(--bc-text-200, #d6dcea)' };
+  const label: CSSProperties = { display: 'block', fontSize: 13, color: 'var(--bc-text-300, #9aa4be)', marginBottom: 6 };
+  const input: CSSProperties = { width: '100%', padding: '10px 12px', fontSize: 15, color: 'var(--bc-text-100, #f4f6fb)', background: 'var(--bc-ink-800, #131c33)', border: '1px solid var(--bc-ink-600, #2a3654)', borderRadius: 8, boxSizing: 'border-box' };
+  const cell: CSSProperties = { padding: '14px 16px', borderBottom: '1px solid var(--bc-ink-700, #1c273f)' };
+  const stageName: CSSProperties = { ...cell, fontWeight: 600, color: 'var(--bc-text-100, #f4f6fb)' };
+  const stageNum: CSSProperties = { ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--bc-text-100, #f4f6fb)' };
+  const stagePct: CSSProperties = { ...cell, textAlign: 'right', color: 'var(--bc-blue-300, #5b9cff)', fontSize: 13, fontVariantNumeric: 'tabular-nums' };
 
   const field = (labelText: string, value: number, set: (v: number) => void, suffix?: string) => (
     <div>
@@ -43,15 +43,15 @@ export default function TrackingCalculator() {
           onChange={(e) => set(Number(e.target.value) || 0)}
           style={input}
         />
-        {suffix ? <span style={{ position: 'absolute', right: 12, top: 10, color: '#94a3b8', fontSize: 14 }}>{suffix}</span> : null}
+        {suffix ? <span style={{ position: 'absolute', right: 12, top: 10, color: 'var(--bc-text-400, #6b7591)', fontSize: 14 }}>{suffix}</span> : null}
       </div>
     </div>
   );
 
   return (
     <main style={wrap}>
-      <h1 style={{ fontSize: 24, marginBottom: 4 }}>Revenue Calculator</h1>
-      <p style={{ color: '#475569', marginTop: 0 }}>
+      <h1 style={{ fontSize: 24, marginBottom: 4, color: 'var(--bc-text-100, #f4f6fb)' }}>Revenue Calculator</h1>
+      <p style={{ color: 'var(--bc-text-300, #9aa4be)', marginTop: 0 }}>
         A rough model of how a video's views turn into revenue. Estimates only.
       </p>
 
@@ -62,7 +62,7 @@ export default function TrackingCalculator() {
         {field('Price', price, setPrice, '$')}
       </div>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 28, border: '1px solid #e2e8f0', borderRadius: 8 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 28, border: '1px solid var(--bc-ink-600, #2a3654)', borderRadius: 8 }}>
         <tbody>
           <tr>
             <td style={stageName}>Views</td>
@@ -76,23 +76,23 @@ export default function TrackingCalculator() {
           </tr>
           <tr>
             <td style={stageName}>Sales</td>
-            <td style={stageNum}>{n(sales)}</td>
+            <td style={{ ...stageNum, color: 'var(--bc-green-400, #5ce0a3)' }}>{n(sales)}</td>
             <td style={stagePct}>{n(cvr)}% of clicks</td>
           </tr>
           <tr>
             <td style={{ ...stageName, borderBottom: 'none' }}>Monthly revenue</td>
-            <td style={{ ...stageNum, borderBottom: 'none', fontWeight: 700 }}>{money(revMonth)}</td>
+            <td style={{ ...stageNum, borderBottom: 'none', fontWeight: 700, color: 'var(--bc-green-400, #5ce0a3)' }}>{money(revMonth)}</td>
             <td style={{ ...stagePct, borderBottom: 'none' }}>{money(revYear)}/yr</td>
           </tr>
         </tbody>
       </table>
 
-      <p style={{ color: '#64748b', fontSize: 13, marginTop: 16 }}>
+      <p style={{ color: 'var(--bc-text-400, #6b7591)', fontSize: 13, marginTop: 16 }}>
         Overall, {n(viewToSale)}% of views become a sale. So every {viewToSale > 0 ? n(100 / viewToSale) : '—'} views is worth one sale, or about {viewToSale > 0 ? money((viewToSale / 100) * price) : '$0'} per view.
       </p>
 
       <p style={{ marginTop: 24 }}>
-        <a href="/tracking" style={{ color: '#2563eb', textDecoration: 'none' }}>&larr; Back to the dashboard</a>
+        <a href="/tracking" style={{ color: 'var(--bc-blue-300, #5b9cff)', textDecoration: 'none' }}>&larr; Back to the dashboard</a>
       </p>
     </main>
   );

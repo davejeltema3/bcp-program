@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 /**
  * Boundless Tracking dashboard (MVP).
  * Admin-gated by ?key=<ADMIN_SECRET>. Shows clicks and sales per video.
+ * Styled for the BC dark theme (tokens from globals.css, with hex fallbacks).
  */
 export default async function TrackingDashboard({
   searchParams,
@@ -19,9 +20,9 @@ export default async function TrackingDashboard({
 
   if (!authed) {
     return (
-      <main style={{ maxWidth: 640, margin: '80px auto', padding: 24, fontFamily: 'system-ui, sans-serif', color: '#0f172a' }}>
-        <h1 style={{ fontSize: 22 }}>Boundless Tracking</h1>
-        <p style={{ color: '#475569' }}>Add <code>?key=YOUR_ADMIN_SECRET</code> to the URL to view the dashboard.</p>
+      <main style={{ maxWidth: 640, margin: '80px auto', padding: 24, fontFamily: 'Inter, system-ui, sans-serif', color: 'var(--bc-text-200, #d6dcea)' }}>
+        <h1 style={{ fontSize: 22, color: 'var(--bc-text-100, #f4f6fb)' }}>Boundless Tracking</h1>
+        <p style={{ color: 'var(--bc-text-300, #9aa4be)' }}>Add <code>?key=YOUR_ADMIN_SECRET</code> to the URL to view the dashboard.</p>
       </main>
     );
   }
@@ -63,18 +64,18 @@ export default async function TrackingDashboard({
   const totalClicks = rows.reduce((sum, r) => sum + r.clicks, 0);
   const totalSales = rows.reduce((sum, r) => sum + r.sales, 0);
 
-  const th: CSSProperties = { textAlign: 'left', padding: '10px 12px', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: '#64748b', borderBottom: '2px solid #e2e8f0' };
-  const td: CSSProperties = { padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontSize: 14, color: '#0f172a' };
+  const th: CSSProperties = { textAlign: 'left', padding: '10px 12px', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--bc-text-400, #6b7591)', borderBottom: '1px solid var(--bc-ink-600, #2a3654)' };
+  const td: CSSProperties = { padding: '10px 12px', borderBottom: '1px solid var(--bc-ink-700, #1c273f)', fontSize: 14, color: 'var(--bc-text-200, #d6dcea)' };
   const num: CSSProperties = { ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' };
 
   return (
-    <main style={{ maxWidth: 920, margin: '48px auto', padding: 24, fontFamily: 'system-ui, sans-serif', color: '#0f172a' }}>
-      <h1 style={{ fontSize: 24, marginBottom: 4 }}>Boundless Tracking</h1>
-      <p style={{ color: '#475569', marginTop: 0 }}>
+    <main style={{ maxWidth: 920, margin: '48px auto', padding: 24, fontFamily: 'Inter, system-ui, sans-serif', color: 'var(--bc-text-200, #d6dcea)' }}>
+      <h1 style={{ fontSize: 24, marginBottom: 4, color: 'var(--bc-text-100, #f4f6fb)' }}>Boundless Tracking</h1>
+      <p style={{ color: 'var(--bc-text-300, #9aa4be)', marginTop: 0 }}>
         {totalClicks} clicks and {totalSales} sales tracked across {rows.length} videos.
       </p>
       <p style={{ marginTop: 0 }}>
-        <a href="/tracking/calculator" style={{ color: '#2563eb', textDecoration: 'none' }}>Open the revenue calculator &rarr;</a>
+        <a href="/tracking/calculator" style={{ color: 'var(--bc-blue-300, #5b9cff)', textDecoration: 'none' }}>Open the revenue calculator &rarr;</a>
       </p>
       <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16 }}>
         <thead>
@@ -89,17 +90,17 @@ export default async function TrackingDashboard({
         <tbody>
           {rows.map((r) => (
             <tr key={r.code}>
-              <td style={{ ...td, maxWidth: 420 }}>{r.title}</td>
-              <td style={{ ...td, color: '#64748b', fontFamily: 'ui-monospace, monospace', fontSize: 13 }}>{r.code}</td>
+              <td style={{ ...td, maxWidth: 420, color: 'var(--bc-text-100, #f4f6fb)' }}>{r.title}</td>
+              <td style={{ ...td, color: 'var(--bc-text-400, #6b7591)', fontFamily: 'ui-monospace, monospace', fontSize: 13 }}>{r.code}</td>
               <td style={num}>{r.clicks}</td>
-              <td style={num}>{r.sales}</td>
-              <td style={num}>{r.cvr}</td>
+              <td style={{ ...num, color: r.sales > 0 ? 'var(--bc-green-400, #5ce0a3)' : 'var(--bc-text-400, #6b7591)' }}>{r.sales}</td>
+              <td style={{ ...num, color: r.clicks > 0 ? 'var(--bc-blue-300, #5b9cff)' : 'var(--bc-text-400, #6b7591)' }}>{r.cvr}</td>
             </tr>
           ))}
         </tbody>
       </table>
       {rows.length === 0 && (
-        <p style={{ color: '#94a3b8', marginTop: 24 }}>No clicks logged yet. Share a /t/&lt;code&gt; link to start.</p>
+        <p style={{ color: 'var(--bc-text-400, #6b7591)', marginTop: 24 }}>No clicks logged yet. Share a /t/&lt;code&gt; link to start.</p>
       )}
     </main>
   );
