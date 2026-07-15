@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     // redirect as the bt_src cookie) into Stripe metadata, so the Stripe
     // webhook can attribute this sale to the video that drove it.
     const btSrc = request.cookies.get('bt_src')?.value || '';
-    const trackingMeta = btSrc ? { bt_src: btSrc } : {};
+    const trackingMeta: Record<string, string> = btSrc ? { bt_src: btSrc } : {};
 
     // Determine effective payment mode based on checkout mode config
     // Installment is always allowed regardless of checkout mode (it's a payment split, not a mode)

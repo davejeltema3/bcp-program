@@ -73,6 +73,9 @@ export default async function TrackingDashboard({
       <p style={{ color: '#475569', marginTop: 0 }}>
         {totalClicks} clicks and {totalSales} sales tracked across {rows.length} videos.
       </p>
+      <p style={{ marginTop: 0 }}>
+        <a href="/tracking/calculator" style={{ color: '#2563eb', textDecoration: 'none' }}>Open the revenue calculator &rarr;</a>
+      </p>
       <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16 }}>
         <thead>
           <tr>
