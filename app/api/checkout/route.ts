@@ -12,6 +12,12 @@ export async function POST(request: NextRequest) {
   try {
     const { customerEmail, bypassWindow, paymentMode: requestedMode } = await request.json();
 
+    // Boundless Tracking: carry the source video code (set by the /t/<code>
+    // redirect as the bt_src cookie) into Stripe metadata, so the Stripe
+    // webhook can attribute this sale to the video that drove it.
+    const btSrc = request.cookies.get('bt_src')?.value || '';
+    const trackingMeta = btSrc ? { bt_src: btSrc } : {};
+
     // Determine effective payment mode based on checkout mode config
     // Installment is always allowed regardless of checkout mode (it's a payment split, not a mode)
     const checkoutMode = process.env.NEXT_PUBLIC_CHECKOUT_MODE || (process.env.NEXT_PUBLIC_ENABLE_SUBSCRIPTION === 'true' ? 'both' : 'one-time');
@@ -68,11 +74,13 @@ export async function POST(request: NextRequest) {
         ],
         subscription_data: {
           metadata: {
+            ...trackingMeta,
             program: 'bcp-founders',
             payment_type: 'subscription',
           },
         },
         metadata: {
+          ...trackingMeta,
           program: 'bcp-founders',
           duration: 'quarterly-recurring',
           payment_type: 'subscription',
@@ -110,12 +118,14 @@ export async function POST(request: NextRequest) {
         ],
         subscription_data: {
           metadata: {
+            ...trackingMeta,
             program: 'bcp-founders',
             payment_type: 'installment',
             total_payments: '2',
           },
         },
         metadata: {
+          ...trackingMeta,
           program: 'bcp-founders',
           duration: '6 months',
           payment_type: 'installment',
@@ -154,12 +164,14 @@ export async function POST(request: NextRequest) {
         ],
         subscription_data: {
           metadata: {
+            ...trackingMeta,
             program: 'bcp-founders',
             payment_type: 'installment',
             total_payments: '3',
           },
         },
         metadata: {
+          ...trackingMeta,
           program: 'bcp-founders',
           duration: '6 months',
           payment_type: 'installment',
@@ -192,6 +204,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       metadata: {
+        ...trackingMeta,
         program: 'bcp-founders',
         duration: '3 months',
         payment_type: 'one-time',

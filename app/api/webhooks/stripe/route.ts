@@ -156,6 +156,26 @@ export async function POST(request: NextRequest) {
           const amount = session.amount_total ? `$${(session.amount_total / 100).toFixed(0)}` : '$999';
           const isSubscription = session.mode === 'subscription';
 
+          // Boundless Tracking: attribute this sale to the source video, if the
+          // buyer arrived through a /t/<code> link (bt_src in metadata).
+          try {
+            const btSrc = session.metadata?.bt_src || '';
+            if (btSrc) {
+              const { resolveCode } = await import('@/lib/tracking-registry');
+              const { appendSale } = await import('@/lib/tracking');
+              await appendSale({
+                email,
+                code: btSrc,
+                videoId: resolveCode(btSrc).videoId,
+                amount,
+                mode: session.metadata?.payment_type || (isSubscription ? 'subscription' : 'one-time'),
+                session: session.id,
+              });
+            }
+          } catch (err) {
+            console.error('[tracking] sale log failed:', err);
+          }
+
           try {
             await discordNotify({
               title: '💰 New BCP Founders Payment!',
