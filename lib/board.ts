@@ -200,3 +200,68 @@ export async function markNotificationsSeen(): Promise<number> {
   });
   return now;
 }
+
+/** Append a new board entry. Returns the generated id. */
+export async function addItem(
+  section: string,
+  group: string,
+  text: string,
+  tag = '',
+): Promise<string> {
+  const sheets = await getSheets();
+  const id = `u_${Date.now().toString(36)}`;
+  const kind =
+    section === 'horizon'
+      ? 'horizon'
+      : section === 'goals'
+      ? 'goal'
+      : section === 'parked' || section === 'northstar'
+      ? 'text'
+      : 'item';
+  const checked = kind === 'item' ? 'FALSE' : '';
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: BOARD_SHEET_ID,
+    range: `${TAB}!A:H`,
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [[id, section, group, text, checked, tag, '', kind]] },
+  });
+  return id;
+}
+
+/** Delete a board row by id. Returns false if the id was not found. */
+export async function removeItem(id: string): Promise<boolean> {
+  const sheets = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: BOARD_SHEET_ID,
+    range: `${TAB}!A:A`,
+  });
+  const rows = res.data.values || [];
+  let rowNum = -1;
+  for (let i = 0; i < rows.length; i++) {
+    if ((rows[i]?.[0] || '') === id) {
+      rowNum = i + 1; // 1-based; header is row 1
+      break;
+    }
+  }
+  if (rowNum < 1) return false;
+
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: BOARD_SHEET_ID });
+  const ws = meta.data.sheets?.find((s) => s.properties?.title === TAB);
+  const sheetId = ws?.properties?.sheetId;
+  if (sheetId == null) return false;
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: BOARD_SHEET_ID,
+    requestBody: {
+      requests: [
+        {
+          deleteDimension: {
+            range: { sheetId, dimension: 'ROWS', startIndex: rowNum - 1, endIndex: rowNum },
+          },
+        },
+      ],
+    },
+  });
+  return true;
+}

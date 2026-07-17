@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { BOARD_COOKIE, isAuthed } from '@/lib/board-auth';
-import { getBoard, setChecked, markNotificationsSeen } from '@/lib/board';
+import {
+  getBoard,
+  setChecked,
+  markNotificationsSeen,
+  addItem,
+  removeItem,
+} from '@/lib/board';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,13 +32,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'invalid JSON' }, { status: 400 });
   }
 
-  if (body.action === 'toggle') {
-    const ok = await setChecked(String(body.id || ''), !!body.checked);
-    return NextResponse.json({ ok });
+  switch (body.action) {
+    case 'toggle': {
+      const ok = await setChecked(String(body.id || ''), !!body.checked);
+      return NextResponse.json({ ok });
+    }
+    case 'markSeen': {
+      const ts = await markNotificationsSeen();
+      return NextResponse.json({ ok: true, ts });
+    }
+    case 'add': {
+      const text = String(body.text || '').trim();
+      if (!text) return NextResponse.json({ ok: false, error: 'empty text' }, { status: 400 });
+      const id = await addItem(
+        String(body.section || 'today'),
+        String(body.group || ''),
+        text,
+        String(body.tag || ''),
+      );
+      return NextResponse.json({ ok: true, id });
+    }
+    case 'remove': {
+      const ok = await removeItem(String(body.id || ''));
+      return NextResponse.json({ ok });
+    }
+    default:
+      return NextResponse.json({ ok: false, error: 'unknown action' }, { status: 400 });
   }
-  if (body.action === 'markSeen') {
-    const ts = await markNotificationsSeen();
-    return NextResponse.json({ ok: true, ts });
-  }
-  return NextResponse.json({ ok: false, error: 'unknown action' }, { status: 400 });
 }
