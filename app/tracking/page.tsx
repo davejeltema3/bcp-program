@@ -30,13 +30,40 @@ export default async function TrackingDashboard({
   const [clicks, sales, registry] = await Promise.all([
     readRange('Clicks!A2:F'),
     readRange('Sales!A2:G'),
-    readRange('Registry!A2:H'),
+    readRange('Registry!A2:I'),
   ]);
 
+  // Publish-burst filter (time-based, no bot-vs-human guessing).
+  // When a tracking link first goes live, Google/YouTube crawlers hit it within
+  // seconds (headless Chrome, Google-Safety, etc.) and would otherwise inflate
+  // the count. We ignore clicks that land inside a short window after each code's
+  // "Activated (UTC)" timestamp (Registry column I, stamped by the description
+  // updater when it writes the link). Raw clicks stay in the sheet; they just
+  // don't count here. Tune the window with one constant.
+  const BURST_WINDOW_MS = 15 * 60 * 1000; // 15 minutes after a link goes live
+  const activatedByCode: Record<string, number> = {};
+  for (const r of registry) {
+    const code = (r[0] || '').trim();
+    const activated = (r[8] || '').trim();
+    if (!code || !activated) continue;
+    const t = Date.parse(activated);
+    if (!Number.isNaN(t)) activatedByCode[code] = t;
+  }
+
   const clicksByCode: Record<string, number> = {};
+  let burstFiltered = 0;
   for (const r of clicks) {
     const code = (r[1] || '').trim();
-    if (code) clicksByCode[code] = (clicksByCode[code] || 0) + 1;
+    if (!code) continue;
+    const activatedAt = activatedByCode[code];
+    if (activatedAt !== undefined) {
+      const clickAt = Date.parse((r[0] || '').trim());
+      if (!Number.isNaN(clickAt) && clickAt >= activatedAt && clickAt < activatedAt + BURST_WINDOW_MS) {
+        burstFiltered++;
+        continue; // publish-time crawler burst, don't count
+      }
+    }
+    clicksByCode[code] = (clicksByCode[code] || 0) + 1;
   }
 
   const salesByCode: Record<string, number> = {};
@@ -73,6 +100,7 @@ export default async function TrackingDashboard({
       <h1 style={{ fontSize: 24, marginBottom: 4, color: 'var(--bc-text-100, #f4f6fb)' }}>Boundless Tracking</h1>
       <p style={{ color: 'var(--bc-text-300, #9aa4be)', marginTop: 0 }}>
         {totalClicks} clicks and {totalSales} sales tracked across {rows.length} videos.
+        {burstFiltered > 0 ? ` (${burstFiltered} publish-time crawler clicks filtered)` : ''}
       </p>
       <p style={{ marginTop: 0 }}>
         <a href="/tracking/calculator" style={{ color: 'var(--bc-blue-300, #5b9cff)', textDecoration: 'none' }}>Open the revenue calculator &rarr;</a>
