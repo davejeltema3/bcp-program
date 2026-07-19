@@ -17,6 +17,14 @@ export interface TrackedLink {
 export const DEFAULT_DESTINATION = 'https://bcp.boundlesscreator.com/';
 
 export const REGISTRY: Record<string, TrackedLink> = {
+  // Non-video source: the "Work with me" CTA inside the Boundless Insight plugin
+  // (panel button + the link that copies with an analysis). videoId is blank
+  // because this is a product surface, not an upload.
+  'insight': {
+    videoId: '',
+    title: 'Boundless Insight plugin: Work with me CTA',
+    destination: DEFAULT_DESTINATION,
+  },
   'fulltime-income': {
     videoId: 'dm7ahnQtZ84',
     title: 'Turn YouTube Into Full-Time Income Without the Guesswork (My Program)',
