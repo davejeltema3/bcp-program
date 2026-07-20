@@ -13,7 +13,7 @@ export const runtime = 'nodejs';
 export default async function TrackingDashboard({
   searchParams,
 }: {
-  searchParams: { key?: string };
+  searchParams: { key?: string; sort?: string; dir?: string };
 }) {
   const adminSecret = process.env.ADMIN_SECRET || '';
   const authed = adminSecret && searchParams.key === adminSecret;
@@ -81,12 +81,41 @@ export default async function TrackingDashboard({
   const rows = codes.map((code) => {
     const regRow = registry.find((r) => (r[0] || '').trim() === code);
     const title = regRow?.[2] || REGISTRY[code]?.title || '(unknown)';
+    const published = (regRow?.[3] || '').trim(); // Registry col D = upload date
     const c = clicksByCode[code] || 0;
     const s = salesByCode[code] || 0;
-    const cvr = c > 0 ? ((s / c) * 100).toFixed(1) + '%' : '—';
-    return { code, title, clicks: c, sales: s, cvr };
+    const cvrNum = c > 0 ? s / c : -1; // -1 keeps no-click rows at the bottom when sorting by CVR
+    const cvr = c > 0 ? (cvrNum * 100).toFixed(1) + '%' : '—';
+    return { code, title, published, clicks: c, sales: s, cvr, cvrNum };
   });
-  rows.sort((a, b) => b.clicks - a.clicks);
+
+  // Sorting via ?sort=<col>&dir=<asc|desc>. Default: most clicks first.
+  const sortKey = ['published', 'clicks', 'sales', 'cvr'].includes(searchParams.sort || '')
+    ? (searchParams.sort as 'published' | 'clicks' | 'sales' | 'cvr')
+    : 'clicks';
+  const sortDir = searchParams.dir === 'asc' ? 'asc' : 'desc';
+  const sortVal = (r: (typeof rows)[number]): string | number => {
+    if (sortKey === 'published') return r.published;
+    if (sortKey === 'cvr') return r.cvrNum;
+    if (sortKey === 'sales') return r.sales;
+    return r.clicks;
+  };
+  rows.sort((a, b) => {
+    const av = sortVal(a);
+    const bv = sortVal(b);
+    const cmp =
+      typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv));
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  const key = searchParams.key || '';
+  const sortHref = (col: string) => {
+    const nextDir = sortKey === col && sortDir === 'desc' ? 'asc' : 'desc';
+    return `/tracking?key=${encodeURIComponent(key)}&sort=${col}&dir=${nextDir}`;
+  };
+  const arrow = (col: string) => (sortKey === col ? (sortDir === 'desc' ? ' ▾' : ' ▴') : '');
 
   const totalClicks = rows.reduce((sum, r) => sum + r.clicks, 0);
   const totalSales = rows.reduce((sum, r) => sum + r.sales, 0);
@@ -94,6 +123,7 @@ export default async function TrackingDashboard({
   const th: CSSProperties = { textAlign: 'left', padding: '10px 12px', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--bc-text-400, #6b7591)', borderBottom: '1px solid var(--bc-ink-600, #2a3654)' };
   const td: CSSProperties = { padding: '10px 12px', borderBottom: '1px solid var(--bc-ink-700, #1c273f)', fontSize: 14, color: 'var(--bc-text-200, #d6dcea)' };
   const num: CSSProperties = { ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' };
+  const thLink: CSSProperties = { color: 'inherit', textDecoration: 'none' };
 
   return (
     <main style={{ maxWidth: 920, margin: '48px auto', padding: 24, fontFamily: 'Inter, system-ui, sans-serif', color: 'var(--bc-text-200, #d6dcea)' }}>
@@ -109,16 +139,18 @@ export default async function TrackingDashboard({
         <thead>
           <tr>
             <th style={th}>Video</th>
+            <th style={th}><a href={sortHref('published')} style={thLink}>Published{arrow('published')}</a></th>
             <th style={th}>Code</th>
-            <th style={{ ...th, textAlign: 'right' }}>Clicks</th>
-            <th style={{ ...th, textAlign: 'right' }}>Sales</th>
-            <th style={{ ...th, textAlign: 'right' }}>CVR</th>
+            <th style={{ ...th, textAlign: 'right' }}><a href={sortHref('clicks')} style={thLink}>Clicks{arrow('clicks')}</a></th>
+            <th style={{ ...th, textAlign: 'right' }}><a href={sortHref('sales')} style={thLink}>Sales{arrow('sales')}</a></th>
+            <th style={{ ...th, textAlign: 'right' }}><a href={sortHref('cvr')} style={thLink}>CVR{arrow('cvr')}</a></th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.code}>
               <td style={{ ...td, maxWidth: 420, color: 'var(--bc-text-100, #f4f6fb)' }}>{r.title}</td>
+              <td style={{ ...td, color: 'var(--bc-text-300, #9aa4be)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{r.published || '—'}</td>
               <td style={{ ...td, color: 'var(--bc-text-400, #6b7591)', fontFamily: 'ui-monospace, monospace', fontSize: 13 }}>{r.code}</td>
               <td style={num}>{r.clicks}</td>
               <td style={{ ...num, color: r.sales > 0 ? 'var(--bc-green-400, #5ce0a3)' : 'var(--bc-text-400, #6b7591)' }}>{r.sales}</td>

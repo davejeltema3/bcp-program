@@ -448,6 +448,39 @@ export async function createPaymentRow(
 }
 
 /**
+ * Mark a member as refunded when Stripe reports a full refund.
+ * Sets End Date to the refund date and overwrites Status with the literal
+ * "Refunded" (which supersedes the status formula and trips the grey-out
+ * conditional-format rule so the row reads as out at a glance). Matches Dave's
+ * manual convention: End Date + Status only, Cancelled Date left alone.
+ *
+ * Only touches an existing member row. Returns false if the email isn't a
+ * member (e.g. a high-ticket/BCA buyer onboarded by hand, or a test charge),
+ * so the caller can flag it for manual review instead of guessing.
+ */
+export async function markRefunded(email: string, refundDate: string): Promise<boolean> {
+  const sheetsClient = await getSheets();
+  const { COL } = await resolveMemberSheet(sheetsClient);
+  const rowNum = await findRowByEmail(email);
+  if (!rowNum) return false;
+
+  const endCol = colLetter(COL.END_DATE);
+  const statusCol = colLetter(COL.STATUS);
+
+  await sheetsClient.spreadsheets.values.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: {
+      valueInputOption: 'USER_ENTERED',
+      data: [
+        { range: `'${SHEET_NAME}'!${endCol}${rowNum}`, values: [[refundDate]] },
+        { range: `'${SHEET_NAME}'!${statusCol}${rowNum}`, values: [['Refunded']] },
+      ],
+    },
+  });
+  return true;
+}
+
+/**
  * Add a comp/manual member (no Stripe payment).
  * Used from the admin page.
  */

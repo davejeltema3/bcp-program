@@ -212,6 +212,37 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: true, replies: r.data.replies || [] });
       }
 
+      case "addConditionalFormat": {
+        // params: { sheet, formula, background? }
+        // Adds one custom-formula conditional-format rule. Used to grey out
+        // refunded/inactive member rows so they read at a glance from the left
+        // without scrolling to the Status column.
+        const ws = await getWorksheetMeta(sheets, spreadsheetId, params.sheet);
+        if (!ws) return NextResponse.json({ ok: false, error: "sheet not found" }, { status: 404 });
+        const bg = params.background || { red: 0.85, green: 0.85, blue: 0.85 };
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            requests: [{
+              addConditionalFormatRule: {
+                index: 0,
+                rule: {
+                  ranges: [{ sheetId: ws.sheetId, startRowIndex: 1 }],
+                  booleanRule: {
+                    condition: {
+                      type: "CUSTOM_FORMULA",
+                      values: [{ userEnteredValue: params.formula }],
+                    },
+                    format: { backgroundColor: bg },
+                  },
+                },
+              },
+            }],
+          },
+        });
+        return NextResponse.json({ ok: true });
+      }
+
       default:
         return NextResponse.json({ ok: false, error: `unknown action: ${action}` }, { status: 400 });
     }

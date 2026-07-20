@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createPaymentRow } from '@/lib/sheets';
+import { createPaymentRow, markRefunded } from '@/lib/sheets';
 
 /**
  * Stripe webhook handler for BCP (bcp.boundlesscreator.com).
@@ -400,6 +400,48 @@ export async function POST(request: NextRequest) {
 
         // Future: could remove BCP Member tag here
         // For now, just notify — manual cleanup
+        break;
+      }
+
+      /* ─── REFUND (mark member out, grey the row) ─── */
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        const email = (charge.billing_details?.email || charge.receipt_email || '').trim();
+        const name = charge.billing_details?.name || 'Unknown';
+        const fullyRefunded = charge.amount_refunded >= charge.amount;
+
+        // The event fires at refund time, so event.created is the refund date.
+        const refundDate = new Date(event.created * 1000)
+          .toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+
+        // Only act on a full refund of an existing member row. Partial refunds
+        // and non-members (BCA/high-ticket handled by hand, test charges) just
+        // notify so nothing gets marked out by accident.
+        let marked = false;
+        if (email && fullyRefunded) {
+          try {
+            marked = await markRefunded(email, refundDate);
+          } catch (err) {
+            console.error('markRefunded failed:', err);
+          }
+        }
+
+        try {
+          await discordNotify({
+            title: fullyRefunded ? '↩️ BCP Refund Processed' : '↩️ BCP Partial Refund',
+            color: 0xf59e0b,
+            fields: [
+              { name: 'Name', value: name, inline: true },
+              { name: 'Email', value: email || 'N/A', inline: true },
+              { name: 'Refunded', value: `$${(charge.amount_refunded / 100).toFixed(0)} of $${(charge.amount / 100).toFixed(0)}`, inline: true },
+              { name: 'Members Sheet', value: marked ? '✅ Status → Refunded, End Date set' : '⚠️ No member row matched — handle by hand', inline: false },
+              { name: 'Stripe', value: `[View](https://dashboard.stripe.com/payments/${charge.payment_intent})`, inline: false },
+            ],
+            timestamp: new Date().toISOString(),
+          });
+        } catch (err) {
+          console.error('Discord refund notification failed:', err);
+        }
         break;
       }
 
