@@ -3,10 +3,10 @@ import { findMembersToRevoke, markAccessRevoked } from '@/lib/sheets';
 
 /**
  * Daily job: revoke Discord access for members who were refunded more than 24h
- * ago. Removes their membership + cohort roles and adds the "Former Member"
- * role, which drops them to a single "membership-ended" channel (see the Guild
- * setup) and hides the member area. Idempotent via the Access Revoked column on
- * the sheet.
+ * ago. Removes their BCP/BCA Member role and adds the "Former Member" role,
+ * which drops them to a single "membership-ended" channel (see the Guild setup)
+ * and hides the member area. Cohort tags and other cosmetic roles are left
+ * intact. Idempotent via the Cancelled Date column on the sheet.
  *
  * Driven by Vercel Cron (see vercel.json). Auth: a Vercel Cron
  * `Authorization: Bearer ${CRON_SECRET}` header, OR a manual call with
@@ -19,18 +19,14 @@ export const dynamic = 'force-dynamic';
 const GUILD_ID = '1470652210038968466';
 const FORMER_MEMBER_ROLE_ID = '1528836700153974944';
 
-// Membership + cohort roles stripped on revoke. Guest and Alumni are included
-// so a refunded person can't keep access through them (both currently grant
-// member-channel view). Add future cohort role IDs here as cohorts are created.
+// Access roles stripped on revoke. Per Dave, only BCP Member and BCA Member
+// gate member-channel access, so those are what get pulled. Cohort tags and
+// Founding Member are cosmetic and left intact as a record of when they joined.
+// (Note: Guest and Alumni currently also grant channel access on the server. If
+// a future refunded member holds one of those, add its ID here to be airtight.)
 const ROLES_TO_REMOVE = [
   '1472422223972270260', // BCP Member
   '1526616166473404596', // BCA Member
-  '1472422222877429780', // Guest
-  '1472422226400776296', // BCP Alumni
-  '1472422225754718381', // Founding Member
-  '1472422224634974442', // 1st Cohort (Sept 2025)
-  '1499637976488087703', // 2nd Cohort (May 26)
-  '1513581744476131328', // 3rd Cohort (June 26)
 ];
 
 const DISCORD = 'https://discord.com/api/v10';
