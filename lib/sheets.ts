@@ -480,6 +480,88 @@ export async function markRefunded(email: string, refundDate: string): Promise<b
   return true;
 }
 
+// ─── Refund access revocation (24h-delayed Discord role swap) ───
+
+const REVOKE_HEADER = 'Access Revoked';
+
+export interface RevocationTarget {
+  rowNum: number;
+  email: string;
+  discordUserId: string;
+  name: string;
+}
+
+/**
+ * Ensure the "Access Revoked" column exists on the member sheet, appending it
+ * to the header row if missing. Returns its 0-based column index.
+ */
+async function ensureRevokeColumn(sheets: any): Promise<number> {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${SHEET_NAME}'!1:1`,
+  });
+  const headers: string[] = res.data.values?.[0] || [];
+  const found = headers.indexOf(REVOKE_HEADER);
+  if (found >= 0) return found;
+  const idx = headers.length;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${SHEET_NAME}'!${colLetter(idx)}1`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[REVOKE_HEADER]] },
+  });
+  return idx;
+}
+
+/**
+ * Find refunded members whose Discord access should now be revoked:
+ * Status == "Refunded", a Discord User ID is present, the End Date (which holds
+ * the refund date for refunds) is more than `graceHours` in the past, and the
+ * Access Revoked column is still blank. Returns the rows to process.
+ */
+export async function findMembersToRevoke(graceHours = 24): Promise<RevocationTarget[]> {
+  const sheets = await getSheets();
+  const { COL, width } = await resolveMemberSheet(sheets);
+  const revokeIdx = await ensureRevokeColumn(sheets);
+  const lastIdx = Math.max(width - 1, revokeIdx);
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${SHEET_NAME}'!A2:${colLetter(lastIdx)}`,
+  });
+  const rows = res.data.values || [];
+  const cutoff = Date.now() - graceHours * 60 * 60 * 1000;
+  const out: RevocationTarget[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i] || [];
+    const status = (r[COL.STATUS] || '').toString().trim().toLowerCase();
+    if (status !== 'refunded') continue;
+    const discordUserId = (r[COL.DISCORD_USER_ID] || '').toString().trim();
+    if (!discordUserId) continue;
+    if ((r[revokeIdx] || '').toString().trim()) continue; // already revoked
+    const endMs = Date.parse((r[COL.END_DATE] || '').toString().trim());
+    if (isNaN(endMs) || endMs > cutoff) continue; // not yet graceHours past the refund
+    out.push({
+      rowNum: i + 2,
+      email: (r[COL.EMAIL] || '').toString().trim(),
+      discordUserId,
+      name: (r[COL.FIRST_NAME] || '').toString().trim(),
+    });
+  }
+  return out;
+}
+
+/** Stamp the Access Revoked column with today's date for a processed row. */
+export async function markAccessRevoked(rowNum: number): Promise<void> {
+  const sheets = await getSheets();
+  const revokeIdx = await ensureRevokeColumn(sheets);
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${SHEET_NAME}'!${colLetter(revokeIdx)}${rowNum}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[todayEST()]] },
+  });
+}
+
 /**
  * Add a comp/manual member (no Stripe payment).
  * Used from the admin page.

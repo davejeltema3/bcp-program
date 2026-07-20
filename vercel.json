@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/revoke-access", "schedule": "0 13 * * *" }
+  ]
+}
