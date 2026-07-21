@@ -26,6 +26,22 @@ function getStripe() {
   });
 }
 
+/**
+ * Cancel timestamp for a fixed-installment subscription: the end of the final
+ * paid period (billing anchor + totalPayments calendar months). Setting cancel_at
+ * to a period boundary makes the last invoice bill a FULL period. The old approach
+ * used a mid-cycle date (~20 days after the final charge), which made Stripe
+ * prorate that last invoice down and under-collect the plan total. Reads the
+ * subscription's real billing anchor.
+ */
+async function installmentCancelAt(stripe: Stripe, subId: string, totalPayments: number): Promise<number> {
+  const sub = await stripe.subscriptions.retrieve(subId);
+  const anchorSec: number = (sub as any).billing_cycle_anchor || (sub as any).start_date;
+  const end = new Date(anchorSec * 1000);
+  end.setUTCMonth(end.getUTCMonth() + totalPayments);
+  return Math.floor(end.getTime() / 1000);
+}
+
 function verifyWebhook(stripe: Stripe, body: string, signature: string): Stripe.Event {
   const secrets = [
     process.env.STRIPE_WEBHOOK_SECRET,
@@ -206,18 +222,16 @@ export async function POST(request: NextRequest) {
           }
 
           // Auto-cancel installment subscriptions after the final payment.
-          // (cancel_at not available in checkout session subscription_data for this SDK version,
+          // (cancel_at isn't available in the checkout session for this SDK version,
           //  so we set it here once the subscription exists.)
-          // Billing is monthly, so charges land at month 0, 1, ... (totalPayments - 1). The next,
-          // unwanted charge would land at month totalPayments. We cancel after the last wanted
-          // charge but before that next one, with a ~20-day buffer to stay mid-cycle across 28-31
-          // day months. 2 payments => ~50 days; 3 payments => ~80 days. Defaults to 2 for safety.
+          // cancel_at is the end of the final paid period (anchor + totalPayments
+          // months), so the last invoice bills a FULL period. Do NOT use a mid-cycle
+          // date — Stripe prorates the final invoice down to it and under-collects.
           if (session.mode === 'subscription' && session.metadata?.payment_type === 'installment' && session.subscription) {
             try {
               const subId = typeof session.subscription === 'string' ? session.subscription : (session.subscription as any).id;
               const totalPayments = parseInt(session.metadata?.total_payments || '2', 10);
-              const daysUntilCancel = (totalPayments - 1) * 30 + 20;
-              const cancelAt = Math.floor(Date.now() / 1000) + (daysUntilCancel * 24 * 60 * 60);
+              const cancelAt = await installmentCancelAt(stripe, subId, totalPayments);
               await stripe.subscriptions.update(subId, { cancel_at: cancelAt });
               console.log(`Installment subscription ${subId} (${totalPayments} payments) set to auto-cancel at ${new Date(cancelAt * 1000).toISOString()}`);
             } catch (err) {
@@ -290,13 +304,12 @@ export async function POST(request: NextRequest) {
             console.error('Discord high-ticket notification failed:', err);
           }
 
-          // Auto-cancel the installment after the final payment (same math as founders).
+          // Auto-cancel the installment after the final payment (same logic as founders).
           if (session.mode === 'subscription' && isInstallment && session.subscription) {
             try {
               const subId = typeof session.subscription === 'string' ? session.subscription : (session.subscription as any).id;
               const totalPayments = parseInt(session.metadata?.total_payments || '6', 10);
-              const daysUntilCancel = (totalPayments - 1) * 30 + 20;
-              const cancelAt = Math.floor(Date.now() / 1000) + (daysUntilCancel * 24 * 60 * 60);
+              const cancelAt = await installmentCancelAt(stripe, subId, totalPayments);
               await stripe.subscriptions.update(subId, { cancel_at: cancelAt });
               console.log(`bca-pop installment ${subId} (${totalPayments} payments) set to auto-cancel at ${new Date(cancelAt * 1000).toISOString()}`);
             } catch (err) {
