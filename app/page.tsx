@@ -553,9 +553,9 @@ const Icon = ({ name, size = 18 }: { name: string; size?: number }) => {
    WINDOW BADGE
    ===================================================================== */
 function WindowBadge({ state }: { state: WindowState }) {
-  if (state === 'open') return <span className="window-badge"><span className="dot" />Founders Round &middot; Open Now</span>;
-  if (state === 'before') return <span className="window-badge window-badge--soon"><span className="dot" />Founders Round &middot; Opens Soon</span>;
-  return <span className="window-badge window-badge--closed"><span className="dot" />Founders Round &middot; Closed</span>;
+  if (state === 'open') return <span className="window-badge"><span className="dot" />Enrollment &middot; Open Now</span>;
+  if (state === 'before') return <span className="window-badge window-badge--soon"><span className="dot" />Enrollment &middot; Opens Soon</span>;
+  return <span className="window-badge window-badge--closed"><span className="dot" />Enrollment &middot; Closed</span>;
 }
 
 /* =====================================================================
@@ -756,7 +756,7 @@ function SystemMap() {
       <div className="system__head">
         <div>
           <h3 className="system__title">The nine documents</h3>
-          <p className="system__sub">The prototype course. Foundational and mental layers everything else sits on top of. Released over your time in the program. You give feedback, I revise. Founders shape the final version.</p>
+          <p className="system__sub">The prototype course. Foundational and mental layers everything else sits on top of. Released over your time in the program. You give feedback, I revise.</p>
         </div>
         <span className="system__count">09 / docs</span>
       </div>
@@ -1142,7 +1142,7 @@ function WaitlistFormBC({ context }: { context: 'before' | 'after' }) {
 
   const heads = {
     before: { title: 'The window opens soon', sub: 'Drop your email. I will let you know the moment it opens.', btn: 'Notify me' },
-    after: { title: 'This window has closed', sub: 'Get on the list for the next round at the same founders rate.', btn: 'Join the waitlist' },
+    after: { title: 'This window has closed', sub: 'Get on the list and I will let you know when the next enrollment opens.', btn: 'Join the waitlist' },
   };
   const h = heads[context];
 
@@ -1184,7 +1184,7 @@ function PricingCard({
   return (
     <div className="price" id="checkout">
       <div className="price__head-row">
-        <span className="eyebrow"><span className="eyebrow__line" />Founders Round</span>
+        <span className="eyebrow"><span className="eyebrow__line" />The Program</span>
         {windowState === 'before' && windowOpen && (
           <Countdown target={windowOpen} label="Opens in" onComplete={onWindowOpened} />
         )}
@@ -1195,11 +1195,10 @@ function PricingCard({
       <h3 className="price__title">Full access to the program. <span className="blue-em">Six months.</span></h3>
 
       <div className="price__row">
-        <span className="price__strike">$1,999</span>
-        <span className="price__main">$999</span>
+        <span className="price__main">$1,999</span>
       </div>
       <p className="price__sub">
-        <strong>Founders keep 50% off every future version.</strong> When the price goes up, your renewal stays half off whatever it becomes.
+        One payment. Six months of full access. Nothing recurring, nothing auto-charges.
       </p>
 
       <div className="price__rule" />
@@ -1224,14 +1223,14 @@ function PricingCard({
               disabled={isLoadingFull}
               className="btn btn--primary btn--lg btn--block"
             >
-              <span className="price__btn-main">{isLoadingFull ? 'Redirecting to Stripe...' : 'Pay in full — $999'}</span>
+              <span className="price__btn-main">{isLoadingFull ? 'Redirecting to Stripe...' : 'Pay in full — $1,999'}</span>
             </button>
             <button
               onClick={() => onCheckout('installment')}
               disabled={isLoadingInstall}
               className="btn btn--ghost btn--lg btn--block price__btn-split"
             >
-              <span className="price__btn-main">{isLoadingInstall ? 'Redirecting...' : 'Split into 2 — $599 now, $599 in 30 days'}</span>
+              <span className="price__btn-main">{isLoadingInstall ? 'Redirecting...' : 'Split into 2 — $1,199 now, $1,199 in 30 days'}</span>
             </button>
           </div>
 
@@ -1253,13 +1252,12 @@ function PricingCard({
 }
 
 /* =====================================================================
-   PRICE PILL — founders price shown under CTAs in before/after states
+   PRICE PILL — price shown under CTAs in before/after states
    ===================================================================== */
 function PricePill() {
   return (
     <span className="price-pill">
-      <strong>$999 founders price</strong>
-      <span className="strike">$1,999</span>
+      <strong>$1,999</strong>
     </span>
   );
 }
@@ -1276,7 +1274,7 @@ function CTABand({
   onClick: () => void;
 }) {
   const buttonCopy =
-    windowState === 'open' ? 'Join now — $999'
+    windowState === 'open' ? 'Join now — $1,999'
     : windowState === 'before' ? 'Join the waitlist'
     : 'Notify me when it reopens';
   return (
@@ -1379,7 +1377,7 @@ export default function TestPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerEmail: email,
-          paymentMode: mode === 'installment' ? 'installment' : undefined,
+          paymentMode: mode === 'installment' ? 'public-split' : 'public-full',
         }),
       });
       const data = await res.json();
@@ -1447,14 +1445,12 @@ export default function TestPage() {
               {windowState === 'open' ? (
                 <>
                   <button onClick={scrollToCheckout} className="btn btn--primary btn--xl">
-                    Join now &mdash; $999
+                    Join now &mdash; $1,999
                   </button>
                   <p className="hero__price-line">
-                    <span className="strike">$1,999</span>
+                    <strong>$1,999</strong>
                     <span className="dot-sep">&mdash;</span>
-                    <strong>$999 founders price</strong>
-                    <span className="dot-sep">&mdash;</span>
-                    <strong>50% off every future version</strong>
+                    One payment, six months of full access
                   </p>
                 </>
               ) : (
@@ -1525,7 +1521,7 @@ export default function TestPage() {
             <div className="section-head">
               <span className="section-num">02 — Week one</span>
             </div>
-            <h2 className="section-h">What every founder gets in their <span className="blue-em">first week</span>.</h2>
+            <h2 className="section-h">What every member gets in their <span className="blue-em">first week</span>.</h2>
             <p className="section-sub">
               Two things, both delivered in your own thread. The personal review tells you what is broken on your specific channel. The checklist tells you what to do about it every week. <strong>Together, you stop guessing on every upload.</strong>
             </p>
@@ -1552,7 +1548,7 @@ export default function TestPage() {
             </div>
             <h2 className="section-h">You also get <span className="blue-em">all of this</span>.</h2>
             <p className="section-sub">
-              Renew or leave when you are ready. <strong className="green-em">Founders keep 50% off every future version.</strong>
+              Renew or leave when you are ready.
             </p>
             <div className="grid-2 perks-grid">
               <div className="card card--raised">
@@ -1570,7 +1566,7 @@ export default function TestPage() {
               <div className="card card--raised">
                 <h3 className="card__title">The <span className="blue-em">prototype course</span></h3>
                 <p className="card__body">
-                  Nine documents. Foundational, Strategy, Ideation, Titles, Thumbnails, Scripting, Hooks, Production, Mindset. Released as you go. You <strong>give feedback, I revise</strong>. Founders shape the final version.
+                  Nine documents. Foundational, Strategy, Ideation, Titles, Thumbnails, Scripting, Hooks, Production, Mindset. Released as you go. You <strong>give feedback, I revise</strong>.
                 </p>
               </div>
               <div className="card card--raised">
@@ -1641,11 +1637,11 @@ export default function TestPage() {
             </div>
             <h2 className="section-h">Try it for <span className="blue-em">thirty days</span>. If it is not worth it, full refund.</h2>
             <p className="section-sub">
-              Use the first month. Get my read on your specific channel. Read the checklist. Show up to a live call. Spend a week in the community. <strong>If it is not worth $999, I do not want your $999.</strong>
+              Use the first month. Get my read on your specific channel. Read the checklist. Show up to a live call. Spend a week in the community. <strong>If it is not worth $1,999, I do not want your $1,999.</strong>
             </p>
             <div className="tw">
               <div className="tw__head">
-                <span className="eyebrow"><span className="eyebrow__line" />From founders + past clients</span>
+                <span className="eyebrow"><span className="eyebrow__line" />From members + past clients</span>
                 <p className="tw__sub">Different niches. Different stages. People I have actually worked with.<br /><strong>Every one of them real.</strong></p>
               </div>
               <TestimonialWall />
@@ -1682,15 +1678,9 @@ export default function TestPage() {
             <h2 className="section-h faq__h">Questions, <span className="blue-em">answered straight</span>.</h2>
             <div className="faq">
               <details className="faq__item" open>
-                <summary className="faq__q">Why is the founders price $999?</summary>
-                <div className="faq__a">
-                  It is intentionally low for the founders round. I want a <strong>small group of founders</strong> who are serious, and who will shape the final version of the course with their feedback. When the price goes up to $1,999, your renewal stays <strong className="green-em">50% off every future version</strong>.
-                </div>
-              </details>
-              <details className="faq__item">
                 <summary className="faq__q">Is it a subscription?</summary>
                 <div className="faq__a">
-                  No. <strong>$999 once</strong> (or 2&times; $599) gets you six months of full access. After that, you renew or you leave. Nothing auto-charges.
+                  No. <strong>$1,999 once</strong> (or 2&times; $1,199) gets you six months of full access. After that, you renew or you leave. Nothing auto-charges.
                 </div>
               </details>
               <details className="faq__item">
@@ -1714,13 +1704,13 @@ export default function TestPage() {
               <details className="faq__item">
                 <summary className="faq__q">What if it is not working for me?</summary>
                 <div className="faq__a">
-                  Inside thirty days, full refund, no questions. Get the review, read the checklist, show up to a live call, spend a week in the community. If you do not think it is worth $999, I do not want your $999.
+                  Inside thirty days, full refund, no questions. Get the review, read the checklist, show up to a live call, spend a week in the community. If you do not think it is worth $1,999, I do not want your $1,999.
                 </div>
               </details>
               <details className="faq__item">
                 <summary className="faq__q">How often does the door open?</summary>
                 <div className="faq__a">
-                  I open the door in small windows for now. Small groups. Eventually it will stay open and you can join whenever. <strong>Founders lock in the founders price either way.</strong>
+                  I open the door in small windows for now. Small groups. Eventually it will stay open and you can join whenever.
                 </div>
               </details>
             </div>
@@ -1734,7 +1724,7 @@ export default function TestPage() {
               <div className="ps">
                 <span className="ps__label">P.S. &mdash; From Dave</span>
                 <p>If you have read this far, you are the person I built it for.</p>
-                <p>The next founders round either has your name on it or it does not. Either way, six months pass.</p>
+                <p>The next enrollment either has your name on it or it does not. Either way, six months pass.</p>
                 <p>If you want the systems, the attention, and the help, I will see you Monday.</p>
                 <p className="founder__sig">&mdash; Dave</p>
               </div>
@@ -1769,7 +1759,7 @@ export default function TestPage() {
               />
 
               <p className="checkout-fineprint">
-                Comparable programs run multiple thousands. The founders price stays locked in across every future version.
+                Comparable programs run multiple thousands.
               </p>
             </div>
           </div>

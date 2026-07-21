@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     // Installment is always allowed regardless of checkout mode (it's a payment split, not a mode)
     const checkoutMode = process.env.NEXT_PUBLIC_CHECKOUT_MODE || (process.env.NEXT_PUBLIC_ENABLE_SUBSCRIPTION === 'true' ? 'both' : 'one-time');
     let paymentMode = requestedMode;
-    if (requestedMode !== 'installment' && requestedMode !== 'installment3') {
+    if (requestedMode !== 'installment' && requestedMode !== 'installment3' && requestedMode !== 'public-full' && requestedMode !== 'public-split') {
       if (checkoutMode === 'subscription') {
         paymentMode = 'subscription';
       } else if (checkoutMode === 'one-time') {
@@ -48,6 +48,85 @@ export async function POST(request: NextRequest) {
 
     const origin = request.headers.get('origin') || 'https://bcp.boundlesscreator.com';
     const stripe = getStripe();
+
+    // Public one-time: $1,999 (post-founders regular price). Used by the main
+    // landing page. The legacy one-time (default branch below) stays $999 for
+    // the /join fallback.
+    if (paymentMode === 'public-full') {
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        ...(customerEmail ? { customer_email: customerEmail } : {}),
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: 'Boundless Creator Program',
+                description: '6 months: personal channel review, weekly live sessions, resource library, Discord access.',
+              },
+              unit_amount: 199900, // $1,999.00
+            },
+            quantity: 1,
+          },
+        ],
+        metadata: {
+          ...trackingMeta,
+          program: 'bcp-founders',
+          duration: '6 months',
+          payment_type: 'one-time',
+        },
+        success_url: `${origin}/welcome?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/`,
+        allow_promotion_codes: true,
+      });
+      return NextResponse.json({ url: session.url });
+    }
+
+    // Public pay-in-two: 2 payments of $1,199 ($2,398), billed 30 days apart.
+    if (paymentMode === 'public-split') {
+      const session = await stripe.checkout.sessions.create({
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        ...(customerEmail ? { customer_email: customerEmail } : {}),
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: 'Boundless Creator Program (Installment)',
+                description: '2 payments of $1,199, billed 30 days apart. Full 6-month program access.',
+              },
+              unit_amount: 119900, // $1,199.00
+              recurring: {
+                interval: 'month',
+                interval_count: 1,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        subscription_data: {
+          metadata: {
+            ...trackingMeta,
+            program: 'bcp-founders',
+            payment_type: 'installment',
+            total_payments: '2',
+          },
+        },
+        metadata: {
+          ...trackingMeta,
+          program: 'bcp-founders',
+          duration: '6 months',
+          payment_type: 'installment',
+          total_payments: '2',
+        },
+        success_url: `${origin}/welcome?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/`,
+        allow_promotion_codes: true,
+      });
+      return NextResponse.json({ url: session.url });
+    }
 
     // Subscription mode: recurring quarterly ($333/quarter)
     if (paymentMode === 'subscription') {
