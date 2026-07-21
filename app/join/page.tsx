@@ -1231,7 +1231,7 @@ function PricingCard({
               disabled={isLoadingInstall}
               className="btn btn--ghost btn--lg btn--block price__btn-split"
             >
-              <span className="price__btn-main">{isLoadingInstall ? 'Redirecting...' : (installmentPlan === '3' ? 'Split it — 3 payments of $333' : 'Split it — 2 payments of $600')}</span>
+              <span className="price__btn-main">{isLoadingInstall ? 'Redirecting...' : (installmentPlan === '3' ? 'Split it — 3 payments of $333' : 'Split it — 2 payments of $599')}</span>
             </button>
           </div>
 
@@ -1293,7 +1293,7 @@ export default function TestPage() {
   const [windowOpen, setWindowOpen] = useState<Date | null>(null);
   const [windowClose, setWindowClose] = useState<Date | null>(null);
   // The split-payment button is always shown on /join. By default it is the
-  // 2-payment plan ($600 x 2). The separate link ?plan=three swaps it to the
+  // 2-payment plan ($599 x 2). The separate link ?plan=three swaps it to the
   // 3-payment plan ($333 x 3) for people who need to spread it further.
   const [installmentPlan, setInstallmentPlan] = useState<'2' | '3'>('2');
 
