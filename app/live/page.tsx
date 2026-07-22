@@ -73,7 +73,7 @@ const STYLES = `
 .live-page .nav .brand { font-family: var(--font-urbanist), 'Urbanist', 'Inter', sans-serif; font-size:22px; font-weight:700; color:var(--bc-blue-300); letter-spacing:-0.01em; text-decoration:none; }
 .live-page .nav .nav-cta { padding:10px 16px; font-size:14px; }
 
-.live-page .hero { text-align:center; padding: 34px 0 20px; position:relative; }
+.live-page .hero { text-align:center; padding: 26px 0 8px; position:relative; }
 .live-page .hero__glow {
   position:absolute; top:-120px; left:50%; width:900px; height:460px; transform:translateX(-50%);
   background:radial-gradient(ellipse at center, rgba(58,133,255,0.18) 0%, rgba(58,133,255,0.08) 40%, rgba(58,133,255,0) 100%);
@@ -88,14 +88,14 @@ const STYLES = `
 .live-page .date-chip .dot { color: var(--bc-text-500); }
 .live-page .hero h1 {
   font-size: clamp(32px, 4.8vw, 52px); font-weight: 600; letter-spacing: -0.025em;
-  line-height: 1.06; color: var(--bc-text-100); margin: 0 auto 16px; max-width: 18ch;
+  line-height: 1.06; color: var(--bc-text-100); margin: 0 auto 14px; max-width: 24ch;
 }
-.live-page .hero p.lead { font-size: 17px; line-height: 1.6; color: var(--bc-text-300); margin: 0 auto 24px; max-width: 54ch; }
+.live-page .hero p.lead { font-size: 17px; line-height: 1.55; color: var(--bc-text-300); margin: 0 auto 20px; max-width: 64ch; }
 .live-page .hero .cta-row { display:flex; align-items:center; justify-content:center; gap:16px; flex-wrap:wrap; }
 .live-page .hero .cta-row .btn-primary { padding: 14px 28px; font-size: 16px; }
 .live-page .hero .cta-note { font-size:13px; color:var(--bc-text-500); }
 
-.live-page .cal { max-width:340px; margin:30px auto 0; border:1px solid var(--bc-ink-600); background: var(--bc-ink-800); border-radius:18px; padding: 20px; }
+.live-page .cal { max-width:340px; margin:22px auto 0; border:1px solid var(--bc-ink-600); background: var(--bc-ink-800); border-radius:18px; padding: 18px; }
 .live-page .cal__title { text-align:center; color:var(--bc-text-100); font-weight:600; font-size:14px; margin:0 0 12px; }
 .live-page .cal__grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
 .live-page .cal__dow { text-align:center; font-size:10px; color:var(--bc-text-500); padding:1px 0 5px; text-transform:uppercase; letter-spacing:0.04em; }
@@ -110,7 +110,7 @@ const STYLES = `
 .live-page .cal__away { text-align:center; font-size:12px; color:var(--bc-text-400); margin:14px 0 0; }
 .live-page .cal__away b { color:var(--bc-text-100); font-weight:600; }
 
-.live-page .section { padding: 44px 0; border-top: 1px solid var(--bc-ink-700); margin-top: 40px; }
+.live-page .section { padding: 30px 0; border-top: 1px solid var(--bc-ink-700); margin-top: 22px; }
 .live-page .section h2 { text-align:center; font-size: clamp(24px,3.5vw,32px); font-weight:600; letter-spacing:-0.02em; color:var(--bc-text-100); margin:0 0 8px; }
 .live-page .section .section-sub { text-align:center; color:var(--bc-text-400); font-size:15px; margin:0 auto 32px; max-width:48ch; }
 .live-page .points { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; }
