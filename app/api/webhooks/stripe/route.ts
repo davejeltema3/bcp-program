@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
         if (session.metadata?.program === 'bcp-founders') {
           const name = session.customer_details?.name || 'Unknown';
           const email = session.customer_details?.email || 'N/A';
-          const amount = session.amount_total ? `$${(session.amount_total / 100).toFixed(0)}` : '$999';
+          const amount = session.amount_total ? `$${(session.amount_total / 100).toFixed(0)}` : 'N/A';
           const isSubscription = session.mode === 'subscription';
 
           // Boundless Tracking: attribute this sale to the source video, if the
@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
           // Create/update member row in Google Sheet with full payment details
           if (email !== 'N/A') {
             try {
-              const amountPaid = session.amount_total ? session.amount_total / 100 : 999;
+              const amountPaid = session.amount_total ? session.amount_total / 100 : 0;
               const paymentType = session.metadata?.payment_type === 'installment' ? 'installment' : 'one-time';
               const stripeCustomerId = typeof session.customer === 'string' ? session.customer : (session.customer as any)?.id || '';
               const stripeSessionId = session.id;
@@ -330,25 +330,34 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        // This is a renewal
+        // A subscription cycle invoice. Report exactly what it is instead of
+        // assuming every cycle is a paid renewal: only call it a renewal when
+        // money actually changed hands. A $0 or credit cycle (e.g. the final
+        // cycle of a canceled installment, or a balance adjustment) is reported
+        // as a no-charge cycle with the real figures, not an invented "$999".
         if (invoice.billing_reason === 'subscription_cycle') {
           const email = invoice.customer_email || 'N/A';
-          const amount = invoice.amount_paid ? `$${(invoice.amount_paid / 100).toFixed(0)}` : '$999';
+          const paidCents = invoice.amount_paid || 0;
+          const totalCents = typeof (invoice as any).total === 'number' ? (invoice as any).total : paidCents;
+          const money = (c: number) => (c < 0 ? `-$${(Math.abs(c) / 100).toFixed(2)}` : `$${(c / 100).toFixed(2)}`);
+          const isPaidRenewal = paidCents > 0;
 
           try {
             await discordNotify({
-              title: '🔄 BCP Subscription Renewed!',
-              color: 0x3b82f6,
+              title: isPaidRenewal ? '🔄 BCP Subscription Renewed' : 'ℹ️ BCP Subscription Cycle (no charge)',
+              color: isPaidRenewal ? 0x3b82f6 : 0x9ca3af,
               fields: [
                 { name: 'Email', value: email, inline: true },
-                { name: 'Amount', value: amount, inline: true },
+                { name: 'Charged', value: money(paidCents), inline: true },
+                ...(totalCents !== paidCents ? [{ name: 'Invoice total', value: money(totalCents), inline: true }] : []),
+                { name: 'What', value: isPaidRenewal ? 'Renewal payment' : (totalCents < 0 ? 'Credit / adjustment' : 'No amount due'), inline: true },
                 { name: 'Period', value: `${new Date((invoice as any).period_start * 1000).toLocaleDateString()} → ${new Date((invoice as any).period_end * 1000).toLocaleDateString()}`, inline: false },
                 { name: 'Stripe', value: `[View Invoice](https://dashboard.stripe.com/invoices/${invoice.id})`, inline: false },
               ],
               timestamp: new Date().toISOString(),
             });
           } catch (err) {
-            console.error('Discord renewal notification failed:', err);
+            console.error('Discord cycle notification failed:', err);
           }
         }
         break;
