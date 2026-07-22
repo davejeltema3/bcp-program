@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const KIT_TAG_LIVESTREAM = process.env.KIT_TAG_LIVESTREAM || '21355904';
 const KIT_TAG_LIVESTREAM_EVENT = process.env.KIT_TAG_LIVESTREAM_EVENT || '21355905';
+const KIT_SEQUENCE_WELCOME = process.env.KIT_SEQUENCE_LIVESTREAM || '2835892';
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,9 +46,16 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({ email_address: email }),
         }).catch(() => {});
       }
+
+      // 3. Enroll in the welcome sequence (You're in -> Calendar -> Question).
+      await fetch(`https://api.kit.com/v4/sequences/${KIT_SEQUENCE_WELCOME}/subscribers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Kit-Api-Key': apiKey },
+        body: JSON.stringify({ email_address: email }),
+      }).catch(() => {});
     }
 
-    // 3. Optional Discord ping so Dave sees registrations land.
+    // 4. Optional Discord ping so Dave sees registrations land.
     if (process.env.DISCORD_WEBHOOK_URL) {
       try {
         await sendRsvpNotification(firstName, email);

@@ -67,9 +67,10 @@ const STYLES = `
 .live-page .btn-primary:hover { background: linear-gradient(180deg, var(--bc-blue-300), var(--bc-blue-400)); }
 .live-page .btn-primary:active { transform: translateY(1px); }
 
-.live-page .top-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding: 16px clamp(16px,4vw,40px); position:relative; z-index:1; }
-.live-page .top-bar .brand { font-family: var(--font-urbanist), 'Urbanist', sans-serif; font-size: 18px; font-weight: 700; color: var(--bc-blue-300); letter-spacing:-0.01em; text-decoration:none; }
-.live-page .top-bar .btn-primary { padding: 9px 18px; font-size: 14px; }
+.live-page .nav { position:sticky; top:0; z-index:40; background:rgba(7,11,20,.75); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); border-bottom:1px solid var(--bc-ink-700); }
+.live-page .nav__inner { max-width:1320px; margin:0 auto; padding:12px clamp(20px,5vw,40px); display:flex; align-items:center; justify-content:space-between; gap:20px; }
+.live-page .nav .brand { font-family: var(--font-urbanist), 'Urbanist', 'Inter', sans-serif; font-size:22px; font-weight:700; color:var(--bc-blue-300); letter-spacing:-0.01em; text-decoration:none; }
+.live-page .nav .nav-cta { padding:10px 16px; font-size:14px; }
 
 .live-page .hero { text-align:center; padding: 26px 0 12px; position:relative; }
 .live-page .hero__glow {
@@ -252,10 +253,12 @@ export default function LivePage() {
     <div className="live-page">
       <style dangerouslySetInnerHTML={{ __html: STYLES }} />
 
-      <div className="top-bar">
-        <a className="brand" href="https://www.boundlesscreator.com" target="_blank" rel="noopener noreferrer">Boundless Creator</a>
-        <button className="btn-primary" onClick={openModal}>Hold my seat</button>
-      </div>
+      <nav className="nav">
+        <div className="nav__inner">
+          <a className="brand" href="https://www.boundlesscreator.com" target="_blank" rel="noopener noreferrer">Boundless Creator</a>
+          <button className="btn-primary nav-cta" onClick={openModal}>Hold my seat</button>
+        </div>
+      </nav>
 
       <section className="hero">
         <div className="hero__glow" />
@@ -272,7 +275,7 @@ export default function LivePage() {
               </div>
               <h1>Find out what&apos;s holding your channel back</h1>
               <p className="lead">
-                I&apos;m going live to pull up real channels and show you what&apos;s working, what I&apos;d change, and the next move I&apos;d make. It&apos;s my first live stream, and I want you there.
+                I&apos;m going live to pull up real channels and show you what&apos;s working, what I&apos;d change, and the next move I&apos;d make. Bring yours and your questions. I&apos;d love to have you there.
               </p>
               <div className="cta-row">
                 <button className="btn-primary" onClick={openModal}>Hold my seat</button>
@@ -286,7 +289,7 @@ export default function LivePage() {
       <div className="container">
         <section className="section">
           <h2>What happens on the stream</h2>
-          <p className="section-sub">A first-time, no-script live stream. Come with your channel and your questions.</p>
+          <p className="section-sub">No slides, no script. Come with your channel and your questions.</p>
           <div className="points">
             <div className="point">
               <div className="point__icon">🎥</div>
@@ -308,7 +311,7 @@ export default function LivePage() {
 
         <section className="final">
           <h2>Grab a spot</h2>
-          <p>It&apos;s free and it&apos;s my first one. I&apos;d love to see you there.</p>
+          <p>It&apos;s free and it&apos;s live on Zoom. I&apos;d love to see you there.</p>
           <button className="btn-primary" onClick={openModal}>Hold my seat</button>
         </section>
       </div>
