@@ -3,13 +3,14 @@
  *
  * This is the only file to edit to change the form. The page renders from this
  * array and the sheet columns are built from it (id drives the answer key,
- * `column` is the sheet header). Keep `id` stable so old rows line up; change
- * `column`/`question`/`choices` freely.
+ * `column` is the sheet header). Keep `id` stable so old rows line up.
  *
- * Modeled on Nate's survey (channel state, frustration, AI, confidence, live
- * question, what's working, video requests) plus a feature-consent checkbox.
- * The sheet also has two Dave-only columns to the right, "Featured?" and
- * "Notes", that the form never writes.
+ * Three distinct jobs, no overlap:
+ *   core_problem  = what they're trying to solve, their words (open)
+ *   focus         = where to aim the review (quick pick)
+ *   burning_q     = the one question they'd ask live (open)
+ * Plus quick reads on trajectory, AI, and confidence, and a feature consent.
+ * The sheet also has two Dave-only columns, "Featured?" and "Notes".
  */
 
 export interface ReviewChoice {
@@ -39,6 +40,15 @@ export const reviewQuestions: ReviewQuestion[] = [
     required: true,
   },
   {
+    id: 'core_problem',
+    column: 'Core Problem',
+    question: "In your own words, what's the core problem you're trying to solve?",
+    subtext: 'Say it however you would say it. The main thing you keep running into.',
+    type: 'textarea',
+    placeholder: 'e.g. I get decent views but almost no subscribers...',
+    required: true,
+  },
+  {
     id: 'channel_state',
     column: 'Channel State',
     question: "Where's your channel at right now?",
@@ -53,18 +63,17 @@ export const reviewQuestions: ReviewQuestion[] = [
     ],
   },
   {
-    id: 'frustration',
-    column: 'Biggest Frustration',
-    question: "What's your biggest frustration right now?",
+    id: 'focus',
+    column: 'Feedback Focus',
+    question: 'What do you most want me to look at?',
     type: 'multiple-choice',
     required: true,
     choices: [
-      { text: "Titles and thumbnails aren't clicking", value: 'packaging' },
-      { text: "I don't know what to make next", value: 'ideas' },
-      { text: 'My views are stuck', value: 'views' },
-      { text: "I can't find the time", value: 'time' },
-      { text: "I'm not sure what's working", value: 'unclear' },
-      { text: 'Something else', value: 'other' },
+      { text: 'Packaging (titles and thumbnails)', value: 'packaging' },
+      { text: 'Ideas and topics', value: 'ideas' },
+      { text: 'Retention and structure', value: 'retention' },
+      { text: 'Growth strategy', value: 'strategy' },
+      { text: 'Not sure, you pick', value: 'open' },
     ],
   },
   {
@@ -85,7 +94,7 @@ export const reviewQuestions: ReviewQuestion[] = [
     column: 'Confidence',
     question: "How do you feel about where your channel's headed?",
     type: 'multiple-choice',
-    required: true,
+    required: false,
     choices: [
       { text: 'Not confident', value: '1' },
       { text: 'A little', value: '2' },
@@ -95,29 +104,13 @@ export const reviewQuestions: ReviewQuestion[] = [
     ],
   },
   {
-    id: 'question',
-    column: 'Question',
-    question: 'Got a question for the stream?',
-    subtext: "I'll try to hit as many as I can live.",
+    id: 'burning_question',
+    column: 'Burning Question',
+    question: "What's your one burning question?",
+    subtext: "The thing that's been bugging you most. If you had 30 seconds with me, what would you ask?",
     type: 'textarea',
-    placeholder: 'Ask me anything about growth, packaging, or ideas...',
-    required: false,
-  },
-  {
-    id: 'working',
-    column: 'Working Lately',
-    question: 'Anything working lately you want to share?',
-    type: 'textarea',
-    placeholder: 'A recent win, a change that moved the needle...',
-    required: false,
-  },
-  {
-    id: 'requests',
-    column: 'Video Requests',
-    question: 'What would you most like me to make a video about?',
-    type: 'textarea',
-    placeholder: 'The topic you keep wishing someone would cover...',
-    required: false,
+    placeholder: 'e.g. Why do my thumbnails get a low click rate?',
+    required: true,
   },
   {
     id: 'consent',

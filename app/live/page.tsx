@@ -308,7 +308,7 @@ export default function LivePage() {
       </div>
 
       <div className="footer">
-        <a href="mailto:hello@boundlesscreator.com">Contact</a>
+        <a href="mailto:hello@boundlesscreator.com">Questions? Email me</a>
       </div>
 
       {open && (
