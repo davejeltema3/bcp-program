@@ -1,0 +1,16 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Boundless Creator//Livestream//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:livestream-2026-08-13@boundlesscreator.com
+DTSTAMP:20260722T000000Z
+DTSTART:20260813T180000Z
+DTEND:20260813T193000Z
+SUMMARY:Live Channel Reviews with Dave
+DESCRIPTION:Live channel reviews and Q&A. Zoom link emailed before the stream.
+LOCATION:Zoom (link emailed before the stream)
+STATUS:CONFIRMED
+END:VEVENT
+END:VCALENDAR
