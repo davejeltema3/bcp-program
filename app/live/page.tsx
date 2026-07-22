@@ -5,10 +5,9 @@ import { track } from '@vercel/analytics';
 
 /**
  * Live stream RSVP page.
- * Posts to /api/live-rsvp, which creates the subscriber as ACTIVE in Kit
- * (v4 API bypasses double opt-in) and tags them with the standing
- * "Livestream" tag plus the per-event tag. Reusable monthly: change the
- * EVENT object and the .ics file, everything else stays.
+ * Posts to /api/live-rsvp, which subscribes through the Kit "Livestream RSVP"
+ * form (double opt-in) and tags on confirm. Reusable monthly: change the
+ * EVENT object and the .ics file, everything else follows.
  */
 
 const EVENT = {
@@ -18,11 +17,17 @@ const EVENT = {
   platform: 'Live on Zoom',
   // Countdown target. 2:00 PM ET on Aug 13 2026 (EDT, UTC-4) = 18:00 UTC.
   startISO: '2026-08-13T18:00:00Z',
+  // Mini-calendar (0-based month). Update these three for a new month.
+  calYear: 2026,
+  calMonthIndex: 7,
+  eventDay: 13,
+  monthLabel: 'August 2026',
   // Calendar stamps (UTC). 90 minute block.
   calStart: '20260813T180000Z',
   calEnd: '20260813T193000Z',
-  details: "Live channel reviews and Q&A. Zoom link emailed before the stream.",
-  location: 'Zoom (link emailed before the stream)',
+  zoom: 'https://us06web.zoom.us/j/87157268611',
+  details: 'Live channel reviews and Q&A with Dave. Join on Zoom: https://us06web.zoom.us/j/87157268611',
+  location: 'https://us06web.zoom.us/j/87157268611',
   icsUrl: '/live-aug-2026.ics',
 };
 
@@ -95,15 +100,37 @@ const STYLES = `
   max-width: 54ch; margin: 0 auto;
 }
 
-.live-page .countdown {
-  display:flex; justify-content:center; gap:10px; margin-top:28px;
+.live-page .cal { max-width: 320px; margin: 30px auto 0; padding: 18px; background: var(--bc-ink-800); border:1px solid var(--bc-ink-600); border-radius:16px; }
+.live-page .cal__title { text-align:center; color:var(--bc-text-100); font-weight:600; font-size:15px; margin:0 0 14px; letter-spacing:-0.01em; }
+.live-page .cal__grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+.live-page .cal__dow { text-align:center; font-size:11px; color:var(--bc-text-500); padding:2px 0 6px; text-transform:uppercase; letter-spacing:0.04em; }
+.live-page .cal__day { text-align:center; font-size:13px; color:var(--bc-text-300); padding:8px 0; border-radius:9px; border:1px solid transparent; }
+.live-page button.cal__day { font:inherit; background:none; }
+.live-page .cal__day.event {
+  background:linear-gradient(180deg, var(--bc-blue-400), var(--bc-blue-500)); color:#fff; font-weight:700;
+  cursor:pointer; box-shadow:0 6px 18px -6px var(--bc-blue-glow); transition:filter 120ms, transform 120ms;
 }
-.live-page .cd-unit {
-  min-width:64px; padding:12px 10px; border-radius:12px;
-  background:var(--bc-ink-800); border:1px solid var(--bc-ink-600); text-align:center;
+.live-page .cal__day.event:hover { filter:brightness(1.09); }
+.live-page .cal__day.event:active { transform:translateY(1px); }
+.live-page .cal__day.event.selected { outline:2px solid var(--bc-blue-200); outline-offset:2px; }
+.live-page .cal__hint { text-align:center; font-size:12px; color:var(--bc-text-500); margin:14px 0 0; }
+.live-page .cal__away { text-align:center; font-size:13px; color:var(--bc-text-300); margin:18px 0 0; }
+.live-page .cal__away b { color:var(--bc-text-100); font-weight:600; }
+
+.live-page .cal-btns { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:16px; }
+.live-page .cal-btn {
+  display:inline-flex; align-items:center; gap:8px; padding:12px 18px; border-radius:12px;
+  font-size:14px; font-weight:600; text-decoration:none; cursor:pointer;
+  border:1px solid var(--bc-ink-600); background:var(--bc-ink-900); color:var(--bc-text-100);
+  transition: border-color 150ms, background 150ms;
 }
-.live-page .cd-num { display:block; font-size:24px; font-weight:700; color:var(--bc-text-100); font-variant-numeric:tabular-nums; }
-.live-page .cd-label { display:block; font-size:11px; color:var(--bc-text-400); margin-top:2px; text-transform:uppercase; letter-spacing:0.04em; }
+.live-page .cal-btn:hover { border-color: var(--bc-blue-400); }
+.live-page .cal-btn--primary {
+  background: linear-gradient(180deg, var(--bc-blue-400), var(--bc-blue-500));
+  border:1px solid rgba(255,255,255,0.08); color:#fff;
+  box-shadow: 0 8px 32px -8px var(--bc-blue-glow);
+}
+.live-page .cal-btn--primary:hover { background: linear-gradient(180deg, var(--bc-blue-300), var(--bc-blue-400)); border-color:rgba(255,255,255,0.08); }
 
 .live-page .features {
   background: var(--bc-ink-800); border: 1px solid var(--bc-ink-600);
@@ -175,20 +202,6 @@ const STYLES = `
 }
 .live-page .success h2 { font-size: 24px; color: var(--bc-text-100); margin: 0 0 8px; }
 .live-page .success p { color: var(--bc-text-300); margin: 0 0 4px; }
-.live-page .cal-btns { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:22px; }
-.live-page .cal-btn {
-  display:inline-flex; align-items:center; gap:8px; padding:12px 18px; border-radius:12px;
-  font-size:14px; font-weight:600; text-decoration:none; cursor:pointer;
-  border:1px solid var(--bc-ink-600); background:var(--bc-ink-900); color:var(--bc-text-100);
-  transition: border-color 150ms, background 150ms;
-}
-.live-page .cal-btn:hover { border-color: var(--bc-blue-400); }
-.live-page .cal-btn--primary {
-  background: linear-gradient(180deg, var(--bc-blue-400), var(--bc-blue-500));
-  border:1px solid rgba(255,255,255,0.08); color:#fff;
-  box-shadow: 0 8px 32px -8px var(--bc-blue-glow);
-}
-.live-page .cal-btn--primary:hover { background: linear-gradient(180deg, var(--bc-blue-300), var(--bc-blue-400)); border-color:rgba(255,255,255,0.08); }
 .live-page .signoff { color: var(--bc-text-400); font-size: 13px; margin-top: 20px; }
 
 .live-page .footer {
@@ -200,29 +213,63 @@ const STYLES = `
 `;
 
 function useCountdown(targetISO: string) {
-  const [parts, setParts] = useState<{ d: number; h: number; m: number; done: boolean }>({
-    d: 0, h: 0, m: 0, done: false,
-  });
+  const [parts, setParts] = useState<{ d: number; done: boolean }>({ d: 0, done: false });
   useEffect(() => {
     const target = new Date(targetISO).getTime();
     const tick = () => {
       const total = target - Date.now();
-      if (total <= 0) {
-        setParts({ d: 0, h: 0, m: 0, done: true });
-        return;
-      }
-      setParts({
-        d: Math.floor(total / (1000 * 60 * 60 * 24)),
-        h: Math.floor((total / (1000 * 60 * 60)) % 24),
-        m: Math.floor((total / (1000 * 60)) % 60),
-        done: false,
-      });
+      if (total <= 0) { setParts({ d: 0, done: true }); return; }
+      setParts({ d: Math.floor(total / (1000 * 60 * 60 * 24)), done: false });
     };
     tick();
-    const id = setInterval(tick, 30000);
+    const id = setInterval(tick, 60000);
     return () => clearInterval(id);
   }, [targetISO]);
   return parts;
+}
+
+function CalendarButtons() {
+  return (
+    <div className="cal-btns">
+      <a className="cal-btn cal-btn--primary" href={googleCalUrl} target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>
+      <a className="cal-btn" href={EVENT.icsUrl} download>Apple or Outlook (.ics)</a>
+    </div>
+  );
+}
+
+function MiniCalendar({ selected, onPick }: { selected: boolean; onPick: () => void }) {
+  const firstWeekday = new Date(EVENT.calYear, EVENT.calMonthIndex, 1).getDay();
+  const daysInMonth = new Date(EVENT.calYear, EVENT.calMonthIndex + 1, 0).getDate();
+  const dow = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  return (
+    <div className="cal">
+      <p className="cal__title">{EVENT.monthLabel}</p>
+      <div className="cal__grid">
+        {dow.map((d) => <div key={d} className="cal__dow">{d}</div>)}
+        {cells.map((d, i) => {
+          if (d === null) return <div key={`e${i}`} className="cal__day" />;
+          if (d === EVENT.eventDay) {
+            return (
+              <button
+                key={d}
+                type="button"
+                className={`cal__day event${selected ? ' selected' : ''}`}
+                onClick={onPick}
+                aria-label={`Event on ${EVENT.monthLabel} ${d}`}
+              >
+                {d}
+              </button>
+            );
+          }
+          return <div key={d} className="cal__day">{d}</div>;
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function LivePage() {
@@ -231,7 +278,10 @@ export default function LivePage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
+  const [calOpen, setCalOpen] = useState(false);
   const cd = useCountdown(EVENT.startISO);
+
+  const awayLabel = cd.done ? 'Happening now' : cd.d > 0 ? `${cd.d} days away` : 'Today';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -276,12 +326,16 @@ export default function LivePage() {
             It&apos;s my first live stream, and I want you there. I&apos;ll pull up real channels and tell you what&apos;s working and what I&apos;d change next. Grab your spot below.
           </p>
 
-          {!cd.done && (
-            <div className="countdown" aria-label="Time until the stream">
-              <div className="cd-unit"><span className="cd-num">{cd.d}</span><span className="cd-label">days</span></div>
-              <div className="cd-unit"><span className="cd-num">{cd.h}</span><span className="cd-label">hrs</span></div>
-              <div className="cd-unit"><span className="cd-num">{cd.m}</span><span className="cd-label">min</span></div>
-            </div>
+          <MiniCalendar selected={calOpen} onPick={() => setCalOpen((v) => !v)} />
+          {calOpen ? (
+            <>
+              <p className="cal__hint">The Zoom link is inside. Claim your spot below so I can send reminders.</p>
+              <CalendarButtons />
+            </>
+          ) : (
+            <>
+              <p className="cal__away"><b>{awayLabel}</b>. Tap the 13th to add it to your calendar.</p>
+            </>
           )}
         </div>
       </section>
@@ -295,12 +349,9 @@ export default function LivePage() {
               </svg>
             </div>
             <h2>Almost in.</h2>
-            <p>Check your email and confirm your spot. Then watch for the Zoom link before we go live.</p>
-            <p>Add it to your calendar now so it&apos;s on your radar:</p>
-            <div className="cal-btns">
-              <a className="cal-btn cal-btn--primary" href={googleCalUrl} target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>
-              <a className="cal-btn" href={EVENT.icsUrl} download>Apple or Outlook (.ics)</a>
-            </div>
+            <p>Check your email and confirm your spot.</p>
+            <p>Then add the event to your calendar below. The Zoom link is right inside it, so you can join in one tap when we go live:</p>
+            <CalendarButtons />
             <p className="signoff">See you on the 13th.</p>
           </div>
         ) : (
@@ -355,7 +406,7 @@ export default function LivePage() {
                 </button>
               </form>
               <p className="nospam">
-                Free. I&apos;ll send the Zoom link and a couple of reminders before we go live. You&apos;ll get my weekly newsletter too. Unsubscribe anytime.
+                Free. The Zoom link is in the calendar invite, and I&apos;ll send a couple of reminders before we go live. You&apos;ll get my weekly newsletter too. Unsubscribe anytime.
               </p>
             </section>
           </>

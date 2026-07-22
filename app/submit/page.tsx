@@ -64,6 +64,8 @@ const STYLES = `
 }
 .submit-page .choice:hover { border-color:var(--bc-blue-400); }
 .submit-page .choice.selected { border-color:var(--bc-blue-400); background:rgba(58,133,255,0.12); color:var(--bc-text-100); }
+.submit-page .consent { display:flex; align-items:flex-start; gap:11px; cursor:pointer; color:var(--bc-text-200); font-size:14px; line-height:1.5; font-weight:400; margin:0; }
+.submit-page .consent input { width:19px; height:19px; margin:1px 0 0; padding:0; accent-color:var(--bc-blue-400); flex-shrink:0; }
 .submit-page button.submit {
   width:100%; padding:14px 22px; border-radius:12px;
   background:linear-gradient(180deg, var(--bc-blue-400), var(--bc-blue-500));
@@ -180,38 +182,51 @@ export default function SubmitPage() {
                 />
               </div>
 
-              {reviewQuestions.map((q) => (
-                <div className="field" key={q.id}>
-                  <label>{q.question} {q.required && <span className="req">*</span>}</label>
-                  {q.subtext && <p className="sub">{q.subtext}</p>}
-                  {q.type === 'multiple-choice' && q.choices ? (
-                    <div className="choices">
-                      {q.choices.map((c) => (
-                        <div
-                          key={c.value}
-                          className={`choice${answers[q.id] === c.value ? ' selected' : ''}`}
-                          onClick={() => setAnswer(q.id, c.value)}
-                        >
-                          {c.text}
-                        </div>
-                      ))}
-                    </div>
-                  ) : q.type === 'textarea' ? (
-                    <textarea
-                      value={answers[q.id] || ''}
-                      onChange={(e) => setAnswer(q.id, e.target.value)}
-                      placeholder={q.placeholder}
-                    />
-                  ) : (
-                    <input
-                      type={q.type === 'url' ? 'url' : 'text'}
-                      value={answers[q.id] || ''}
-                      onChange={(e) => setAnswer(q.id, e.target.value)}
-                      placeholder={q.placeholder}
-                    />
-                  )}
-                </div>
-              ))}
+              {reviewQuestions.map((q) =>
+                q.type === 'checkbox' ? (
+                  <div className="field" key={q.id}>
+                    <label className="consent">
+                      <input
+                        type="checkbox"
+                        checked={answers[q.id] === 'Yes'}
+                        onChange={(e) => setAnswer(q.id, e.target.checked ? 'Yes' : '')}
+                      />
+                      <span>{q.question}{q.required && <span className="req"> *</span>}</span>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="field" key={q.id}>
+                    <label>{q.question} {q.required && <span className="req">*</span>}</label>
+                    {q.subtext && <p className="sub">{q.subtext}</p>}
+                    {q.type === 'multiple-choice' && q.choices ? (
+                      <div className="choices">
+                        {q.choices.map((c) => (
+                          <div
+                            key={c.value}
+                            className={`choice${answers[q.id] === c.value ? ' selected' : ''}`}
+                            onClick={() => setAnswer(q.id, c.value)}
+                          >
+                            {c.text}
+                          </div>
+                        ))}
+                      </div>
+                    ) : q.type === 'textarea' ? (
+                      <textarea
+                        value={answers[q.id] || ''}
+                        onChange={(e) => setAnswer(q.id, e.target.value)}
+                        placeholder={q.placeholder}
+                      />
+                    ) : (
+                      <input
+                        type={q.type === 'url' ? 'url' : 'text'}
+                        value={answers[q.id] || ''}
+                        onChange={(e) => setAnswer(q.id, e.target.value)}
+                        placeholder={q.placeholder}
+                      />
+                    )}
+                  </div>
+                )
+              )}
 
               {error && <p className="err">{error}</p>}
               <div style={{ marginTop: 24 }}>
