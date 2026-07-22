@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Live stream RSVP endpoint.
+ * Live stream RSVP endpoint — frictionless (single opt-in), Jay-style.
  *
- * Subscribes through the Kit "Livestream RSVP" form (v3 endpoint), which runs
- * Dave's double opt-in: Kit sends the confirm email, and on confirmation it
- * applies the form's tags. Set that form to apply BOTH tags on confirm:
- *   Livestream (standing)        21355904
- *   Livestream - Aug 13 2026     21355905
- * and remove the BCP Waitlist tags the duplicated form came with.
+ * Uses the Kit v4 API to create the subscriber as ACTIVE immediately (no
+ * confirm-your-email step), then tags them with the standing "Livestream" tag
+ * and the per-event tag. The welcome / calendar / question emails run off
+ * those tags as a Kit sequence; the fixed-date reminders run as scheduled
+ * broadcasts to the event tag.
  *
- * Form ID:     9712155
- * v3 API key:  KIT_V3_API_KEY env var, falls back to the landing-page key.
+ * Tag IDs are hardcoded as fallbacks so no new Vercel env var is required.
+ *   Livestream (standing):        21355904
+ *   Livestream - Aug 13 2026:     21355905
  */
 
-const LIVESTREAM_FORM_ID = '9712155';
-const KIT_V3_API_KEY_FALLBACK = '8r2gDZv9vgYKgeS4TAeKdw';
+const KIT_TAG_LIVESTREAM = process.env.KIT_TAG_LIVESTREAM || '21355904';
+const KIT_TAG_LIVESTREAM_EVENT = process.env.KIT_TAG_LIVESTREAM_EVENT || '21355905';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,27 +25,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email required' }, { status: 400 });
     }
 
-    // Kit form subscribe — triggers the confirm email + form tags on confirm.
-    const v3Key = process.env.KIT_V3_API_KEY || KIT_V3_API_KEY_FALLBACK;
-    const kitResponse = await fetch(
-      `https://api.convertkit.com/v3/forms/${LIVESTREAM_FORM_ID}/subscribe`,
-      {
+    const apiKey = process.env.KIT_API_KEY;
+    if (apiKey) {
+      // 1. Create/update subscriber as active (v4 API = single opt-in).
+      await fetch('https://api.kit.com/v4/subscribers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Kit-Api-Key': apiKey },
         body: JSON.stringify({
-          api_key: v3Key,
-          email,
-          first_name: firstName || undefined,
+          email_address: email,
+          ...(firstName ? { first_name: firstName } : {}),
         }),
-      },
-    );
+      }).catch(() => {});
 
-    if (!kitResponse.ok) {
-      const text = await kitResponse.text();
-      console.error('Kit form subscribe failed:', text);
+      // 2. Tag: standing Livestream + this specific event.
+      for (const tagId of [KIT_TAG_LIVESTREAM, KIT_TAG_LIVESTREAM_EVENT]) {
+        await fetch(`https://api.kit.com/v4/tags/${tagId}/subscribers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Kit-Api-Key': apiKey },
+          body: JSON.stringify({ email_address: email }),
+        }).catch(() => {});
+      }
     }
 
-    // Optional Discord ping so Dave sees RSVPs land.
+    // 3. Optional Discord ping so Dave sees registrations land.
     if (process.env.DISCORD_WEBHOOK_URL) {
       try {
         await sendRsvpNotification(firstName, email);
@@ -70,13 +72,13 @@ async function sendRsvpNotification(
   if (!webhookUrl) return;
 
   const embed = {
-    title: '🎥 New Livestream RSVP',
+    title: '🎥 New Livestream Registration',
     color: 0x3b82f6,
     fields: [
       { name: 'Name', value: firstName || '_(not provided)_', inline: true },
       { name: 'Email', value: email, inline: true },
     ],
-    footer: { text: 'Live Channel Reviews — Aug 13 2026 (unconfirmed until they click the email)' },
+    footer: { text: 'Live Channel Reviews — Aug 13 2026' },
     timestamp: new Date().toISOString(),
   };
 
