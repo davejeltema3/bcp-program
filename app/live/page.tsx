@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { track } from '@vercel/analytics';
 
 /**
- * Live stream RSVP landing page (Membership Summit pattern).
- * The CTA is "Hold my seat", which opens a modal with the register form.
- * Posts to /api/live-rsvp. Reusable monthly: change EVENT + the .ics file.
+ * Live stream RSVP landing page.
+ * Centered hero (headline + subhead + CTA + calendar), "Hold my seat" opens a
+ * register modal. Frictionless: /api/live-rsvp registers active + enrolls in
+ * the welcome sequence. Reusable monthly: change EVENT + the .ics file.
  */
 
 const EVENT = {
@@ -22,7 +23,7 @@ const EVENT = {
   calStart: '20260813T180000Z',
   calEnd: '20260813T193000Z',
   zoom: 'https://us06web.zoom.us/j/87157268611',
-  details: 'Live channel reviews and Q&A with Dave. Join on Zoom: https://us06web.zoom.us/j/87157268611',
+  details: 'Live channel reviews and Q&A with Dave. Your Zoom link is in this event. Watch your inbox for a couple of reminders before we go live.',
   location: 'https://us06web.zoom.us/j/87157268611',
   icsUrl: '/live-aug-2026.ics',
 };
@@ -72,16 +73,13 @@ const STYLES = `
 .live-page .nav .brand { font-family: var(--font-urbanist), 'Urbanist', 'Inter', sans-serif; font-size:22px; font-weight:700; color:var(--bc-blue-300); letter-spacing:-0.01em; text-decoration:none; }
 .live-page .nav .nav-cta { padding:10px 16px; font-size:14px; }
 
-.live-page .hero { text-align:center; padding: 26px 0 12px; position:relative; }
+.live-page .hero { text-align:center; padding: 34px 0 20px; position:relative; }
 .live-page .hero__glow {
   position:absolute; top:-120px; left:50%; width:900px; height:460px; transform:translateX(-50%);
   background:radial-gradient(ellipse at center, rgba(58,133,255,0.18) 0%, rgba(58,133,255,0.08) 40%, rgba(58,133,255,0) 100%);
   pointer-events:none; filter:blur(40px);
 }
 .live-page .hero__inner { position:relative; }
-.live-page .hero-cols { display:grid; grid-template-columns: 0.9fr 1.1fr; gap: 32px; align-items:center; text-align:left; }
-@media (max-width: 800px) { .live-page .hero-cols { grid-template-columns:1fr; gap:24px; text-align:center; max-width:440px; margin:0 auto; } }
-
 .live-page .date-chip {
   display:inline-flex; align-items:center; gap:8px; margin:0 0 16px;
   padding:8px 16px; border-radius:999px; background:rgba(58,133,255,0.10); border:1px solid var(--bc-ink-600);
@@ -89,16 +87,15 @@ const STYLES = `
 }
 .live-page .date-chip .dot { color: var(--bc-text-500); }
 .live-page .hero h1 {
-  font-size: clamp(32px, 4.6vw, 50px); font-weight: 600; letter-spacing: -0.025em;
-  line-height: 1.06; color: var(--bc-text-100); margin: 0 0 16px;
+  font-size: clamp(32px, 4.8vw, 52px); font-weight: 600; letter-spacing: -0.025em;
+  line-height: 1.06; color: var(--bc-text-100); margin: 0 auto 16px; max-width: 18ch;
 }
-.live-page .hero p.lead { font-size: 17px; line-height: 1.6; color: var(--bc-text-300); margin: 0 0 24px; }
-.live-page .hero .cta-row { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
-@media (max-width: 800px) { .live-page .hero .cta-row { justify-content:center; } }
+.live-page .hero p.lead { font-size: 17px; line-height: 1.6; color: var(--bc-text-300); margin: 0 auto 24px; max-width: 54ch; }
+.live-page .hero .cta-row { display:flex; align-items:center; justify-content:center; gap:16px; flex-wrap:wrap; }
 .live-page .hero .cta-row .btn-primary { padding: 14px 28px; font-size: 16px; }
 .live-page .hero .cta-note { font-size:13px; color:var(--bc-text-500); }
 
-.live-page .cal { border:1px solid var(--bc-ink-600); background: var(--bc-ink-800); border-radius:18px; padding: 20px; }
+.live-page .cal { max-width:340px; margin:30px auto 0; border:1px solid var(--bc-ink-600); background: var(--bc-ink-800); border-radius:18px; padding: 20px; }
 .live-page .cal__title { text-align:center; color:var(--bc-text-100); font-weight:600; font-size:14px; margin:0 0 12px; }
 .live-page .cal__grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
 .live-page .cal__dow { text-align:center; font-size:10px; color:var(--bc-text-500); padding:1px 0 5px; text-transform:uppercase; letter-spacing:0.04em; }
@@ -160,8 +157,7 @@ const STYLES = `
 .live-page .modal .signoff2 { margin:12px 0 0; font-size:12px; color:var(--bc-text-500); }
 .live-page .modal .signoff2 b { color:var(--bc-text-300); font-weight:600; }
 .live-page .modal .cal-btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; }
-.live-page .modal .cal-btn { display:inline-flex; align-items:center; gap:8px; padding:11px 15px; border-radius:11px; font-size:13px; font-weight:600; text-decoration:none; cursor:pointer; border:1px solid var(--bc-ink-600); background:var(--bc-ink-900); color:var(--bc-text-100); }
-.live-page .modal .cal-btn--primary { background: linear-gradient(180deg, var(--bc-blue-400), var(--bc-blue-500)); border:1px solid rgba(255,255,255,0.08); color:#fff; }
+.live-page .modal .cal-btn { display:inline-flex; align-items:center; gap:8px; padding:11px 15px; border-radius:11px; font-size:13px; font-weight:600; text-decoration:none; cursor:pointer; border:1px solid rgba(255,255,255,0.08); background: linear-gradient(180deg, var(--bc-blue-400), var(--bc-blue-500)); color:#fff; }
 .live-page .modal__ok { text-align:center; }
 .live-page .modal__ok .ok-icon { width:56px; height:56px; border-radius:50%; background:rgba(47,203,134,0.16); color:var(--bc-green-400); display:grid; place-items:center; margin:4px auto 14px; }
 .live-page .modal__ok h3 { text-align:center; }
@@ -263,25 +259,20 @@ export default function LivePage() {
       <section className="hero">
         <div className="hero__glow" />
         <div className="container hero__inner">
-          <div className="hero-cols">
-            <div className="cal">
-              <MiniCalendar onPick={openModal} />
-              <p className="cal__away"><b>{awayLabel}</b>. Tap the 13th to hold your seat.</p>
-            </div>
-
-            <div className="hero-copy">
-              <div className="date-chip">
-                {EVENT.dateLabel} <span className="dot">·</span> {EVENT.timeLabel} <span className="dot">·</span> {EVENT.platform}
-              </div>
-              <h1>Find out what&apos;s holding your channel back</h1>
-              <p className="lead">
-                I&apos;m going live to pull up real channels and show you what&apos;s working, what I&apos;d change, and the next move I&apos;d make. Bring yours and your questions. I&apos;d love to have you there.
-              </p>
-              <div className="cta-row">
-                <button className="btn-primary" onClick={openModal}>Hold my seat</button>
-                <span className="cta-note">Free · 90 minutes · Live on Zoom</span>
-              </div>
-            </div>
+          <div className="date-chip">
+            {EVENT.dateLabel} <span className="dot">·</span> {EVENT.timeLabel} <span className="dot">·</span> {EVENT.platform}
+          </div>
+          <h1>Find out what&apos;s holding your channel back</h1>
+          <p className="lead">
+            I&apos;m going live to pull up real channels and show you what&apos;s working, what I&apos;d change, and the next move I&apos;d make. Bring yours and your questions. I&apos;d love to have you there.
+          </p>
+          <div className="cta-row">
+            <button className="btn-primary" onClick={openModal}>Hold my seat</button>
+            <span className="cta-note">Free · 90 minutes · Live on Zoom</span>
+          </div>
+          <div className="cal">
+            <MiniCalendar onPick={openModal} />
+            <p className="cal__away"><b>{awayLabel}</b>. Tap the 13th to hold your seat.</p>
           </div>
         </div>
       </section>
@@ -317,8 +308,6 @@ export default function LivePage() {
       </div>
 
       <div className="footer">
-        <a href="https://privacy.boundlesscreator.com">Privacy</a>
-        {' · '}
         <a href="mailto:hello@boundlesscreator.com">Contact</a>
       </div>
 
@@ -334,10 +323,9 @@ export default function LivePage() {
                   </svg>
                 </div>
                 <h3>You&apos;re in!</h3>
-                <p>You&apos;re on the list for the 13th. Add it to your calendar now so the Zoom link&apos;s ready when we go live.</p>
+                <p>You&apos;re on the list for the 13th. Add it to your calendar so the Zoom link is ready when we go live.</p>
                 <div className="cal-btns">
-                  <a className="cal-btn cal-btn--primary" href={googleCalUrl} target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>
-                  <a className="cal-btn" href={EVENT.icsUrl} download>Apple / Outlook (.ics)</a>
+                  <a className="cal-btn" href={googleCalUrl} target="_blank" rel="noopener noreferrer">Add to Google Calendar</a>
                 </div>
               </div>
             ) : (

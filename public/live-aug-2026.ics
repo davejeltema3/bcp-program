@@ -9,9 +9,14 @@ DTSTAMP:20260722T000000Z
 DTSTART:20260813T180000Z
 DTEND:20260813T193000Z
 SUMMARY:Live Channel Reviews with Dave
-DESCRIPTION:Live channel reviews and Q&A with Dave. Join on Zoom: https://us06web.zoom.us/j/87157268611
+DESCRIPTION:Live channel reviews and Q&A with Dave. Join on Zoom (link below).
 LOCATION:https://us06web.zoom.us/j/87157268611
 URL:https://us06web.zoom.us/j/87157268611
 STATUS:CONFIRMED
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Live Channel Reviews with Dave starts in 30 minutes
+TRIGGER:-PT30M
+END:VALARM
 END:VEVENT
 END:VCALENDAR

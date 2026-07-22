@@ -285,7 +285,7 @@ export default function InsightPage() {
 
         <footer className="footer">
           <p>
-            <a href="https://privacy.boundlesscreator.com">Privacy Policy</a>
+            <a href="https://privacy.boundlesscreator.com" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
             {' · '}
             <a href="mailto:hello@boundlesscreator.com">Contact</a>
           </p>
