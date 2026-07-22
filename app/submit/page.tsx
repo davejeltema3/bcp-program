@@ -139,7 +139,7 @@ export default function SubmitPage() {
       <style dangerouslySetInnerHTML={{ __html: STYLES }} />
 
       <div className="top-strip">
-        <a href="https://www.boundlesscreator.com" target="_blank" rel="noopener noreferrer">Boundless</a>
+        <a href="https://www.boundlesscreator.com" target="_blank" rel="noopener noreferrer">Boundless Creator</a>
       </div>
 
       <div className="container">
@@ -203,8 +203,8 @@ export default function SubmitPage() {
                         {q.choices.map((c) => (
                           <div
                             key={c.value}
-                            className={`choice${answers[q.id] === c.value ? ' selected' : ''}`}
-                            onClick={() => setAnswer(q.id, c.value)}
+                            className={`choice${answers[q.id] === c.text ? ' selected' : ''}`}
+                            onClick={() => setAnswer(q.id, c.text)}
                           >
                             {c.text}
                           </div>
