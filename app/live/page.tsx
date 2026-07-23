@@ -224,6 +224,20 @@ export default function LivePage() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Count this visit once per browser, so the sheet tracks /live visitors.
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && !localStorage.getItem('bc_live_viewed')) {
+        localStorage.setItem('bc_live_viewed', '1');
+        fetch('/api/live-view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ referrer: document.referrer || '' }),
+        }).catch(() => {});
+      }
+    } catch {}
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;

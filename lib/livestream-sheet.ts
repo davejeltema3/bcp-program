@@ -22,6 +22,7 @@ import { reviewQuestions } from './livestream-review';
 
 const SPREADSHEET_ID = process.env.BCP_SHEET_ID || '1lpnkxlN21slJwdItDr9Q-fzMcS5tzRz1l4fpqT8Oa6c';
 const SHEET_NAME = 'Livestream Reviews';
+const VIEWS_SHEET = 'Live Views';
 
 async function getSheets() {
   const { google } = await import('googleapis');
@@ -212,5 +213,44 @@ export async function appendLivestreamReview(
     range: `'${SHEET_NAME}'!A${nextRow}:${lastCol}${nextRow}`,
     valueInputOption: 'USER_ENTERED',
     requestBody: { values: [row] },
+  });
+}
+
+// --- /live view counter --------------------------------------------------
+// Logs one row per page view to the "Live Views" tab. The summary cell counts
+// those rows, so the sheet tracks visitors without the Vercel Analytics API.
+
+async function ensureViewsTab(): Promise<void> {
+  const sheets = await getSheets();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+  const exists = meta.data.sheets?.some((s: any) => s.properties?.title === VIEWS_SHEET);
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: { requests: [{ addSheet: { properties: { title: VIEWS_SHEET } } }] },
+    });
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${VIEWS_SHEET}'!A1:B1`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [['Timestamp', 'Referrer']] },
+    });
+  }
+}
+
+/**
+ * Append one /live view. Called by /api/live-view, which the page beacons once
+ * per browser (localStorage-guarded). Append is atomic, so concurrent views
+ * never race. Bots that don't run JavaScript never trigger it.
+ */
+export async function recordLiveView(referrer?: string): Promise<void> {
+  await ensureViewsTab();
+  const sheets = await getSheets();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${VIEWS_SHEET}'!A:B`,
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [[nowEST(), referrer || '']] },
   });
 }
