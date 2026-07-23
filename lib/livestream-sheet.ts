@@ -1,27 +1,28 @@
 /**
  * Writes channel-review submissions AND registrations to the "Livestream
- * Reviews" tab of the BCP Members Sheet. Self-contained (its own Sheets
+ * Waitlist" tab of the BCP Members Sheet. Self-contained (its own Sheets
  * client) so it never touches the member-critical logic in lib/sheets.ts.
  *
- * Layout (columns A-K are frozen so a review write and a registration write
- * never fight over position):
- *   A Timestamp (submission time)   B First Name   C Email
+ * Layout:
+ *   A Timestamp (signup / registration time)   B First Name   C Email
  *   D..K  the eight review answers (built from lib/livestream-review.ts)
- *   L Registered At   M Featured?   N Notes   (L is managed here; M/N are Dave's)
+ *   L Featured?   M Notes   (Dave's manual columns; code never writes them)
  *
  * Flow:
- *   - appendLivestreamRegistrant() runs on RSVP. It creates a row with the
- *     name, email, and Registered At (review columns blank), or just fills in
- *     Registered At if the person is already in the sheet.
- *   - appendLivestreamReview() runs on submit. It finds the person's row by
- *     email and fills A..K, leaving Registered At (L) untouched. One row per
- *     email (a resubmission overwrites).
+ *   - appendLivestreamRegistrant() runs on RSVP. It creates the row with the
+ *     signup time (A), name, and email, or fills the signup time if the row is
+ *     already there.
+ *   - appendLivestreamReview() runs on submit. It fills the name + answers into
+ *     B..K of the person's row, leaving the signup Timestamp (A) untouched. One
+ *     row per email (a resubmission overwrites the answers).
+ *   - recordLiveView() logs /live page views to the hidden "Live Views" tab so
+ *     the visitor count can live in the sheet.
  */
 
 import { reviewQuestions } from './livestream-review';
 
 const SPREADSHEET_ID = process.env.BCP_SHEET_ID || '1lpnkxlN21slJwdItDr9Q-fzMcS5tzRz1l4fpqT8Oa6c';
-const SHEET_NAME = 'Livestream Reviews';
+const SHEET_NAME = 'Livestream Waitlist';
 const VIEWS_SHEET = 'Live Views';
 
 async function getSheets() {
@@ -38,8 +39,16 @@ async function getSheets() {
   return google.sheets({ version: 'v4', auth });
 }
 
+// Eastern-time stamp, no seconds: "7/22/2026, 1:04 PM".
 function nowEST(): string {
-  return new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+  return new Date().toLocaleString('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 function colLetter(n: number): string {
@@ -56,9 +65,6 @@ function colLetter(n: number): string {
 function headerRow(): string[] {
   return ['Timestamp', 'First Name', 'Email', ...reviewQuestions.map((q) => q.column)];
 }
-
-// First column after the frozen review block. With 8 questions this is 'L'.
-const REG_COL = colLetter(headerRow().length);
 
 async function ensureTab(): Promise<void> {
   const sheets = await getSheets();
@@ -87,24 +93,6 @@ async function ensureTab(): Promise<void> {
   }
 }
 
-// Make sure the "Registered At" header exists at column L without disturbing
-// Dave's manual "Featured?"/"Notes" columns to its right.
-async function ensureRegisteredHeader(): Promise<void> {
-  const sheets = await getSheets();
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `'${SHEET_NAME}'!${REG_COL}1`,
-  });
-  if (res.data.values?.[0]?.[0] !== 'Registered At') {
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `'${SHEET_NAME}'!${REG_COL}1`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [['Registered At']] },
-    });
-  }
-}
-
 async function findRowByEmail(email: string): Promise<number | null> {
   const sheets = await getSheets();
   const res = await sheets.spreadsheets.values.get({
@@ -119,7 +107,7 @@ async function findRowByEmail(email: string): Promise<number | null> {
   return null;
 }
 
-// Scan the email column (C) for the first empty row, or the row past the end.
+// First empty row by the email column (C), or the row past the end.
 async function nextEmptyRow(): Promise<number> {
   const sheets = await getSheets();
   const res = await sheets.spreadsheets.values.get({
@@ -138,8 +126,9 @@ async function nextEmptyRow(): Promise<number> {
 }
 
 /**
- * Called on RSVP. Puts the registrant in the sheet so they show up before they
- * ever submit a review. If they're already there, just backfills Registered At.
+ * Called on RSVP. Puts the registrant in the sheet with their signup time (A)
+ * so they show up before they ever submit a review. If they're already in the
+ * sheet, just fills the signup time when it's missing.
  */
 export async function appendLivestreamRegistrant(
   email: string,
@@ -147,19 +136,18 @@ export async function appendLivestreamRegistrant(
 ): Promise<void> {
   if (!email) return;
   await ensureTab();
-  await ensureRegisteredHeader();
   const sheets = await getSheets();
 
   const existing = await findRowByEmail(email);
   if (existing) {
     const cur = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `'${SHEET_NAME}'!${REG_COL}${existing}`,
+      range: `'${SHEET_NAME}'!A${existing}`,
     });
     if (!cur.data.values?.[0]?.[0]) {
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `'${SHEET_NAME}'!${REG_COL}${existing}`,
+        range: `'${SHEET_NAME}'!A${existing}`,
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [[nowEST()]] },
       });
@@ -167,22 +155,19 @@ export async function appendLivestreamRegistrant(
     return;
   }
 
-  const blanks = reviewQuestions.map(() => '');
-  const row = ['', (firstName || '').split(' ')[0], email, ...blanks, nowEST()];
   const nextRow = await nextEmptyRow();
-
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
-    range: `'${SHEET_NAME}'!A${nextRow}:${REG_COL}${nextRow}`,
+    range: `'${SHEET_NAME}'!A${nextRow}:C${nextRow}`,
     valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [row] },
+    requestBody: { values: [[nowEST(), (firstName || '').split(' ')[0], email]] },
   });
 }
 
 /**
- * Called on submit. Fills the review answers (A..K) into the person's existing
- * row, or a new row if they somehow submitted without registering. Registered
- * At (L) is never overwritten here.
+ * Called on submit. Fills the name + answers into B..K of the person's row and
+ * leaves the signup Timestamp (A) untouched. If they somehow submitted without
+ * registering, a new row is created with the submit time as the timestamp.
  */
 export async function appendLivestreamReview(
   email: string,
@@ -191,18 +176,18 @@ export async function appendLivestreamReview(
 ): Promise<void> {
   await ensureTab();
   const sheets = await getSheets();
-  const h = headerRow();
-  const lastCol = colLetter(h.length - 1);
+  const lastCol = colLetter(headerRow().length - 1);
   const firstName = (name || '').split(' ')[0];
-  const row = [nowEST(), firstName, email, ...reviewQuestions.map((q) => answers[q.id] || '')];
+  const answerCells = reviewQuestions.map((q) => answers[q.id] || '');
 
   const existing = await findRowByEmail(email);
   if (existing) {
+    // Preserve A (signup time). Fill B..K only.
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `'${SHEET_NAME}'!A${existing}:${lastCol}${existing}`,
+      range: `'${SHEET_NAME}'!B${existing}:${lastCol}${existing}`,
       valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [row] },
+      requestBody: { values: [[firstName, email, ...answerCells]] },
     });
     return;
   }
@@ -212,13 +197,14 @@ export async function appendLivestreamReview(
     spreadsheetId: SPREADSHEET_ID,
     range: `'${SHEET_NAME}'!A${nextRow}:${lastCol}${nextRow}`,
     valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [row] },
+    requestBody: { values: [[nowEST(), firstName, email, ...answerCells]] },
   });
 }
 
 // --- /live view counter --------------------------------------------------
-// Logs one row per page view to the "Live Views" tab. The summary cell counts
-// those rows, so the sheet tracks visitors without the Vercel Analytics API.
+// Logs one row per page view to the hidden "Live Views" tab. The summary cell
+// counts those rows, so the sheet tracks visitors without the Vercel Analytics
+// query API.
 
 async function ensureViewsTab(): Promise<void> {
   const sheets = await getSheets();
