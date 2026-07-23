@@ -1,11 +1,21 @@
 /**
- * Writes channel-review submissions to the "Livestream Reviews" tab of the
- * BCP Members Sheet. Self-contained (its own Sheets client) so it never
- * touches the member-critical logic in lib/sheets.ts.
+ * Writes channel-review submissions AND registrations to the "Livestream
+ * Reviews" tab of the BCP Members Sheet. Self-contained (its own Sheets
+ * client) so it never touches the member-critical logic in lib/sheets.ts.
  *
- * The tab and its header row are created on first write. Columns are built
- * from lib/livestream-review.ts, so changing the questions there changes the
- * sheet layout too. One row per email (a resubmission overwrites).
+ * Layout (columns A-K are frozen so a review write and a registration write
+ * never fight over position):
+ *   A Timestamp (submission time)   B First Name   C Email
+ *   D..K  the eight review answers (built from lib/livestream-review.ts)
+ *   L Registered At   M Featured?   N Notes   (L is managed here; M/N are Dave's)
+ *
+ * Flow:
+ *   - appendLivestreamRegistrant() runs on RSVP. It creates a row with the
+ *     name, email, and Registered At (review columns blank), or just fills in
+ *     Registered At if the person is already in the sheet.
+ *   - appendLivestreamReview() runs on submit. It finds the person's row by
+ *     email and fills A..K, leaving Registered At (L) untouched. One row per
+ *     email (a resubmission overwrites).
  */
 
 import { reviewQuestions } from './livestream-review';
@@ -46,6 +56,9 @@ function headerRow(): string[] {
   return ['Timestamp', 'First Name', 'Email', ...reviewQuestions.map((q) => q.column)];
 }
 
+// First column after the frozen review block. With 8 questions this is 'L'.
+const REG_COL = colLetter(headerRow().length);
+
 async function ensureTab(): Promise<void> {
   const sheets = await getSheets();
   const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
@@ -73,6 +86,24 @@ async function ensureTab(): Promise<void> {
   }
 }
 
+// Make sure the "Registered At" header exists at column L without disturbing
+// Dave's manual "Featured?"/"Notes" columns to its right.
+async function ensureRegisteredHeader(): Promise<void> {
+  const sheets = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${SHEET_NAME}'!${REG_COL}1`,
+  });
+  if (res.data.values?.[0]?.[0] !== 'Registered At') {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${SHEET_NAME}'!${REG_COL}1`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [['Registered At']] },
+    });
+  }
+}
+
 async function findRowByEmail(email: string): Promise<number | null> {
   const sheets = await getSheets();
   const res = await sheets.spreadsheets.values.get({
@@ -87,8 +118,70 @@ async function findRowByEmail(email: string): Promise<number | null> {
   return null;
 }
 
+// Scan the email column (C) for the first empty row, or the row past the end.
+async function nextEmptyRow(): Promise<number> {
+  const sheets = await getSheets();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${SHEET_NAME}'!C:C`,
+  });
+  const emailCol = res.data.values || [];
+  let nextRow = emailCol.length + 1;
+  for (let i = 1; i < emailCol.length; i++) {
+    if (!emailCol[i] || !emailCol[i][0] || emailCol[i][0].trim() === '') {
+      nextRow = i + 1;
+      break;
+    }
+  }
+  return nextRow;
+}
+
 /**
- * Append (or overwrite by email) a channel-review submission.
+ * Called on RSVP. Puts the registrant in the sheet so they show up before they
+ * ever submit a review. If they're already there, just backfills Registered At.
+ */
+export async function appendLivestreamRegistrant(
+  email: string,
+  firstName?: string,
+): Promise<void> {
+  if (!email) return;
+  await ensureTab();
+  await ensureRegisteredHeader();
+  const sheets = await getSheets();
+
+  const existing = await findRowByEmail(email);
+  if (existing) {
+    const cur = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${SHEET_NAME}'!${REG_COL}${existing}`,
+    });
+    if (!cur.data.values?.[0]?.[0]) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `'${SHEET_NAME}'!${REG_COL}${existing}`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [[nowEST()]] },
+      });
+    }
+    return;
+  }
+
+  const blanks = reviewQuestions.map(() => '');
+  const row = ['', (firstName || '').split(' ')[0], email, ...blanks, nowEST()];
+  const nextRow = await nextEmptyRow();
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${SHEET_NAME}'!A${nextRow}:${REG_COL}${nextRow}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [row] },
+  });
+}
+
+/**
+ * Called on submit. Fills the review answers (A..K) into the person's existing
+ * row, or a new row if they somehow submitted without registering. Registered
+ * At (L) is never overwritten here.
  */
 export async function appendLivestreamReview(
   email: string,
@@ -113,20 +206,7 @@ export async function appendLivestreamReview(
     return;
   }
 
-  // Find the first empty row by scanning the email column (C).
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `'${SHEET_NAME}'!C:C`,
-  });
-  const emailCol = res.data.values || [];
-  let nextRow = emailCol.length + 1;
-  for (let i = 1; i < emailCol.length; i++) {
-    if (!emailCol[i] || !emailCol[i][0] || emailCol[i][0].trim() === '') {
-      nextRow = i + 1;
-      break;
-    }
-  }
-
+  const nextRow = await nextEmptyRow();
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
     range: `'${SHEET_NAME}'!A${nextRow}:${lastCol}${nextRow}`,

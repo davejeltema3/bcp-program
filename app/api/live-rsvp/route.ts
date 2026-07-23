@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { appendLivestreamRegistrant } from '@/lib/livestream-sheet';
 
 /**
  * Live stream RSVP endpoint — frictionless (single opt-in), Jay-style.
@@ -8,6 +9,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * and the per-event tag. The welcome / calendar / question emails run off
  * those tags as a Kit sequence; the fixed-date reminders run as scheduled
  * broadcasts to the event tag.
+ *
+ * Also writes the registrant to the "Livestream Reviews" tab so they show up
+ * in the sheet before they ever submit a channel. When they later submit, the
+ * review lands in that same row (matched by email).
  *
  * Tag IDs are hardcoded as fallbacks so no new Vercel env var is required.
  *   Livestream (standing):        21355904
@@ -55,7 +60,14 @@ export async function POST(request: NextRequest) {
       }).catch(() => {});
     }
 
-    // 4. Optional Discord ping so Dave sees registrations land.
+    // 4. Record the registrant in the sheet (best-effort, never blocks the RSVP).
+    try {
+      await appendLivestreamRegistrant(email, firstName);
+    } catch (error) {
+      console.error('Livestream registrant sheet write failed:', error);
+    }
+
+    // 5. Optional Discord ping so Dave sees registrations land.
     if (process.env.DISCORD_WEBHOOK_URL) {
       try {
         await sendRsvpNotification(firstName, email);
