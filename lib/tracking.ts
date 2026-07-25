@@ -84,16 +84,25 @@ export interface RegistryEntry {
  * F Studio Edit, G Destination.
  */
 export async function resolveFromRegistry(code: string): Promise<RegistryEntry | null> {
-  const rows = await readRange('Registry!A2:G');
   const norm = code.toLowerCase().trim();
-  for (const r of rows) {
-    if ((r[0] || '').toLowerCase().trim() === norm) {
-      return {
-        code: r[0] || '',
-        videoId: r[1] || '',
-        title: r[2] || '',
-        destination: r[6] || '',
-      };
+  // Program codes live in Registry; livestream codes in Livestream Registry.
+  // Both tabs share the same columns, so a code resolves from whichever holds it.
+  for (const range of ['Registry!A2:G', "'Livestream Registry'!A2:G"]) {
+    let rows: string[][] = [];
+    try {
+      rows = await readRange(range);
+    } catch {
+      continue;
+    }
+    for (const r of rows) {
+      if ((r[0] || '').toLowerCase().trim() === norm) {
+        return {
+          code: r[0] || '',
+          videoId: r[1] || '',
+          title: r[2] || '',
+          destination: r[6] || '',
+        };
+      }
     }
   }
   return null;
