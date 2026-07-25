@@ -4,15 +4,11 @@ import { appendLivestreamRegistrant } from '@/lib/livestream-sheet';
 /**
  * Live stream RSVP endpoint — frictionless (single opt-in), Jay-style.
  *
- * Uses the Kit v4 API to create the subscriber as ACTIVE immediately (no
- * confirm-your-email step), then tags them with the standing "Livestream" tag
- * and the per-event tag. The welcome / calendar / question emails run off
- * those tags as a Kit sequence; the fixed-date reminders run as scheduled
- * broadcasts to the event tag.
- *
- * Also writes the registrant to the "Livestream Reviews" tab so they show up
- * in the sheet before they ever submit a channel. When they later submit, the
- * review lands in that same row (matched by email).
+ * Creates the subscriber active via Kit v4 (no confirm step), tags them with
+ * the standing "Livestream" tag and the per-event tag, and enrolls them in the
+ * welcome sequence. Also records the registrant in the sheet with their source,
+ * read from the bt_src cookie that the /t redirect sets (falls back to the
+ * referrer host), so a signup carries which video or link it came from.
  *
  * Tag IDs are hardcoded as fallbacks so no new Vercel env var is required.
  *   Livestream (standing):        21355904
@@ -31,9 +27,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email required' }, { status: 400 });
     }
 
+    // Source: the tracking code from the bt_src cookie, else the referrer host.
+    let source = request.cookies.get('bt_src')?.value || '';
+    if (!source) {
+      const referer = request.headers.get('referer') || '';
+      if (referer) {
+        try {
+          source = new URL(referer).hostname.replace(/^www\./, '');
+        } catch {
+          source = '';
+        }
+      }
+    }
+
     const apiKey = process.env.KIT_API_KEY;
     if (apiKey) {
-      // 1. Create/update subscriber as active (v4 API = single opt-in).
       await fetch('https://api.kit.com/v4/subscribers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Kit-Api-Key': apiKey },
@@ -43,7 +51,6 @@ export async function POST(request: NextRequest) {
         }),
       }).catch(() => {});
 
-      // 2. Tag: standing Livestream + this specific event.
       for (const tagId of [KIT_TAG_LIVESTREAM, KIT_TAG_LIVESTREAM_EVENT]) {
         await fetch(`https://api.kit.com/v4/tags/${tagId}/subscribers`, {
           method: 'POST',
@@ -52,7 +59,6 @@ export async function POST(request: NextRequest) {
         }).catch(() => {});
       }
 
-      // 3. Enroll in the welcome sequence (You're in -> Calendar -> Question).
       await fetch(`https://api.kit.com/v4/sequences/${KIT_SEQUENCE_WELCOME}/subscribers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Kit-Api-Key': apiKey },
@@ -60,17 +66,16 @@ export async function POST(request: NextRequest) {
       }).catch(() => {});
     }
 
-    // 4. Record the registrant in the sheet (best-effort, never blocks the RSVP).
+    // Record the registrant in the sheet (best-effort, never blocks the RSVP).
     try {
-      await appendLivestreamRegistrant(email, firstName);
+      await appendLivestreamRegistrant(email, firstName, source);
     } catch (error) {
       console.error('Livestream registrant sheet write failed:', error);
     }
 
-    // 5. Optional Discord ping so Dave sees registrations land.
     if (process.env.DISCORD_WEBHOOK_URL) {
       try {
-        await sendRsvpNotification(firstName, email);
+        await sendRsvpNotification(firstName, email, source);
       } catch (error) {
         console.error('Discord notification error:', error);
       }
@@ -79,7 +84,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Live RSVP error:', error);
-    // Graceful degradation — never expose internal failures to the visitor.
     return NextResponse.json({ success: true });
   }
 }
@@ -87,6 +91,7 @@ export async function POST(request: NextRequest) {
 async function sendRsvpNotification(
   firstName: string | undefined,
   email: string,
+  source: string,
 ) {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) return;
@@ -97,6 +102,7 @@ async function sendRsvpNotification(
     fields: [
       { name: 'Name', value: firstName || '_(not provided)_', inline: true },
       { name: 'Email', value: email, inline: true },
+      { name: 'Source', value: source || '_(direct)_', inline: true },
     ],
     footer: { text: 'Live Channel Reviews — Aug 13 2026' },
     timestamp: new Date().toISOString(),

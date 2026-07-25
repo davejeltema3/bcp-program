@@ -9,12 +9,14 @@ import TextInput from '@/components/TextInput';
 import MultipleChoice from '@/components/MultipleChoice';
 import AnalyticsAccessGuide from '@/components/AnalyticsAccessGuide';
 
-type Section = 'landing' | 'post-payment' | 'questionnaire' | 'application' | 'insight' | 'admin';
+type Section = 'landing' | 'post-payment' | 'questionnaire' | 'application' | 'insight' | 'live' | 'tracking' | 'admin';
 type WindowState = 'before' | 'open' | 'after' | 'none';
 
 export default function PreviewPage() {
   const [activeSection, setActiveSection] = useState<Section>('landing');
   const [landingSubTab, setLandingSubTab] = useState<'open' | 'before' | 'after' | 'invite'>('open');
+  const [liveSubTab, setLiveSubTab] = useState<'signup' | 'submit'>('signup');
+  const [trackingSubTab, setTrackingSubTab] = useState<'calculator' | 'dashboard'>('calculator');
   const [windowState, setWindowState] = useState<WindowState>('none');
   const [windowOpen, setWindowOpen] = useState<Date | null>(null);
   const [windowClose, setWindowClose] = useState<Date | null>(null);
@@ -118,6 +120,8 @@ export default function PreviewPage() {
     { id: 'questionnaire', label: 'Questionnaire' },
     { id: 'application', label: 'Application' },
     { id: 'insight', label: 'Boundless Insight' },
+    { id: 'live', label: 'Live Stream' },
+    { id: 'tracking', label: 'Tracking' },
     { id: 'admin', label: 'Admin' },
   ];
 
@@ -589,11 +593,90 @@ export default function PreviewPage() {
     </div>
   );
 
+  /* ─── Live Stream Tab ─── */
+  const renderLive = () => {
+    const liveSubTabs: { id: 'signup' | 'submit'; label: string }[] = [
+      { id: 'signup', label: '🎟️ Signup + Thank-you' },
+      { id: 'submit', label: '📺 Submission Form' },
+    ];
+    const src = liveSubTab === 'submit' ? '/submit' : '/live';
+    const note = liveSubTab === 'submit'
+      ? 'Emailed to registrants. Writes a channel review into the Livestream Waitlist sheet.'
+      : 'RSVP page. "Hold my seat" opens the register modal, and its success state is the thank-you.';
+    return (
+      <div className="space-y-4">
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {liveSubTabs.map((t) => (
+            <button key={t.id} onClick={() => { setLiveSubTab(t.id); setIframeKey((k) => k + 1); }}
+              className={`px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors ${liveSubTab === t.id ? 'bg-slate-700 text-white' : 'bg-slate-800/50 text-slate-500 hover:text-slate-300'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div className="min-w-0 flex-1">
+            <span className="text-slate-400 text-sm font-mono">{src}</span>
+            <span className="text-slate-600 text-sm ml-2">—</span>
+            <span className="text-slate-400 text-sm ml-2">{note}</span>
+          </div>
+          <a href={src} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-xs underline flex-shrink-0 ml-4">Open in new tab →</a>
+        </div>
+        <div className="border border-slate-700 rounded-lg overflow-hidden" style={{ height: 'calc(100vh - 280px)', minHeight: '600px' }}>
+          <iframe key={`live-${liveSubTab}-${iframeKey}`} src={src} className="w-full h-full border-0" title={`Preview: live ${liveSubTab}`} />
+        </div>
+      </div>
+    );
+  };
+
+  /* ─── Tracking Tab ─── */
+  const renderTracking = () => {
+    const trackingSubTabs: { id: 'calculator' | 'dashboard'; label: string }[] = [
+      { id: 'calculator', label: '🧮 Calculator' },
+      { id: 'dashboard', label: '📊 Dashboard' },
+    ];
+    const tabs = (
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        {trackingSubTabs.map((t) => (
+          <button key={t.id} onClick={() => { setTrackingSubTab(t.id); setIframeKey((k) => k + 1); }}
+            className={`px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors ${trackingSubTab === t.id ? 'bg-slate-700 text-white' : 'bg-slate-800/50 text-slate-500 hover:text-slate-300'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+    );
+    if (trackingSubTab === 'dashboard') {
+      return (
+        <div className="space-y-4">
+          {tabs}
+          <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-4">
+            <p className="text-slate-300 text-sm mb-1">The tracking dashboard is admin-gated, so it can&apos;t be embedded here without exposing the key.</p>
+            <p className="text-slate-500 text-xs font-mono mb-3">/tracking?key=YOUR_ADMIN_SECRET</p>
+            <a href="/tracking" target="_blank" rel="noopener noreferrer" className="inline-block bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-4 py-2 text-sm text-blue-400 hover:text-blue-300">Open the dashboard (add your key) →</a>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-4">
+        {tabs}
+        <div className="bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 flex items-center justify-between">
+          <span className="text-slate-400 text-sm font-mono">/tracking/calculator</span>
+          <a href="/tracking/calculator" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-xs underline">Open in new tab →</a>
+        </div>
+        <div className="border border-slate-700 rounded-lg overflow-hidden" style={{ height: 'calc(100vh - 280px)', minHeight: '600px' }}>
+          <iframe key={`calc-${iframeKey}`} src="/tracking/calculator" className="w-full h-full border-0" title="Preview: calculator" />
+        </div>
+      </div>
+    );
+  };
+
   const content = activeSection === 'landing' ? renderLanding()
     : activeSection === 'post-payment' ? renderPostPayment()
     : activeSection === 'questionnaire' ? renderQuestionnaire()
     : activeSection === 'application' ? renderApplication()
     : activeSection === 'insight' ? renderInsight()
+    : activeSection === 'live' ? renderLive()
+    : activeSection === 'tracking' ? renderTracking()
     : renderAdmin();
 
   return (

@@ -51,6 +51,54 @@ export async function appendClick(rec: ClickRecord): Promise<void> {
   });
 }
 
+/**
+ * Livestream link clicks land in their own tab, so livestream traffic never
+ * mixes with the program click log. Same row shape as Clicks.
+ */
+export async function appendLivestreamClick(rec: ClickRecord): Promise<void> {
+  const sheets = await getSheets();
+  const ts = new Date().toISOString();
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: TRACKING_SHEET_ID,
+    range: 'Livestream!A:F',
+    valueInputOption: 'RAW',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: {
+      values: [[ts, rec.code, rec.videoId, rec.referrer, rec.userAgent, rec.country]],
+    },
+  });
+}
+
+export interface RegistryEntry {
+  code: string;
+  videoId: string;
+  title: string;
+  destination: string;
+}
+
+/**
+ * Resolve a code from the Registry tab at runtime. Lets a new tracked link work
+ * the moment its row exists in the sheet, with no code push. The deployed
+ * REGISTRY in lib/tracking-registry.ts stays the fast path for known codes.
+ * Registry columns: A Code, B Video ID, C Title, D Published, E Link,
+ * F Studio Edit, G Destination.
+ */
+export async function resolveFromRegistry(code: string): Promise<RegistryEntry | null> {
+  const rows = await readRange('Registry!A2:G');
+  const norm = code.toLowerCase().trim();
+  for (const r of rows) {
+    if ((r[0] || '').toLowerCase().trim() === norm) {
+      return {
+        code: r[0] || '',
+        videoId: r[1] || '',
+        title: r[2] || '',
+        destination: r[6] || '',
+      };
+    }
+  }
+  return null;
+}
+
 export interface SaleRecord {
   email: string;
   code: string;
