@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Lead magnets: track every catalog magnet linked in the description.
     const { after: afterMagnets, magnets } = await ensureMagnetsTracked(before, {
-      videoId, title, published, today, existingCodes: existing,
+      videoId, title, published, today, nowIso, existingCodes: existing,
     });
 
     // Normalize the promo block on top of the magnet-swapped body.

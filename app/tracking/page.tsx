@@ -333,17 +333,36 @@ async function LeadMagnets({ keyStr }: { searchParams: any; keyStr: string }) {
   let registry: string[][] = [];
   let missing = false;
   try {
-    registry = await readRange("'Lead Magnet Registry'!A2:I");
+    registry = await readRange("'Lead Magnet Registry'!A2:J");
   } catch {
     missing = true;
   }
 
   const clicks = missing ? [] : await readRange('Clicks!A2:F');
   const magnetCodes = new Set(registry.map((r) => (r[0] || '').trim()).filter(Boolean));
+
+  // Publish-burst filter: ignore clicks in the 30 min after a magnet link's
+  // Activated (col J) time, when link scanners hit the freshly written /t link.
+  const BURST_WINDOW_MS = 30 * 60 * 1000;
+  const activatedByCode: Record<string, number> = {};
+  for (const r of registry) {
+    const code = (r[0] || '').trim();
+    const activated = (r[9] || '').trim();
+    if (!code || !activated) continue;
+    const t = Date.parse(activated);
+    if (!Number.isNaN(t)) activatedByCode[code] = t;
+  }
+
   const clicksByCode: Record<string, number> = {};
   for (const r of clicks) {
     const code = (r[1] || '').trim();
-    if (code && magnetCodes.has(code)) clicksByCode[code] = (clicksByCode[code] || 0) + 1;
+    if (!code || !magnetCodes.has(code)) continue;
+    const activatedAt = activatedByCode[code];
+    if (activatedAt !== undefined) {
+      const clickAt = Date.parse((r[0] || '').trim());
+      if (!Number.isNaN(clickAt) && clickAt >= activatedAt && clickAt < activatedAt + BURST_WINDOW_MS) continue;
+    }
+    clicksByCode[code] = (clicksByCode[code] || 0) + 1;
   }
 
   const rows = registry.map((r) => ({

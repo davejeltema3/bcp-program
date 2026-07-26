@@ -48,11 +48,13 @@ export async function POST(request: NextRequest) {
     let magnets: { name: string; code: string; created: boolean }[] = [];
     if (doMagnets) {
       const existing = await readAllRegistryCodes();
+      const now = new Date().toISOString();
       const res = await ensureMagnetsTracked(before, {
         videoId,
         title: snippet.title || '',
         published: (snippet.publishedAt || '').slice(0, 10),
-        today: new Date().toISOString().slice(0, 10),
+        today: now.slice(0, 10),
+        nowIso: now,
         existingCodes: existing,
       });
       working = res.after;

@@ -315,7 +315,7 @@ export function detectMagnets(
   return found;
 }
 
-/** Append a Lead Magnet Registry row (A:I; col I = magnet name). */
+/** Append a Lead Magnet Registry row (A:J; I = magnet name, J = Activated UTC). */
 export async function appendLeadMagnetRow(row: {
   code: string;
   videoId: string;
@@ -324,17 +324,18 @@ export async function appendLeadMagnetRow(row: {
   destination: string;
   magnetName: string;
   createdDate: string;
+  activatedIso?: string;
 }): Promise<void> {
   const sheets = await getSheets();
   const studio = `=HYPERLINK("https://studio.youtube.com/video/${row.videoId}/edit","Edit description")`;
   const link = `${ROOT}/t/${row.code}`;
   const values = [
     row.code, row.videoId, row.title, row.published, link, studio,
-    row.destination, row.createdDate, row.magnetName,
+    row.destination, row.createdDate, row.magnetName, row.activatedIso || '',
   ];
   await sheets.spreadsheets.values.append({
     spreadsheetId: TRACKING_SHEET_ID,
-    range: "'Lead Magnet Registry'!A:I",
+    range: "'Lead Magnet Registry'!A:J",
     valueInputOption: 'USER_ENTERED',
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [values] },
@@ -350,7 +351,7 @@ export async function appendLeadMagnetRow(row: {
  */
 export async function ensureMagnetsTracked(
   before: string,
-  ctx: { videoId: string; title: string; published: string; today: string; existingCodes: Set<string> },
+  ctx: { videoId: string; title: string; published: string; today: string; nowIso?: string; existingCodes: Set<string> },
 ): Promise<{ after: string; magnets: { name: string; code: string; created: boolean }[] }> {
   const catalog = await readLeadMagnetCatalog();
   const present = detectMagnets(before, catalog);
@@ -383,6 +384,7 @@ export async function ensureMagnetsTracked(
         destination: magnet.url,
         magnetName: magnet.name,
         createdDate: ctx.today,
+        activatedIso: ctx.nowIso,
       });
       created = true;
     }
