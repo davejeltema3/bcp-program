@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
           published,
           destination: `${ROOT}/live`,
           createdDate: today,
+          activatedIso: nowIso,
         });
         liveCreated = true;
       }

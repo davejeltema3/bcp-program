@@ -219,13 +219,15 @@ export interface NewRegistryRow {
   published: string;   // YYYY-MM-DD
   destination: string; // program root or /live
   createdDate: string; // YYYY-MM-DD
-  activatedIso?: string; // full ISO, program tab only (col I)
+  activatedIso?: string; // full ISO, col I — when the link went live (for the burst filter)
 }
 
 /**
  * Append a registry row matching the existing schema. Column F is a HYPERLINK
  * formula to the video's Studio edit page (USER_ENTERED so the formula sticks).
- * Program rows carry Created + Activated (A:I); livestream rows carry Created (A:H).
+ * Both tabs carry Created (H) + Activated (I). Activated is stamped when the link
+ * is written into a description, and the dashboard ignores clicks for a short
+ * window after it so the publish-time crawler burst never counts.
  */
 export async function appendRegistryRow(
   tab: 'Registry' | 'Livestream Registry',
@@ -235,8 +237,8 @@ export async function appendRegistryRow(
   const studio = `=HYPERLINK("https://studio.youtube.com/video/${row.videoId}/edit","Edit description")`;
   const link = `${ROOT}/t/${row.code}`;
   const base = [row.code, row.videoId, row.title, row.published, link, studio, row.destination, row.createdDate];
-  const values = tab === 'Registry' ? [...base, row.activatedIso || ''] : base;
-  const range = tab === 'Registry' ? 'Registry!A:I' : "'Livestream Registry'!A:H";
+  const values = [...base, row.activatedIso || ''];
+  const range = tab === 'Registry' ? 'Registry!A:I' : "'Livestream Registry'!A:I";
   await sheets.spreadsheets.values.append({
     spreadsheetId: TRACKING_SHEET_ID,
     range,

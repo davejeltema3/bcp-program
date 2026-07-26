@@ -206,17 +206,39 @@ async function Program({ searchParams, keyStr }: { searchParams: any; keyStr: st
 
 async function Livestream({ searchParams, keyStr }: { searchParams: any; keyStr: string }) {
   const [registry, clickLog, waitlist] = await Promise.all([
-    readRange("'Livestream Registry'!A2:H"),
+    readRange("'Livestream Registry'!A2:I"),
     readRange('Livestream!A2:F'),
     readRangeFrom(MEMBERS_SHEET_ID, "'Livestream Waitlist'!A2:N"),
   ]);
 
   const liveCodes = new Set(registry.map((r) => (r[0] || '').trim()).filter(Boolean));
 
+  // Publish-burst filter: ignore clicks in the 30 min after a link's Activated
+  // (col I) time, when link scanners hit a freshly written /t link.
+  const BURST_WINDOW_MS = 30 * 60 * 1000;
+  const activatedByCode: Record<string, number> = {};
+  for (const r of registry) {
+    const code = (r[0] || '').trim();
+    const activated = (r[8] || '').trim();
+    if (!code || !activated) continue;
+    const t = Date.parse(activated);
+    if (!Number.isNaN(t)) activatedByCode[code] = t;
+  }
+
   const clicksByCode: Record<string, number> = {};
+  let burstFiltered = 0;
   for (const r of clickLog) {
     const code = (r[1] || '').trim();
-    if (code && liveCodes.has(code)) clicksByCode[code] = (clicksByCode[code] || 0) + 1;
+    if (!code || !liveCodes.has(code)) continue;
+    const activatedAt = activatedByCode[code];
+    if (activatedAt !== undefined) {
+      const clickAt = Date.parse((r[0] || '').trim());
+      if (!Number.isNaN(clickAt) && clickAt >= activatedAt && clickAt < activatedAt + BURST_WINDOW_MS) {
+        burstFiltered++;
+        continue;
+      }
+    }
+    clicksByCode[code] = (clicksByCode[code] || 0) + 1;
   }
 
   // Waitlist: col N (index 13) = source, cols D–J = review answers.
@@ -271,6 +293,7 @@ async function Livestream({ searchParams, keyStr }: { searchParams: any; keyStr:
       <p style={{ color: 'var(--bc-text-300, #9aa4be)', marginTop: 8 }}>
         {totalClicks} livestream link clicks across {rows.length} videos · {totalSignups} signups ({totalReviews} with a review submitted).
         {' '}{attributedSignups} signups are attributed to a specific video link so far.
+        {burstFiltered > 0 ? ` (${burstFiltered} publish-time crawler clicks filtered)` : ''}
       </p>
       <p style={{ marginTop: 0, fontSize: 13, color: 'var(--bc-text-400, #6b7591)' }}>
         Signups attribute to a video only when the visitor arrived through its /t link (bt_src cookie). Older or direct signups show under no video.
