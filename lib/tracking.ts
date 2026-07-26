@@ -108,6 +108,27 @@ export async function resolveFromRegistry(code: string): Promise<RegistryEntry |
   return null;
 }
 
+/** Find a code + tracked link by video id within a registry tab. */
+export async function findByVideoId(
+  videoId: string,
+  tab: 'Registry' | 'Livestream Registry',
+): Promise<{ code: string; link: string } | null> {
+  const range = tab.includes(' ') ? `'${tab}'!A2:G` : `${tab}!A2:G`;
+  let rows: string[][] = [];
+  try {
+    rows = await readRange(range);
+  } catch {
+    return null;
+  }
+  const norm = videoId.trim();
+  for (const r of rows) {
+    if ((r[1] || '').trim() === norm) {
+      return { code: r[0] || '', link: r[4] || '' };
+    }
+  }
+  return null;
+}
+
 export interface SaleRecord {
   email: string;
   code: string;
