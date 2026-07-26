@@ -18,6 +18,7 @@ function getStripe() {
  *
  *   /invite/pay               -> 3 monthly payments of $333 ($999 total, no upcharge)
  *   /invite/pay?plan=full     -> one-time $999
+ *   /invite/pay?plan=year     -> one-time $1,999, 12 months access (custom price)
  *
  * The 3-pay subscription is tagged payment_type=installment, total_payments=3, so
  * the Stripe webhook (app/api/webhooks/stripe/route.ts) auto-cancels it after the
@@ -31,7 +32,38 @@ export async function GET(request: NextRequest) {
   try {
     let session: Stripe.Checkout.Session;
 
-    if (plan === 'full') {
+    if (plan === 'year') {
+      // One-time payment: $1,999 for 12 months access (custom-price private invite).
+      // Keeps program=bcp-founders so the Stripe webhook runs the full founders
+      // onboarding: Discord single-use invite, Kit member tag, Members Sheet row.
+      session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: 'Boundless Creator Program — 12 Month Access',
+                description:
+                  '12 months: personal channel review, weekly live sessions, resource library, Discord access.',
+              },
+              unit_amount: 199900,
+            },
+            quantity: 1,
+          },
+        ],
+        metadata: {
+          program: 'bcp-founders',
+          duration: '12 months',
+          payment_type: 'one-time',
+          plan: 'year-1999',
+        },
+        success_url: `${origin}/welcome?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/`,
+        allow_promotion_codes: true,
+      });
+    } else if (plan === 'full') {
       // One-time payment: $999
       session = await stripe.checkout.sessions.create({
         mode: 'payment',
