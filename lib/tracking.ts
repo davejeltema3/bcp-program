@@ -278,6 +278,17 @@ export async function readRange(range: string): Promise<string[][]> {
   return (res.data.values as string[][]) || [];
 }
 
+/** The BCP Members spreadsheet (holds the Livestream Waitlist signups). */
+export const MEMBERS_SHEET_ID =
+  process.env.MEMBERS_SHEET_ID || '1lpnkxlN21slJwdItDr9Q-fzMcS5tzRz1l4fpqT8Oa6c';
+
+/** Read a range from any spreadsheet the service account can see (e.g. Members). */
+export async function readRangeFrom(spreadsheetId: string, range: string): Promise<string[][]> {
+  const sheets = await getSheets();
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range });
+  return (res.data.values as string[][]) || [];
+}
+
 /**
  * readRange with retry + jittered backoff. The Sheets API enforces a per-minute
  * read quota; under a burst it returns 429/500/503 and a bare read throws. That
