@@ -106,11 +106,8 @@ function ResultLine({ r }: { r: any }) {
   const amber = 'var(--bc-amber-400, #ffcc66)';
   const dim = 'var(--bc-text-300, #9aa4be)';
 
-  const linePart = (label: string, code: string | null, created: boolean, swapped: boolean) => {
-    if (!code) return `${label}: no plain link found`;
-    const state = created ? 'new code' : swapped ? 'tracked' : 'already tracked';
-    return `${label}: /t/${code} (${state})`;
-  };
+  const linePart = (label: string, code: string | null, created: boolean) =>
+    code ? `${label}: /t/${code} (${created ? 'new code' : 'tracked'})` : `${label}: —`;
 
   let headline = '';
   let color = green;
@@ -120,9 +117,7 @@ function ResultLine({ r }: { r: any }) {
   } else if (r.applied) {
     headline = `Updated “${r.title}”.`;
   } else if (!r.changed) {
-    headline = r.programCode || r.liveCode
-      ? `“${r.title}” is already fully tracked — nothing to change.`
-      : `No plain program or live link found in “${r.title}”.`;
+    headline = `“${r.title}” is already in canonical form — nothing to change.`;
     color = dim;
   } else {
     headline = 'Ready (dry run) — nothing written.';
@@ -133,9 +128,9 @@ function ResultLine({ r }: { r: any }) {
     <div style={{ marginTop: 12, fontSize: 14 }}>
       <div style={{ color, fontWeight: 600 }}>{headline}</div>
       <div style={{ marginTop: 4, color: dim, fontSize: 13 }}>
-        {linePart('Live', r.liveCode, r.liveCreated, r.liveSwapped)}
+        {linePart('Live', r.liveCode, r.liveCreated)}
         {'  ·  '}
-        {linePart('Program', r.programCode, r.programCreated, r.programSwapped)}
+        {linePart('Program', r.programCode, r.programCreated)}
       </div>
     </div>
   );

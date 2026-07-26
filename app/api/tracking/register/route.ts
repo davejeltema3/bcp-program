@@ -5,9 +5,7 @@ import {
   readAllRegistryCodes,
   mintCode,
   appendRegistryRow,
-  swapLinks,
-  hasPlainLive,
-  hasPlainProgram,
+  normalizePromo,
 } from '@/lib/tracking';
 
 export const runtime = 'nodejs';
@@ -16,15 +14,16 @@ export const dynamic = 'force-dynamic';
 const ROOT = 'https://bcp.boundlesscreator.com';
 
 /**
- * Paste-a-URL registrar. One call takes a video URL and makes both its links
- * tracked, minting registry rows for any that don't exist yet.
+ * Paste-a-URL registrar. One call takes a video URL and guarantees its
+ * description carries both tracked promo links, in canonical order, with a blank
+ * line before the rest — minting registry rows for anything not seen before.
  *
  * POST { key, url|videoId, apply }
  *   - key: the ADMIN_SECRET (same one that unlocks the /tracking dashboard).
  *   - apply: true (default) writes the description; false is a dry run.
  *
- * A code is only minted when the description actually has a plain link to swap,
- * so re-pasting a done video creates no orphan rows and reports "already tracked".
+ * No need to pre-add the plain links: this adds a missing line and replaces an
+ * existing one, so re-pasting is safe and converges to the same result.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -48,19 +47,19 @@ export async function POST(request: NextRequest) {
 
     // Existing rows (retry-backed, so a throttled read fails loudly rather than
     // masquerading as "not registered" and minting a duplicate).
-    let prog = await findByVideoId(videoId, 'Registry');
-    let live = await findByVideoId(videoId, 'Livestream Registry');
+    const prog = await findByVideoId(videoId, 'Registry');
+    const live = await findByVideoId(videoId, 'Livestream Registry');
 
     let programCode = prog?.code || null;
     let liveCode = live?.code || null;
     let programCreated = false;
     let liveCreated = false;
 
-    // Mint only when there is a plain link to justify the row.
+    // Every video gets both links, so mint whatever isn't already registered.
     if (!liveCode || !programCode) {
       const existing = await readAllRegistryCodes();
 
-      if (!liveCode && hasPlainLive(before)) {
+      if (!liveCode) {
         liveCode = mintCode(existing);
         existing.add(liveCode);
         await appendRegistryRow('Livestream Registry', {
@@ -73,8 +72,7 @@ export async function POST(request: NextRequest) {
         });
         liveCreated = true;
       }
-
-      if (!programCode && hasPlainProgram(before)) {
+      if (!programCode) {
         programCode = mintCode(existing);
         existing.add(programCode);
         await appendRegistryRow('Registry', {
@@ -90,7 +88,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { after, liveSwapped, programSwapped } = swapLinks(before, { programCode, liveCode });
+    const after = normalizePromo(before, { liveCode, programCode });
     const changed = after !== before;
     const tooLong = after.length > 5000;
 
@@ -108,8 +106,6 @@ export async function POST(request: NextRequest) {
       liveCode,
       programCreated,
       liveCreated,
-      programSwapped,
-      liveSwapped,
       changed,
       tooLong,
       applied,

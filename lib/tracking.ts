@@ -132,45 +132,55 @@ export async function findByVideoId(
   return null;
 }
 
-// --- Link swap + auto-registration (backs the paste-a-URL button) -----------
+// --- Promo-block normalization (backs the paste-a-URL button) ----------------
 
 const ROOT = 'https://bcp.boundlesscreator.com';
-// Plain (untracked) forms. /live must not match /liveXYZ; the bare root must not
-// match /live, /t/xxx, /insight, etc. (any path char after the slash disqualifies it).
-const LIVE_PLAIN = /https:\/\/bcp\.boundlesscreator\.com\/live(?![A-Za-z0-9/])/g;
-const ROOT_PLAIN = /https:\/\/bcp\.boundlesscreator\.com\/(?![A-Za-z0-9])/g;
-
-/** True if the text still contains a plain (untracked) /live link. */
-export function hasPlainLive(s: string): boolean {
-  return new RegExp(LIVE_PLAIN.source).test(s);
-}
-/** True if the text still contains a plain (untracked) program root link. */
-export function hasPlainProgram(s: string): boolean {
-  return new RegExp(ROOT_PLAIN.source).test(s);
-}
+const LIVE_LABEL = 'Join me live on Aug 13th';
+const PROGRAM_LABEL = 'Work With Me';
 
 /**
- * Swap plain program/live links for their tracked /t forms. Pure and idempotent:
- * a link already in /t form has no plain match, so re-running is a no-op. Live is
- * swapped before program so the program pass never touches the freshly written
- * /t/{live} link.
+ * Rewrite a description so its top is exactly the two promo lines, in canonical
+ * order (live, then program), each pointing at its tracked /t link, with one
+ * blank line before the rest of the description.
+ *
+ * Any prior version of either line is removed first (plain OR tracked, wherever
+ * it sat, whatever its label), then the canonical pair is prepended. So this
+ * REPLACES a link that's there and ADDS one that isn't, can't leave a stray
+ * duplicate, and fixes a reordered or mislabeled line. Lines are matched by the
+ * URL they carry, not their label. A null code leaves that line untouched.
+ *
+ * Idempotent: a description already in canonical form maps to itself.
  */
-export function swapLinks(
+export function normalizePromo(
   before: string,
-  codes: { programCode?: string | null; liveCode?: string | null },
-): { after: string; liveSwapped: boolean; programSwapped: boolean } {
-  let after = before;
-  let liveSwapped = false;
-  let programSwapped = false;
-  if (codes.liveCode) {
-    const out = after.replace(new RegExp(LIVE_PLAIN.source, 'g'), `${ROOT}/t/${codes.liveCode}`);
-    if (out !== after) { after = out; liveSwapped = true; }
-  }
-  if (codes.programCode) {
-    const out = after.replace(new RegExp(ROOT_PLAIN.source, 'g'), `${ROOT}/t/${codes.programCode}`);
-    if (out !== after) { after = out; programSwapped = true; }
-  }
-  return { after, liveSwapped, programSwapped };
+  codes: { liveCode?: string | null; programCode?: string | null },
+): string {
+  const { liveCode, programCode } = codes;
+
+  // Identify an existing promo line by the URL it carries (any form).
+  //   live: plain /live (not /liveXYZ) or the tracked live code
+  //   program: the bare root (no path after the slash) or the tracked program code
+  // /insight, /submit, /live and /t/{othercode} are NOT the bare program root.
+  const liveRe = liveCode
+    ? new RegExp(`bcp\\.boundlesscreator\\.com/(live(?![A-Za-z0-9/])|t/${liveCode}(?![A-Za-z0-9]))`, 'i')
+    : null;
+  const progRe = programCode
+    ? new RegExp(`bcp\\.boundlesscreator\\.com/(t/${programCode}(?![A-Za-z0-9])|(?![A-Za-z0-9]))`, 'i')
+    : null;
+
+  const kept = before.split('\n').filter((line) => {
+    if (liveRe && liveRe.test(line)) return false;
+    if (progRe && progRe.test(line)) return false;
+    return true;
+  });
+  while (kept.length && kept[0].trim() === '') kept.shift();
+
+  const promo: string[] = [];
+  if (liveCode) promo.push(`${LIVE_LABEL}: ${ROOT}/t/${liveCode}`);
+  if (programCode) promo.push(`${PROGRAM_LABEL}: ${ROOT}/t/${programCode}`);
+
+  const rest = kept.join('\n').replace(/^\n+/, '');
+  return rest.trim().length ? `${promo.join('\n')}\n\n${rest}` : promo.join('\n');
 }
 
 /** Every code already in use across both registry tabs, for uniqueness on mint. */

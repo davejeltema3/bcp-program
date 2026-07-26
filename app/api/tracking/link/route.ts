@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAccessToken, getVideoSnippet, updateVideoDescription, parseVideoId } from '@/lib/youtube';
-import { findByVideoId, swapLinks } from '@/lib/tracking';
+import { findByVideoId, normalizePromo } from '@/lib/tracking';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Swap the plain program and /live links in a video's description for that
- * video's tracked /t links, pulled from the Registry and Livestream Registry.
+ * Normalize a video's promo block to the canonical two-line form with its
+ * tracked /t links (Registry = program, Livestream Registry = live). Backend
+ * counterpart of the paste button, gated by SHEETS_RPC_TOKEN for bulk runs.
+ * Unlike the button it does not mint: it uses whatever codes already exist.
  *
  * POST { token, url|videoId, apply }
  *   - token: the SHEETS_RPC_TOKEN (backend auth).
  *   - apply: false (default) returns a dry-run preview; true writes it.
- * Idempotent: a link already tracked has no plain form to match, so it's left
- * alone. Refuses to write a description over YouTube's 5000-char limit.
+ * Idempotent: a description already in canonical form maps to itself.
+ * Refuses to write a description over YouTube's 5000-char limit.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -34,7 +36,7 @@ export async function POST(request: NextRequest) {
     const snippet = await getVideoSnippet(videoId, accessToken);
     const before = snippet.description || '';
 
-    const { after, liveSwapped, programSwapped } = swapLinks(before, {
+    const after = normalizePromo(before, {
       programCode: prog?.code,
       liveCode: live?.code,
     });
@@ -47,14 +49,12 @@ export async function POST(request: NextRequest) {
       title: snippet.title,
       programCode: prog?.code || null,
       liveCode: live?.code || null,
-      programSwapped,
-      liveSwapped,
       changed,
       length: after.length,
       tooLong,
       applied: false,
-      beforeHead: before.split('\n').slice(0, 3).join('\n'),
-      afterHead: after.split('\n').slice(0, 3).join('\n'),
+      beforeHead: before.split('\n').slice(0, 6).join('\n'),
+      afterHead: after.split('\n').slice(0, 6).join('\n'),
     };
 
     if (apply && changed && !tooLong) {
