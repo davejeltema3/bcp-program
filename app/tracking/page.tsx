@@ -333,7 +333,7 @@ async function LeadMagnets({ keyStr }: { searchParams: any; keyStr: string }) {
   let registry: string[][] = [];
   let missing = false;
   try {
-    registry = await readRange("'Lead Magnet Registry'!A2:H");
+    registry = await readRange("'Lead Magnet Registry'!A2:I");
   } catch {
     missing = true;
   }
@@ -349,7 +349,7 @@ async function LeadMagnets({ keyStr }: { searchParams: any; keyStr: string }) {
   const rows = registry.map((r) => ({
     code: (r[0] || '').trim(),
     title: (r[2] || '').trim() || '(untitled)',
-    magnet: (r[6] || '').trim(),          // destination = the magnet
+    magnet: (r[8] || '').trim() || (r[6] || '').trim(), // col I name, fall back to destination
     published: (r[3] || '').trim(),
     clicks: clicksByCode[(r[0] || '').trim()] || 0,
   })).filter((r) => r.code);

@@ -85,9 +85,10 @@ export interface RegistryEntry {
  */
 export async function resolveFromRegistry(code: string): Promise<RegistryEntry | null> {
   const norm = code.toLowerCase().trim();
-  // Program codes live in Registry; livestream codes in Livestream Registry.
-  // Both tabs share the same columns, so a code resolves from whichever holds it.
-  for (const range of ['Registry!A2:G', "'Livestream Registry'!A2:G"]) {
+  // Program codes live in Registry; livestream codes in Livestream Registry;
+  // lead-magnet codes in Lead Magnet Registry. All three share columns A–G, so a
+  // code resolves (and its destination in col G) from whichever tab holds it.
+  for (const range of ['Registry!A2:G', "'Livestream Registry'!A2:G", "'Lead Magnet Registry'!A2:G"]) {
     let rows: string[][] = [];
     try {
       rows = await readRangeWithRetry(range);
@@ -183,10 +184,10 @@ export function normalizePromo(
   return rest.trim().length ? `${promo.join('\n')}\n\n${rest}` : promo.join('\n');
 }
 
-/** Every code already in use across both registry tabs, for uniqueness on mint. */
+/** Every code already in use across all three registry tabs, for mint uniqueness. */
 export async function readAllRegistryCodes(): Promise<Set<string>> {
   const set = new Set<string>();
-  for (const range of ['Registry!A2:A', "'Livestream Registry'!A2:A"]) {
+  for (const range of ['Registry!A2:A', "'Livestream Registry'!A2:A", "'Lead Magnet Registry'!A2:A"]) {
     let rows: string[][] = [];
     try {
       rows = await readRangeWithRetry(range);
@@ -246,6 +247,149 @@ export async function appendRegistryRow(
     insertDataOption: 'INSERT_ROWS',
     requestBody: { values: [values] },
   });
+}
+
+// --- Lead magnets (catalog-driven detection) --------------------------------
+
+export interface Magnet {
+  name: string;
+  url: string;  // canonical destination (the catalog URL)
+  slug: string; // first path segment, matched on either domain
+}
+
+/** First path segment of a URL, lowercased. e.g. …/hookformula -> "hookformula". */
+export function slugFromUrl(url: string): string {
+  try {
+    const u = new URL((url || '').trim());
+    const p = u.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+    return (p.split('/')[0] || '').toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+/** Read the Lead Magnets catalog (Name | URL | Notes) into typed magnets. */
+export async function readLeadMagnetCatalog(): Promise<Magnet[]> {
+  let rows: string[][] = [];
+  try {
+    rows = await readRangeWithRetry("'Lead Magnets'!A2:C");
+  } catch {
+    return [];
+  }
+  const out: Magnet[] = [];
+  for (const r of rows) {
+    const name = (r[0] || '').trim();
+    const url = (r[1] || '').trim();
+    if (!name || !url) continue;
+    const slug = slugFromUrl(url);
+    if (slug) out.push({ name, url, slug });
+  }
+  return out;
+}
+
+/**
+ * Find which catalog magnets are present in a description as a PLAIN link. A
+ * magnet is matched by its slug on either domain (the custom bcp domain or the
+ * Kit domain), so it's caught however the link was written. A link already in
+ * /t form has no plain slug path, so it isn't re-detected (keeps re-runs idempotent).
+ */
+export function detectMagnets(
+  before: string,
+  catalog: Magnet[],
+): { magnet: Magnet; matchedUrl: string }[] {
+  const found: { magnet: Magnet; matchedUrl: string }[] = [];
+  const seen = new Set<string>();
+  for (const m of catalog) {
+    if (!m.slug || seen.has(m.slug)) continue;
+    const esc = m.slug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(
+      `https?://(?:www\\.)?(?:bcp\\.boundlesscreator\\.com|boundlesscreator\\.kit\\.com)/${esc}(?![A-Za-z0-9/])`,
+      'i',
+    );
+    const match = before.match(re);
+    if (match) {
+      found.push({ magnet: m, matchedUrl: match[0] });
+      seen.add(m.slug);
+    }
+  }
+  return found;
+}
+
+/** Append a Lead Magnet Registry row (A:I; col I = magnet name). */
+export async function appendLeadMagnetRow(row: {
+  code: string;
+  videoId: string;
+  title: string;
+  published: string;
+  destination: string;
+  magnetName: string;
+  createdDate: string;
+}): Promise<void> {
+  const sheets = await getSheets();
+  const studio = `=HYPERLINK("https://studio.youtube.com/video/${row.videoId}/edit","Edit description")`;
+  const link = `${ROOT}/t/${row.code}`;
+  const values = [
+    row.code, row.videoId, row.title, row.published, link, studio,
+    row.destination, row.createdDate, row.magnetName,
+  ];
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: TRACKING_SHEET_ID,
+    range: "'Lead Magnet Registry'!A:I",
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [values] },
+  });
+}
+
+/**
+ * Detect every catalog magnet linked in a description, ensure each has a Lead
+ * Magnet Registry row (one per video-magnet pair, minted if new), and swap the
+ * plain link for its tracked /t link. Returns the rewritten description and a
+ * summary. Codes are minted from the shared `existingCodes` set so they never
+ * collide with program/live codes minted in the same request.
+ */
+export async function ensureMagnetsTracked(
+  before: string,
+  ctx: { videoId: string; title: string; published: string; today: string; existingCodes: Set<string> },
+): Promise<{ after: string; magnets: { name: string; code: string; created: boolean }[] }> {
+  const catalog = await readLeadMagnetCatalog();
+  const present = detectMagnets(before, catalog);
+  if (!present.length) return { after: before, magnets: [] };
+
+  let rows: string[][] = [];
+  try {
+    rows = await readRangeWithRetry("'Lead Magnet Registry'!A2:I");
+  } catch {
+    rows = [];
+  }
+
+  let after = before;
+  const magnets: { name: string; code: string; created: boolean }[] = [];
+  for (const { magnet, matchedUrl } of present) {
+    // Reuse an existing row for this (video, magnet) if a plain link reappeared.
+    const existingRow = rows.find(
+      (r) => (r[1] || '').trim() === ctx.videoId && slugFromUrl(r[6] || '') === magnet.slug,
+    );
+    let code = existingRow ? (existingRow[0] || '').trim() : '';
+    let created = false;
+    if (!code) {
+      code = mintCode(ctx.existingCodes);
+      ctx.existingCodes.add(code);
+      await appendLeadMagnetRow({
+        code,
+        videoId: ctx.videoId,
+        title: ctx.title,
+        published: ctx.published,
+        destination: magnet.url,
+        magnetName: magnet.name,
+        createdDate: ctx.today,
+      });
+      created = true;
+    }
+    after = after.split(matchedUrl).join(`${ROOT}/t/${code}`);
+    magnets.push({ name: magnet.name, code, created });
+  }
+  return { after, magnets };
 }
 
 export interface SaleRecord {

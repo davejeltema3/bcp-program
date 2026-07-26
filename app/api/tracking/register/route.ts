@@ -5,6 +5,7 @@ import {
   readAllRegistryCodes,
   mintCode,
   appendRegistryRow,
+  ensureMagnetsTracked,
   normalizePromo,
 } from '@/lib/tracking';
 
@@ -55,41 +56,36 @@ export async function POST(request: NextRequest) {
     let programCreated = false;
     let liveCreated = false;
 
-    // Every video gets both links, so mint whatever isn't already registered.
-    if (!liveCode || !programCode) {
-      const existing = await readAllRegistryCodes();
+    // Shared code set for mint uniqueness across program, live, and magnets.
+    const existing = await readAllRegistryCodes();
 
-      if (!liveCode) {
-        liveCode = mintCode(existing);
-        existing.add(liveCode);
-        await appendRegistryRow('Livestream Registry', {
-          code: liveCode,
-          videoId,
-          title,
-          published,
-          destination: `${ROOT}/live`,
-          createdDate: today,
-          activatedIso: nowIso,
-        });
-        liveCreated = true;
-      }
-      if (!programCode) {
-        programCode = mintCode(existing);
-        existing.add(programCode);
-        await appendRegistryRow('Registry', {
-          code: programCode,
-          videoId,
-          title,
-          published,
-          destination: `${ROOT}/`,
-          createdDate: today,
-          activatedIso: nowIso,
-        });
-        programCreated = true;
-      }
+    // Every video gets both promo links, so mint whatever isn't registered yet.
+    if (!liveCode) {
+      liveCode = mintCode(existing);
+      existing.add(liveCode);
+      await appendRegistryRow('Livestream Registry', {
+        code: liveCode, videoId, title, published,
+        destination: `${ROOT}/live`, createdDate: today, activatedIso: nowIso,
+      });
+      liveCreated = true;
+    }
+    if (!programCode) {
+      programCode = mintCode(existing);
+      existing.add(programCode);
+      await appendRegistryRow('Registry', {
+        code: programCode, videoId, title, published,
+        destination: `${ROOT}/`, createdDate: today, activatedIso: nowIso,
+      });
+      programCreated = true;
     }
 
-    const after = normalizePromo(before, { liveCode, programCode });
+    // Lead magnets: track every catalog magnet linked in the description.
+    const { after: afterMagnets, magnets } = await ensureMagnetsTracked(before, {
+      videoId, title, published, today, existingCodes: existing,
+    });
+
+    // Normalize the promo block on top of the magnet-swapped body.
+    const after = normalizePromo(afterMagnets, { liveCode, programCode });
     const changed = after !== before;
     const tooLong = after.length > 5000;
 
@@ -107,6 +103,7 @@ export async function POST(request: NextRequest) {
       liveCode,
       programCreated,
       liveCreated,
+      magnets,
       changed,
       tooLong,
       applied,
