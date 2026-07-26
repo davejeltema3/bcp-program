@@ -11,8 +11,28 @@
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const VIDEOS_URL = 'https://www.googleapis.com/youtube/v3/videos';
 
+/**
+ * fetch with retry on rate-limit / server errors. Google's OAuth and Data API
+ * both throttle under bursts (429) and occasionally 5xx. A single paste should
+ * heal itself rather than surface a transient blip, so we retry those with
+ * jittered backoff. 4xx other than 429 are returned as-is (real client errors).
+ */
+async function fetchWithRetry(url: string, init: RequestInit, attempts = 4): Promise<Response> {
+  let last: Response | undefined;
+  for (let i = 0; i < attempts; i++) {
+    const res = await fetch(url, init);
+    if (res.ok || (res.status !== 429 && res.status < 500)) return res;
+    last = res;
+    if (i < attempts - 1) {
+      const backoff = 400 * Math.pow(2, i) + Math.floor(Math.random() * 250);
+      await new Promise((r) => setTimeout(r, backoff));
+    }
+  }
+  return last as Response;
+}
+
 export async function getAccessToken(): Promise<string> {
-  const res = await fetch(TOKEN_URL, {
+  const res = await fetchWithRetry(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -31,13 +51,14 @@ export interface VideoSnippet {
   title: string;
   description: string;
   categoryId: string;
+  publishedAt?: string; // read-only; used to stamp the registry, never sent back on update
   tags?: string[];
   defaultLanguage?: string;
   defaultAudioLanguage?: string;
 }
 
 export async function getVideoSnippet(videoId: string, accessToken: string): Promise<VideoSnippet> {
-  const res = await fetch(`${VIDEOS_URL}?part=snippet&id=${encodeURIComponent(videoId)}`, {
+  const res = await fetchWithRetry(`${VIDEOS_URL}?part=snippet&id=${encodeURIComponent(videoId)}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   const j: any = await res.json();
@@ -63,7 +84,7 @@ export async function updateVideoDescription(
       ...(snippet.defaultAudioLanguage ? { defaultAudioLanguage: snippet.defaultAudioLanguage } : {}),
     },
   };
-  const res = await fetch(`${VIDEOS_URL}?part=snippet`, {
+  const res = await fetchWithRetry(`${VIDEOS_URL}?part=snippet`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

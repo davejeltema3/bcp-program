@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAccessToken, getVideoSnippet, updateVideoDescription, parseVideoId } from '@/lib/youtube';
-import { findByVideoId } from '@/lib/tracking';
+import { findByVideoId, swapLinks } from '@/lib/tracking';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,23 +34,10 @@ export async function POST(request: NextRequest) {
     const snippet = await getVideoSnippet(videoId, accessToken);
     const before = snippet.description || '';
 
-    // Fresh regexes per request (global replace is stateless; test/exec is not).
-    const liveRe = /https:\/\/bcp\.boundlesscreator\.com\/live(?![A-Za-z0-9/])/g;
-    const rootRe = /https:\/\/bcp\.boundlesscreator\.com\/(?![A-Za-z0-9])/g;
-    const ROOT = 'https://bcp.boundlesscreator.com';
-
-    let after = before;
-    let liveSwapped = false;
-    let programSwapped = false;
-
-    if (live?.code) {
-      const out = after.replace(liveRe, `${ROOT}/t/${live.code}`);
-      if (out !== after) { after = out; liveSwapped = true; }
-    }
-    if (prog?.code) {
-      const out = after.replace(rootRe, `${ROOT}/t/${prog.code}`);
-      if (out !== after) { after = out; programSwapped = true; }
-    }
+    const { after, liveSwapped, programSwapped } = swapLinks(before, {
+      programCode: prog?.code,
+      liveCode: live?.code,
+    });
 
     const changed = after !== before;
     const tooLong = after.length > 5000;

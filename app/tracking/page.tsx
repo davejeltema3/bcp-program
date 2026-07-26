@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { readRange } from '@/lib/tracking';
 import { REGISTRY } from '@/lib/tracking-registry';
+import PasteBox from './PasteBox';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -135,6 +136,9 @@ export default async function TrackingDashboard({
       <p style={{ marginTop: 0 }}>
         <a href="/tracking/calculator" style={{ color: 'var(--bc-blue-300, #5b9cff)', textDecoration: 'none' }}>Open the revenue calculator &rarr;</a>
       </p>
+
+      <PasteBox adminKey={key} />
+
       <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16 }}>
         <thead>
           <tr>
